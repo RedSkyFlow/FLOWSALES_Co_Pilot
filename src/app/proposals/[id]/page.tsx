@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/avatar";
 import {
   mockProposals,
-  mockUser,
   mockComments,
   mockVersions,
 } from "@/lib/mock-data";

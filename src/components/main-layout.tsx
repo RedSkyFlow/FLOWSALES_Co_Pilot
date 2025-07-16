@@ -63,13 +63,13 @@ function UserProfile() {
         <div className="flex w-full items-center justify-between">
             <div className="flex items-center gap-2">
                 <Avatar className="size-8">
-                <AvatarImage src={mockUser.avatarUrl} alt={mockUser.name} />
+                <AvatarImage src={mockUser.avatarUrl} alt={mockUser.displayName} />
                 <AvatarFallback>{mockUser.initials}</AvatarFallback>
                 </Avatar>
                 {state === "expanded" && (
                 <div className="flex flex-col">
                     <span className="text-sm font-semibold text-foreground leading-none">
-                        {mockUser.name}
+                        {mockUser.displayName}
                     </span>
                      <span className="text-xs text-muted-foreground">
                         Sales Agent

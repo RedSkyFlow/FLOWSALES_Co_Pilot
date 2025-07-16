@@ -1,5 +1,8 @@
 export interface User {
-  name: string;
+  uid: string;
+  email: string;
+  displayName: string;
+  role: 'sales_agent' | 'admin';
   avatarUrl: string;
   initials: string;
 }
@@ -20,7 +23,7 @@ export interface Module {
 export type ProposalStatus = 'Draft' | 'Sent' | 'Viewed' | 'Changes Requested' | 'Accepted' | 'Signed' | 'Paid';
 
 export interface Proposal {
-  id: string;
+  id:string;
   title: string;
   client: Client;
   status: ProposalStatus;
@@ -32,7 +35,12 @@ export interface Proposal {
 
 export interface Comment {
   id: string;
-  author: User;
+  author: {
+    uid: string;
+    name: string;
+    avatarUrl: string;
+    initials: string;
+  }
   timestamp: string;
   content: string;
 }
@@ -40,6 +48,11 @@ export interface Comment {
 export interface Version {
   number: number;
   date: string;
-  author: User;
+  author: {
+    uid: string;
+    name: string;
+    avatarUrl: string;
+    initials: string;
+  }
   summary: string;
 }

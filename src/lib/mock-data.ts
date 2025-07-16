@@ -1,7 +1,10 @@
 import type { Proposal, Client, Module, User, Comment, Version } from './types';
 
 export const mockUser: User = {
-  name: 'Alex Johnson',
+  uid: 'abc-123',
+  email: 'alex.johnson@flowsales.com',
+  displayName: 'Alex Johnson',
+  role: 'sales_agent',
   avatarUrl: 'https://i.pravatar.cc/150?u=alexjohnson',
   initials: 'AJ',
 };
@@ -76,22 +79,34 @@ export const mockProposals: Proposal[] = [
   },
 ];
 
+const mockClientAuthor = {
+  uid: 'xyz-789',
+  name: 'Sarah Chen (Client)',
+  avatarUrl: 'https://i.pravatar.cc/150?u=sarahchen',
+  initials: 'SC'
+};
+
 export const mockComments: Comment[] = [
     {
         id: 'com-001',
-        author: { name: 'Sarah Chen (Client)', avatarUrl: 'https://i.pravatar.cc/150?u=sarahchen', initials: 'SC' },
+        author: mockClientAuthor,
         timestamp: '2 days ago',
         content: 'Could we get a more detailed breakdown of the implementation timeline for the Smart Ticketing System?'
     },
     {
         id: 'com-002',
-        author: mockUser,
+        author: {
+          uid: mockUser.uid,
+          name: mockUser.displayName,
+          avatarUrl: mockUser.avatarUrl,
+          initials: mockUser.initials,
+        },
         timestamp: '1 day ago',
         content: '@Sarah Chen Absolutely. I\'ve added a project plan to the appendix with a detailed timeline. Let me know if that works for you.'
     },
     {
         id: 'com-003',
-        author: { name: 'Sarah Chen (Client)', avatarUrl: 'https://i.pravatar.cc/150?u=sarahchen', initials: 'SC' },
+        author: mockClientAuthor,
         timestamp: '4 hours ago',
         content: 'This looks great, thanks Alex! One more thing - is there an option for a phased rollout of the In-Seat Concessions Ordering module?'
     }
@@ -99,8 +114,8 @@ export const mockComments: Comment[] = [
 
 
 export const mockVersions: Version[] = [
-    { number: 4, date: '2024-07-25', author: mockUser, summary: 'Updated pricing for retail analytics and added volume discount.' },
-    { number: 3, date: '2024-07-22', author: { name: 'Sarah Chen (Client)', avatarUrl: 'https://i.pravatar.cc/150?u=sarahchen', initials: 'SC' }, summary: 'Client requested removal of loyalty program module.' },
-    { number: 2, date: '2024-07-21', author: mockUser, summary: 'Added new case study for a similar retail client.' },
-    { number: 1, date: '2024-07-20', author: mockUser, summary: 'Initial draft sent to client.' },
+    { number: 4, date: '2024-07-25', author: {uid: mockUser.uid, name: mockUser.displayName, avatarUrl: mockUser.avatarUrl, initials: mockUser.initials}, summary: 'Updated pricing for retail analytics and added volume discount.' },
+    { number: 3, date: '2024-07-22', author: mockClientAuthor, summary: 'Client requested removal of loyalty program module.' },
+    { number: 2, date: '2024-07-21', author: {uid: mockUser.uid, name: mockUser.displayName, avatarUrl: mockUser.avatarUrl, initials: mockUser.initials}, summary: 'Added new case study for a similar retail client.' },
+    { number: 1, date: '2024-07-20', author: {uid: mockUser.uid, name: mockUser.displayName, avatarUrl: mockUser.avatarUrl, initials: mockUser.initials}, summary: 'Initial draft sent to client.' },
 ];
