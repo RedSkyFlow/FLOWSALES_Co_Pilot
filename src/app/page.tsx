@@ -22,6 +22,7 @@ import type { Proposal, ProposalStatus } from '@/lib/types';
 import { mockProposals } from '@/lib/mock-data';
 import { PlusCircle, ListFilter, FileText } from 'lucide-react';
 import { useState } from 'react';
+import { ClientDate } from '@/components/client-date';
 
 function getStatusBadgeVariant(status: ProposalStatus) {
   switch (status) {
@@ -61,7 +62,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
       <CardContent className="flex-grow">
         <div className="flex items-center text-sm text-muted-foreground">
           <FileText className="mr-2 h-4 w-4" />
-          <span>V{proposal.version} - Updated on {new Date(proposal.lastUpdated).toLocaleDateString()}</span>
+          <span>V{proposal.version} - Updated on <ClientDate dateString={proposal.lastUpdated} /></span>
         </div>
       </CardContent>
       <CardFooter>

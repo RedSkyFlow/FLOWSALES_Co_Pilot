@@ -1,3 +1,4 @@
+'use client';
 import { MainLayout } from "@/components/main-layout";
 import {
   Card,
@@ -32,6 +33,7 @@ import {
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { ClientDate } from "@/components/client-date";
 
 function getStatusBadgeVariant(status: string) {
   switch (status) {
@@ -79,7 +81,7 @@ export default function ProposalDetailPage({
                  <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
                     <span>Version {proposal.version}</span>
                     <Separator orientation="vertical" className="h-4" />
-                    <span>Last updated on {new Date(proposal.lastUpdated).toLocaleDateString()}</span>
+                    <span>Last updated on <ClientDate dateString={proposal.lastUpdated} /></span>
                     <Separator orientation="vertical" className="h-4" />
                     <span className="font-bold text-lg text-foreground">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalValue)}</span>
                 </div>
@@ -194,7 +196,7 @@ export default function ProposalDetailPage({
                   <div>
                     <p className="font-semibold">Version {version.number}</p>
                     <p className="text-sm text-muted-foreground">{version.summary}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{new Date(version.date).toLocaleDateString()}</p>
+                    <p className="text-xs text-muted-foreground mt-1"><ClientDate dateString={version.date} /></p>
                   </div>
                 </div>
               ))}
