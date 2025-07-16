@@ -37,7 +37,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { mockClients, mockModules } from "@/lib/mock-data";
 import type { Module } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { generateExecutiveSummary, suggestCaseStudies } from "@/ai/flows";
+import { generateExecutiveSummary } from "@/ai/flows/generate-executive-summary";
+import { suggestCaseStudies } from "@/ai/flows/suggest-case-studies";
 
 const templates = [
   {
