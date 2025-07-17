@@ -34,8 +34,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { mockClients, mockModules } from "@/lib/mock-data";
-import type { Module } from "@/lib/types";
+import { mockClients, mockVenueOSModules } from "@/lib/mock-data";
+import type { VenueOSModule } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { generateExecutiveSummary } from "@/ai/flows/generate-executive-summary";
 import { suggestCaseStudies } from "@/ai/flows/suggest-case-studies";
@@ -74,7 +74,7 @@ export function ProposalWizard() {
   const [caseStudySuggestions, setCaseStudySuggestions] = useState<string[]>([]);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [isCaseStudyLoading, setIsCaseStudyLoading] = useState(false);
-  const [selectedModules, setSelectedModules] = useState<Module[]>([]);
+  const [selectedModules, setSelectedModules] = useState<VenueOSModule[]>([]);
 
   const progress = ((currentStep + 1) / steps.length) * 100;
 
@@ -122,13 +122,13 @@ export function ProposalWizard() {
     }
   };
 
-  const handleModuleToggle = (module: Module, checked: boolean) => {
+  const handleModuleToggle = (module: VenueOSModule, checked: boolean) => {
     setSelectedModules((prev) =>
       checked ? [...prev, module] : prev.filter((m) => m.id !== module.id)
     );
   };
   
-  const totalValue = selectedModules.reduce((sum, module) => sum + module.price, 0);
+  const totalValue = selectedModules.reduce((sum, module) => sum + module.basePrice, 0);
 
   return (
     <Card className="w-full max-w-4xl mx-auto shadow-2xl">
@@ -251,7 +251,7 @@ export function ProposalWizard() {
             <h2 className="text-2xl font-headline font-semibold">Select Modules</h2>
             <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                    {mockModules.map((module) => (
+                    {mockVenueOSModules.map((module) => (
                         <div key={module.id} className="flex items-start space-x-3 rounded-lg border p-4">
                         <Checkbox
                             id={module.id}
@@ -264,7 +264,7 @@ export function ProposalWizard() {
                             </label>
                             <p className="text-sm text-muted-foreground">{module.description}</p>
                         </div>
-                         <p className="ml-auto font-semibold">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.price)}</p>
+                         <p className="ml-auto font-semibold">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.basePrice)}</p>
                         </div>
                     ))}
                 </div>
@@ -274,7 +274,7 @@ export function ProposalWizard() {
                         {selectedModules.map(module => (
                             <li key={module.id} className="flex justify-between items-center text-sm">
                                 <span>{module.name}</span>
-                                <span className="font-mono">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.price)}</span>
+                                <span className="font-mono">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.basePrice)}</span>
                             </li>
                         ))}
                          {selectedModules.length === 0 && <p className="text-sm text-muted-foreground">Select modules to see pricing.</p>}

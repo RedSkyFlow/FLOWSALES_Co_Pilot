@@ -19,29 +19,32 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { MainLayout } from '@/components/main-layout';
 import type { Proposal, ProposalStatus } from '@/lib/types';
-import { mockProposals } from '@/lib/mock-data';
+import { mockProposals, mockClients } from '@/lib/mock-data';
 import { PlusCircle, ListFilter, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { ClientDate } from '@/components/client-date';
+import { cn } from '@/lib/utils';
 
 function getStatusBadgeVariant(status: ProposalStatus) {
+  const baseClasses = "capitalize";
   switch (status) {
-    case 'Accepted':
-    case 'Signed':
-    case 'Paid':
-      return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800';
-    case 'Sent':
-    case 'Viewed':
-      return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800';
-    case 'Changes Requested':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-800';
-    case 'Draft':
+    case 'accepted':
+    case 'signed':
+    case 'paid':
+      return cn(baseClasses, 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800');
+    case 'sent':
+    case 'viewed':
+      return cn(baseClasses, 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800');
+    case 'changes_requested':
+      return cn(baseClasses, 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-800');
+    case 'draft':
     default:
-      return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600';
+      return cn(baseClasses, 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600');
   }
 }
 
 function ProposalCard({ proposal }: { proposal: Proposal }) {
+  const client = mockClients.find(c => c.id === proposal.clientId);
   return (
     <Card className="hover:shadow-lg transition-shadow duration-300 flex flex-col">
       <CardHeader>
@@ -52,23 +55,23 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
             </Link>
           </CardTitle>
            <Badge variant="outline" className={getStatusBadgeVariant(proposal.status)}>
-            {proposal.status}
+            {proposal.status.replace('_', ' ')}
           </Badge>
         </div>
         <CardDescription>
-          For: {proposal.client.name}
+          For: {client?.name || 'Unknown Client'}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow">
         <div className="flex items-center text-sm text-muted-foreground">
           <FileText className="mr-2 h-4 w-4" />
-          <span>V{proposal.version} - Updated on <ClientDate dateString={proposal.lastUpdated} /></span>
+          <span>V{proposal.version} - Updated on <ClientDate dateString={proposal.lastModified} /></span>
         </div>
       </CardContent>
       <CardFooter>
         <div className="flex justify-between items-center w-full">
             <span className="text-lg font-bold text-primary">
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalValue)}
+                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}
             </span>
           <Button variant="secondary" asChild>
             <Link href={`/proposals/${proposal.id}`}>View Details</Link>
@@ -84,10 +87,13 @@ export default function Dashboard() {
   const [filter, setFilter] = useState('All');
 
   const filteredProposals = mockProposals.filter(proposal => {
-    const matchesSearch = proposal.title.toLowerCase().includes(searchTerm.toLowerCase()) || proposal.client.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filter === 'All' || proposal.status === filter;
+    const client = mockClients.find(c => c.id === proposal.clientId);
+    const matchesSearch = proposal.title.toLowerCase().includes(searchTerm.toLowerCase()) || (client && client.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesFilter = filter === 'All' || proposal.status === filter.toLowerCase().replace(' ', '_');
     return matchesSearch && matchesFilter;
   });
+
+  const filterOptions: ProposalStatus[] = ['draft', 'sent', 'viewed', 'changes_requested', 'accepted', 'paid'];
 
   return (
     <MainLayout>
@@ -127,9 +133,10 @@ export default function Dashboard() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {['All', 'Draft', 'Sent', 'Viewed', 'Changes Requested', 'Accepted', 'Paid'].map(status => (
-                <DropdownMenuItem key={status} onSelect={() => setFilter(status)}>
-                  {status}
+              <DropdownMenuItem onSelect={() => setFilter('All')}>All</DropdownMenuItem>
+              {filterOptions.map(status => (
+                <DropdownMenuItem key={status} onSelect={() => setFilter(status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' '))}>
+                  {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>

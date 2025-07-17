@@ -1,31 +1,43 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Users can only read/write their own user document.
+
+    // Users can only read and write to their own user document.
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Proposals can be created by any authenticated user.
-    // Only the user who created the proposal (owner) can read, update, or delete it.
-    match /proposals/{proposalId} {
-      allow create: if request.auth != null;
-      allow read, update, delete: if request.auth != null && resource.data.agent.uid == request.auth.uid;
-    }
-
-    // Templates and Clients can be read by any authenticated user, but not modified.
-    // This assumes they are managed by an admin through the Firebase console or a separate interface.
-    match /templates/{templateId} {
-      allow read: if request.auth != null;
-      allow write: if false; // Or add admin-only logic here
-    }
-
+    // Any authenticated user can read clients, but only admins or sales agents can create/update.
     match /clients/{clientId} {
       allow read: if request.auth != null;
-      allow write: if false; // Or add admin-only logic here
+      allow create, update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['sales_agent', 'admin'];
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Module catalog is readable by anyone authenticated. Writable only by admins.
+    match /venueOS_modules/{moduleId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Content library is readable by anyone authenticated. Writable only by admins.
+    match /content_library/{contentId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Proposals can be created by authenticated sales agents.
+    // They can only be read, updated, or deleted by the sales agent assigned to them.
+    match /proposals/{proposalId} {
+      allow create: if request.auth != null 
+                    && request.resource.data.salesAgentId == request.auth.uid
+                    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'sales_agent';
+      
+      allow read, update: if request.auth != null && resource.data.salesAgentId == request.auth.uid;
+      
+      // Allow admins to read and delete any proposal
+      allow read, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
   }
 }

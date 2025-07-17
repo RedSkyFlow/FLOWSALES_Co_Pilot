@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/avatar";
 import {
   mockProposals,
+  mockClients,
   mockComments,
   mockVersions,
 } from "@/lib/mock-data";
@@ -33,21 +34,25 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientDate } from "@/components/client-date";
+import type { ProposalStatus } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
-function getStatusBadgeVariant(status: string) {
+
+function getStatusBadgeVariant(status: ProposalStatus) {
+  const baseClasses = "capitalize";
   switch (status) {
-    case 'Accepted':
-    case 'Signed':
-    case 'Paid':
-      return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800';
-    case 'Sent':
-    case 'Viewed':
-      return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800';
-    case 'Changes Requested':
-      return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-800';
-    case 'Draft':
+    case 'accepted':
+    case 'signed':
+    case 'paid':
+      return cn(baseClasses, 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800');
+    case 'sent':
+    case 'viewed':
+      return cn(baseClasses, 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800');
+    case 'changes_requested':
+      return cn(baseClasses, 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-800');
+    case 'draft':
     default:
-      return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600';
+      return cn(baseClasses, 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600');
   }
 }
 
@@ -57,8 +62,10 @@ export default function ProposalDetailPage({
   params: { id: string };
 }) {
   const proposal = mockProposals.find((p) => p.id === params.id);
+  const client = proposal ? mockClients.find(c => c.id === proposal.clientId) : null;
 
-  if (!proposal) {
+
+  if (!proposal || !client) {
     notFound();
   }
 
@@ -71,33 +78,32 @@ export default function ProposalDetailPage({
                 <div className="flex justify-between items-start">
                     <div>
                         <h1 className="text-4xl font-headline font-bold text-primary">{proposal.title}</h1>
-                        <p className="text-lg text-muted-foreground mt-1">For {proposal.client.name}</p>
+                        <p className="text-lg text-muted-foreground mt-1">For {client.name}</p>
                     </div>
                     <Badge variant="outline" className={`text-base px-4 py-2 ${getStatusBadgeVariant(proposal.status)}`}>
-                        {proposal.status}
+                        {proposal.status.replace('_', ' ')}
                     </Badge>
                 </div>
                  <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
                     <span>Version {proposal.version}</span>
                     <Separator orientation="vertical" className="h-4" />
-                    <span>Last updated on <ClientDate dateString={proposal.lastUpdated} /></span>
+                    <span>Last updated on <ClientDate dateString={proposal.lastModified} /></span>
                     <Separator orientation="vertical" className="h-4" />
-                    <span className="font-bold text-lg text-foreground">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalValue)}</span>
+                    <span className="font-bold text-lg text-foreground">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}</span>
                 </div>
             </div>
 
           {/* Proposal Content */}
           <Card>
             <CardHeader>
-              <CardTitle className="font-headline text-2xl flex items-center gap-2"><FileText className="text-primary"/> Executive Summary</CardTitle>
+              <CardTitle className="font-headline text-2xl flex items-center gap-2"><FileText className="text-primary"/> {proposal.sections[0].title}</CardTitle>
             </CardHeader>
             <CardContent className="prose dark:prose-invert max-w-none">
-              <p>
-                Global Stadium Corp faces significant challenges in enhancing fan engagement and streamlining operations. Our proposed Stadium OS solution directly addresses these pain points by integrating a state-of-the-art fan engagement platform, a secure smart ticketing system, and an efficient in-seat concessions ordering module. This comprehensive system will not only elevate the fan experience but also create new revenue streams and provide valuable data insights.
-              </p>
-              <p>
-                By implementing our solution, Global Stadium Corp can expect to see a marked increase in per-capita spending, improved crowd management, and higher fan satisfaction rates, solidifying its position as a world-class venue.
-              </p>
+                {proposal.sections.map((section, index) => (
+                    <div key={index}>
+                      <p>{section.content}</p>
+                    </div>
+                ))}
             </CardContent>
           </Card>
 
@@ -106,18 +112,18 @@ export default function ProposalDetailPage({
               <CardTitle className="font-headline text-2xl">Included Modules</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {proposal.modules.map((module) => (
+              {proposal.selectedModules.map((module) => (
                 <div key={module.id} className="p-4 border rounded-lg">
                   <h3 className="font-semibold">{module.name}</h3>
                   <p className="text-sm text-muted-foreground">{module.description}</p>
-                  <p className="text-right font-bold mt-2">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.price)}</p>
+                  <p className="text-right font-bold mt-2">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.basePrice)}</p>
                 </div>
               ))}
             </CardContent>
             <CardFooter className="bg-muted/50 p-4 rounded-b-lg flex justify-end">
                 <div className="text-right">
                     <p className="text-muted-foreground">Total Value</p>
-                    <p className="text-2xl font-bold text-primary">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalValue)}</p>
+                    <p className="text-2xl font-bold text-primary">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}</p>
                 </div>
             </CardFooter>
           </Card>
