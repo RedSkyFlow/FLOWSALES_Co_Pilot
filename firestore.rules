@@ -1,32 +1,31 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if the user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Helper function to check if the user is the owner of a document
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    // Rules for the 'users' collection
+    
+    // Users can only read/write their own user document.
     match /users/{userId} {
-      // Allow a user to read their own document
-      // Allow a user to create their own document
-      // Allow a user to update their own document
-      // Disallow deleting user documents for now
-      allow read, create, update: if isAuthenticated() && isOwner(userId);
-      allow delete: if false;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Add rules for other collections here in the future.
-    // For example:
-    // match /proposals/{proposalId} {
-    //   allow read, write: if isAuthenticated() && request.auth.uid == resource.data.agentId;
-    // }
+    // Proposals can be created by any authenticated user.
+    // Only the user who created the proposal (owner) can read, update, or delete it.
+    match /proposals/{proposalId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if request.auth != null && resource.data.agent.uid == request.auth.uid;
+    }
+
+    // Templates and Clients can be read by any authenticated user, but not modified.
+    // This assumes they are managed by an admin through the Firebase console or a separate interface.
+    match /templates/{templateId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Or add admin-only logic here
+    }
+
+    match /clients/{clientId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Or add admin-only logic here
+    }
   }
 }
