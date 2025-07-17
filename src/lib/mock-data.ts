@@ -65,6 +65,38 @@ export const mockProposals: Proposal[] = [
     signatureData: { status: 'pending', signedAt: null, auditTrailUrl: null },
     paymentData: { status: 'pending', paymentLink: '/pay/prop-002', paidAt: null }
   },
+   {
+    id: 'prop-003',
+    title: '5G Upgrade for ConnectaTel',
+    clientId: 'cli-003',
+    salesAgentId: 'abc-123',
+    status: 'draft',
+    lastModified: '2024-08-01T14:00:00Z',
+    createdAt: '2024-08-01T11:00:00Z',
+    version: 1,
+    selectedModules: [mockVenueOSModules[6]],
+    totalPrice: 50000,
+    sections: [{ title: 'Executive Summary', content: 'Proposal to upgrade ConnectaTel\'s core network to 5G.', type: 'manual' }],
+    engagementData: { views: 0, timeOnPage: 0, lastViewed: null },
+    signatureData: { status: 'pending', signedAt: null, auditTrailUrl: null },
+    paymentData: { status: 'pending', paymentLink: '/pay/prop-003', paidAt: null }
+  },
+   {
+    id: 'prop-004',
+    title: 'POS and Fan Engagement for City Arena',
+    clientId: 'cli-004',
+    salesAgentId: 'abc-123',
+    status: 'changes_requested',
+    lastModified: '2024-07-29T18:00:00Z',
+    createdAt: '2024-07-25T10:00:00Z',
+    version: 2,
+    selectedModules: [mockVenueOSModules[0], mockVenueOSModules[2]],
+    totalPrice: 23500,
+    sections: [{ title: 'Executive Summary', content: 'A revised proposal to integrate fan engagement with a new POS system.', type: 'ai_generated' }],
+    engagementData: { views: 5, timeOnPage: 1800, lastViewed: '2024-07-29T17:00:00Z' },
+    signatureData: { status: 'pending', signedAt: null, auditTrailUrl: null },
+    paymentData: { status: 'pending', paymentLink: '/pay/prop-004', paidAt: null }
+  },
 ];
 
 const mockClientAuthor = {
