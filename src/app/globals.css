@@ -3,63 +3,6 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 220 13% 95%; /* Light theme background */
-    --foreground: 220 13% 15%; /* Light theme text */
-    --card: 0 0% 100%;
-    --card-foreground: 220 13% 15%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 13% 15%;
-    --border: 220 13% 88%;
-    --input: 220 13% 88%;
-    
-    /* Flow Brand Colors (used in both themes) */
-    --primary: 179 100% 25%; /* Flow Teal */
-    --primary-foreground: 183 100% 94%;
-    --secondary: 211 98% 48%; /* Flow Blue */
-    --secondary-foreground: 0 0% 98%;
-    --accent: 45 100% 59%;   /* Flow Yellow */
-    --accent-foreground: 220 40% 5%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --muted: 220 13% 85%;
-    --muted-foreground: 220 13% 45%;
-    --ring: 211 98% 48%; /* Flow Blue for rings */
-    
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 220 40% 5%;   /* #0A0903 */
-    --foreground: 183 100% 94%; /* #E2FDFF */
-    --card: 220 12% 9%;      /* #151417 */
-    --card-foreground: 183 100% 94%;
-    --popover: 220 12% 9%;
-    --popover-foreground: 183 100% 94%;
-    --border: 220 10% 18%;   /* #262933 */
-    --input: 220 10% 18%;
-
-    /* Re-assert brand colors for dark theme consistency if needed */
-    --primary: 179 100% 25%; /* Flow Teal */
-    --primary-foreground: 183 100% 94%;
-    --secondary: 211 98% 48%; /* Flow Blue */
-    --secondary-foreground: 0 0% 98%;
-    --accent: 45 100% 59%;   /* Flow Yellow */
-    --accent-foreground: 220 40% 5%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --muted: 220 10% 18%;
-    --muted-foreground: 0 0% 63.9%;
-    --ring: 211 98% 48%; /* Flow Blue for rings */
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;

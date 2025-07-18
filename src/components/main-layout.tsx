@@ -1,180 +1,86 @@
 "use client";
 
-import * as React from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
-  Briefcase,
-  FileText,
   LayoutDashboard,
-  LogOut,
-  Settings,
+  FileText,
   Users,
-} from "lucide-react";
-
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarFooter,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "./ui/button";
-import { mockUser } from "@/lib/mock-data";
+  Briefcase,
+  Settings,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 function FlowSalesLogo() {
-  const { state } = useSidebar();
   return (
-    <div className="flex items-center gap-2">
-      <div className="p-1 rounded-md bg-primary text-primary-foreground">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M12 3L2 7l10 4 10-4-10-4z"></path>
-          <path d="M2 17l10 4 10-4"></path>
-          <path d="M2 12l10 4 10-4"></path>
-        </svg>
-      </div>
-      {state === "expanded" && (
-        <h1 className="text-lg font-headline font-semibold tracking-tighter">
-          Flow Sales
-        </h1>
-      )}
+    <div className="flex items-center gap-2 p-4 border-b border-border">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="28"
+        height="28"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="text-primary"
+      >
+        <path d="M12 3L2 7l10 4 10-4-10-4z"></path>
+        <path d="M2 17l10 4 10-4"></path>
+        <path d="M2 12l10 4 10-4"></path>
+      </svg>
+      <h1 className="text-xl font-bold">
+        <span className="text-primary">Flow</span>
+        <span>Sales</span>
+      </h1>
     </div>
   );
 }
 
-function UserProfile() {
-    const { state } = useSidebar();
+const navItems = [
+  { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/proposals', icon: FileText, label: 'Proposals' },
+  { href: '/clients', icon: Users, label: 'Clients' },
+  { href: '/templates', icon: Briefcase, label: 'Templates' },
+];
+
+function NavItem({ href, icon: Icon, label }: typeof navItems[0]) {
+    const pathname = usePathname();
+    const isActive = href === '/' ? pathname === href : pathname.startsWith(href);
+
     return (
-        <div className="flex w-full items-center justify-between">
-            <div className="flex items-center gap-2">
-                <Avatar className="size-8">
-                <AvatarImage src={mockUser.avatarUrl} alt={mockUser.displayName} />
-                <AvatarFallback>{mockUser.initials}</AvatarFallback>
-                </Avatar>
-                {state === "expanded" && (
-                <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-foreground leading-none">
-                        {mockUser.displayName}
-                    </span>
-                     <span className="text-xs text-muted-foreground">
-                        Sales Agent
-                    </span>
-                </div>
+        <Link href={href}>
+            <div
+                className={cn(
+                    'flex items-center gap-3 rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-secondary/10',
+                    isActive && 'bg-secondary/10 text-secondary'
                 )}
+            >
+                <Icon className="h-5 w-5" />
+                <span>{label}</span>
             </div>
-             {state === 'expanded' && (
-                <Button variant="ghost" size="icon" className="size-7" asChild>
-                    <Link href="/login">
-                        <LogOut className="size-4" />
-                    </Link>
-                </Button>
-            )}
-        </div>
-    )
+        </Link>
+    );
 }
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const isActive = (path: string) => pathname === path;
-
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen bg-background">
-        <Sidebar>
-          <SidebarHeader>
-            <FlowSalesLogo />
-          </SidebarHeader>
-          <SidebarContent className="p-2">
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive("/")}
-                  tooltip={{ children: "Dashboard" }}
-                >
-                  <Link href="/">
-                    <LayoutDashboard />
-                    <span>Dashboard</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/proposals")}
-                  tooltip={{ children: "Proposals" }}
-                >
-                  <Link href="/">
-                    <FileText />
-                    <span>Proposals</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive("/clients")}
-                  tooltip={{ children: "Clients" }}
-                >
-                  <Link href="#">
-                    <Users />
-                    <span>Clients</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive("/templates")}
-                  tooltip={{ children: "Templates" }}
-                >
-                  <Link href="#">
-                    <Briefcase />
-                    <span>Templates</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarContent>
-          <SidebarFooter>
-             <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive("/settings")}
-                    tooltip={{ children: "Settings" }}
-                  >
-                    <Link href="#">
-                      <Settings />
-                      <span>Settings</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-              <div className="border-t border-border mt-2 pt-2">
-                <UserProfile />
-              </div>
-          </SidebarFooter>
-        </Sidebar>
-        <main className="flex-1">
-          <div className="p-4 sm:p-6 lg:p-8">{children}</div>
-        </main>
-      </div>
-    </SidebarProvider>
+    <div className="flex min-h-screen bg-background text-foreground">
+      <aside className="fixed top-0 left-0 h-full w-64 bg-card border-r border-border flex flex-col">
+        <FlowSalesLogo />
+        <nav className="flex-grow p-4 space-y-2">
+          {navItems.map((item) => (
+            <NavItem key={item.href} {...item} />
+          ))}
+        </nav>
+        <div className="p-4 border-t border-border">
+            <NavItem href="/settings" icon={Settings} label="Settings" />
+        </div>
+      </aside>
+      <main className="ml-64 flex-1">
+        <div className="p-8">{children}</div>
+      </main>
+    </div>
   );
 }

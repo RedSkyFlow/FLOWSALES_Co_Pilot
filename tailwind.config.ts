@@ -6,7 +6,6 @@ const config = {
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
-    'node_modules/flowbite-react/lib/esm/**/*.js',
   ],
   theme: {
     container: {
@@ -19,43 +18,41 @@ const config = {
     extend: {
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
-        body: ['Inter', 'sans-serif'],
-        headline: ['Inter', 'sans-serif'], // Unifying to Inter as per directive
-        code: ['monospace'],
       },
       colors: {
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
-        card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
-        },
-        popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))',
-        },
+        background: '#0A0903',
+        foreground: '#E2FDFF',
+        card: '#151417',
+        border: '#262933',
+        input: '#1F2129',
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
+          DEFAULT: '#00807E', // Flow Teal
+          foreground: '#E2FDFF',
         },
         secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
-        },
-        muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))',
+          DEFAULT: '#0282F2', // Flow Blue
+          foreground: '#FFFFFF',
         },
         accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))',
+          DEFAULT: '#FFD430', // Flow Yellow
+          foreground: '#332A00',
+        },
+        impact: {
+          DEFAULT: '#F46036', // Flow Orange
+          foreground: '#FFFFFF',
+        },
+        success: {
+          DEFAULT: '#28A745', // Functional Green
+          foreground: '#FFFFFF',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))', // Keep HSL for ShadCN compatibility if needed
+          foreground: '#9CA3AF',
         },
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
         },
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
       },
       borderRadius: {
@@ -87,7 +84,7 @@ const config = {
       },
     },
   },
-  plugins: [require('tailwindcss-animate'), require('flowbite/plugin')],
+  plugins: [require('tailwindcss-animate')],
 } satisfies Config;
 
 export default config;

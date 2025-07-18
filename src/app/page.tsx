@@ -9,56 +9,50 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { MainLayout } from '@/components/main-layout';
 import type { Proposal, ProposalStatus } from '@/lib/types';
 import { mockProposals, mockClients } from '@/lib/mock-data';
-import { PlusCircle, ListFilter, FileText } from 'lucide-react';
+import { Plus, ListFilter, FileText, Search } from 'lucide-react';
 import { useState } from 'react';
 import { ClientDate } from '@/components/client-date';
 import { cn } from '@/lib/utils';
 
-function getStatusBadgeVariant(status: ProposalStatus) {
-  const baseClasses = "capitalize";
+function getStatusBadgeClasses(status: ProposalStatus) {
+  const baseClasses = "capitalize text-xs font-bold px-2 py-1 rounded-full";
   switch (status) {
     case 'accepted':
     case 'signed':
     case 'paid':
-      return cn(baseClasses, 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800');
+      return cn(baseClasses, 'bg-success/20 text-success-foreground border border-success');
     case 'sent':
     case 'viewed':
-      return cn(baseClasses, 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800');
+      return cn(baseClasses, 'bg-secondary/20 text-secondary-foreground border border-secondary');
     case 'changes_requested':
-      return cn(baseClasses, 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-800');
+      return cn(baseClasses, 'bg-impact/20 text-impact-foreground border border-impact');
     case 'draft':
     default:
-      return cn(baseClasses, 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600');
+      return cn(baseClasses, 'bg-muted/20 text-muted-foreground border border-muted-foreground/50');
   }
 }
 
 function ProposalCard({ proposal }: { proposal: Proposal }) {
   const client = mockClients.find(c => c.id === proposal.clientId);
   return (
-    <Card className="hover:shadow-lg transition-shadow duration-300 flex flex-col">
+    <Card className="bg-card border border-border hover:border-primary transition-all duration-300 flex flex-col group">
       <CardHeader>
         <div className="flex justify-between items-start">
-          <CardTitle className="font-headline text-xl mb-1">
-            <Link href={`/proposals/${proposal.id}`} className="hover:text-primary transition-colors">
+          <CardTitle className="text-lg font-bold group-hover:text-primary transition-colors">
+            <Link href={`/proposals/${proposal.id}`}>
               {proposal.title}
             </Link>
           </CardTitle>
-           <Badge variant="outline" className={getStatusBadgeVariant(proposal.status)}>
+           <div className={getStatusBadgeClasses(proposal.status)}>
             {proposal.status.replace('_', ' ')}
-          </Badge>
+          </div>
         </div>
-        <CardDescription>
+        <CardDescription className="text-muted-foreground">
           For: {client?.name || 'Unknown Client'}
         </CardDescription>
       </CardHeader>
@@ -68,15 +62,13 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
           <span>V{proposal.version} - Updated on <ClientDate dateString={proposal.lastModified} /></span>
         </div>
       </CardContent>
-      <CardFooter>
-        <div className="flex justify-between items-center w-full">
-            <span className="text-lg font-bold text-primary">
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}
-            </span>
-          <Button variant="secondary" asChild>
-            <Link href={`/proposals/${proposal.id}`}>View Details</Link>
-          </Button>
-        </div>
+      <CardFooter className="flex justify-between items-center">
+        <span className="text-2xl font-bold text-primary">
+            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}
+        </span>
+        <Button variant="outline" className="border border-border hover:bg-border" asChild>
+          <Link href={`/proposals/${proposal.id}`}>View Details</Link>
+        </Button>
       </CardFooter>
     </Card>
   );
@@ -88,69 +80,57 @@ export default function Dashboard() {
 
   const filteredProposals = mockProposals.filter(proposal => {
     const client = mockClients.find(c => c.id === proposal.clientId);
-    const matchesSearch = proposal.title.toLowerCase().includes(searchTerm.toLowerCase()) || (client && client.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesFilter = filter === 'All' || proposal.status === filter.toLowerCase().replace(' ', '_');
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    const matchesSearch = 
+      proposal.title.toLowerCase().includes(lowerSearchTerm) || 
+      (client && client.name.toLowerCase().includes(lowerSearchTerm));
+    const matchesFilter = filter === 'All' || proposal.status.replace('_', ' ').toLowerCase() === filter.toLowerCase();
     return matchesSearch && matchesFilter;
   });
 
-  const filterOptions: ProposalStatus[] = ['draft', 'sent', 'viewed', 'changes_requested', 'accepted', 'paid'];
 
   return (
     <MainLayout>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-headline font-bold">Sales Dashboard</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-4xl font-bold">Sales Dashboard</h1>
+            <p className="text-muted-foreground mt-1">
               Manage your proposals and track their progress.
             </p>
           </div>
-          <Button asChild size="lg">
-            <Link href="/proposals/new">
-              <PlusCircle className="mr-2 h-5 w-5" />
+          <Button size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
+            <Link href="/proposals/new" className="flex items-center">
+              <Plus className="mr-2 h-5 w-5" />
               Create New Proposal
             </Link>
           </Button>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="relative w-full sm:max-w-xs">
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               placeholder="Search proposals..."
-              className="pl-10"
+              className="bg-input border-border pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            </div>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <ListFilter className="mr-2 h-4 w-4" />
-                Filter: {filter}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setFilter('All')}>All</DropdownMenuItem>
-              {filterOptions.map(status => (
-                <DropdownMenuItem key={status} onSelect={() => setFilter(status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' '))}>
-                  {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button variant="outline" className="w-full sm:w-auto bg-input border-border">
+            <ListFilter className="mr-2 h-4 w-4" />
+            Filter: {filter}
+          </Button>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredProposals.map((proposal) => (
             <ProposalCard key={proposal.id} proposal={proposal} />
           ))}
         </div>
         {filteredProposals.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground col-span-full">
-                <p>No proposals found.</p>
+            <div className="text-center py-16 text-muted-foreground col-span-full">
+                <p>No proposals found for the current filter.</p>
             </div>
         )}
       </div>
