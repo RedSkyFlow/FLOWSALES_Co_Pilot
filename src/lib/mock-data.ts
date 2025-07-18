@@ -1,4 +1,4 @@
-import type { Proposal, Client, VenueOSModule, User, Comment, Version, ContentLibraryItem, OldProposal } from './types';
+import type { Proposal, Client, VenueOSModule, User, Version, ContentLibraryItem } from './types';
 
 export const mockUser: User = {
   uid: 'abc-123',
@@ -106,52 +106,9 @@ const mockClientAuthor = {
   initials: 'SC'
 };
 
-export const mockComments: Comment[] = [
-    {
-        id: 'com-001',
-        author: mockClientAuthor,
-        timestamp: '2 days ago',
-        content: 'Could we get a more detailed breakdown of the implementation timeline for the Smart Ticketing System?'
-    },
-    {
-        id: 'com-002',
-        author: {
-          uid: mockUser.uid,
-          name: mockUser.displayName,
-          avatarUrl: mockUser.avatarUrl || '',
-          initials: mockUser.initials || '',
-        },
-        timestamp: '1 day ago',
-        content: '@Sarah Chen Absolutely. I\'ve added a project plan to the appendix with a detailed timeline. Let me know if that works for you.'
-    },
-    {
-        id: 'com-003',
-        author: mockClientAuthor,
-        timestamp: '4 hours ago',
-        content: 'This looks great, thanks Alex! One more thing - is there an option for a phased rollout of the In-Seat Concessions Ordering module?'
-    }
-];
-
-
 export const mockVersions: Version[] = [
     { number: 4, date: '2024-07-25', author: {uid: mockUser.uid, name: mockUser.displayName, avatarUrl: mockUser.avatarUrl || '', initials: mockUser.initials || ''}, summary: 'Updated pricing for retail analytics and added volume discount.' },
     { number: 3, date: '2024-07-22', author: mockClientAuthor, summary: 'Client requested removal of loyalty program module.' },
     { number: 2, date: '2024-07-21', author: {uid: mockUser.uid, name: mockUser.displayName, avatarUrl: mockUser.avatarUrl || '', initials: mockUser.initials || ''}, summary: 'Added new case study for a similar retail client.' },
     { number: 1, date: '2024-07-20', author: {uid: mockUser.uid, name: mockUser.displayName, avatarUrl: mockUser.avatarUrl || '', initials: mockUser.initials || ''}, summary: 'Initial draft sent to client.' },
-];
-
-
-// Old mock data for reference, to be removed later
-export const oldMockProposals: OldProposal[] = [
-  {
-    id: 'prop-001',
-    title: 'Stadium OS Implementation for Global Stadium',
-    client: {id: 'cli-001', name: 'Global Stadium Corp'},
-    status: 'Accepted',
-    lastUpdated: '2024-07-28',
-    version: 3,
-    modules: [{ id: 'mod-001', name: 'Fan Engagement Platform', description: 'Engage fans with interactive content and rewards.', price: 15000 },
-              { id: 'mod-002', name: 'Smart Ticketing System', description: 'NFC and QR-based secure ticketing.', price: 12000 }],
-    totalValue: 35500,
-  },
 ];

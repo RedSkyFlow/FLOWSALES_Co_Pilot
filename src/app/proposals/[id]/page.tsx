@@ -41,6 +41,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { formatDistanceToNow } from 'date-fns';
 
+// Helper functions moved outside the component
 function getStatusBadgeClasses(status: ProposalStatus) {
   const baseClasses = "capitalize text-base font-semibold px-4 py-2 rounded-lg border";
   switch (status) {
@@ -65,6 +66,7 @@ function getInitials(name: string) {
     if (names.length === 1) return names[0][0].toUpperCase();
     return (names[0][0] + names[names.length - 1][0]).toUpperCase();
 }
+
 
 export default function ProposalDetailPage({
   params,

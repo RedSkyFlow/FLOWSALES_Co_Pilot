@@ -43,7 +43,7 @@ export interface ProposalSection {
 }
 
 export interface Proposal {
-  id: string;
+  id:string;
   title: string;
   status: ProposalStatus;
   salesAgentId: string; // Reference to users collection
@@ -71,28 +71,6 @@ export interface Proposal {
   };
   meetingTranscript?: string;
 }
-
-// Below are the original, simpler types that will be replaced or updated.
-// We keep them here temporarily for reference during migration but they should be removed.
-
-export interface OldModule {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-}
-
-export interface OldProposal {
-  id: string;
-  title: string;
-  client: { id: string, name: string };
-  status: 'Draft' | 'Sent' | 'Viewed' | 'Changes Requested' | 'Accepted' | 'Signed' | 'Paid';
-  lastUpdated: string;
-  version: number;
-  modules: OldModule[];
-  totalValue: number;
-}
-
 
 export interface Comment {
   id: string;
