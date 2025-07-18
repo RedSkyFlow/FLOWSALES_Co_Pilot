@@ -1,3 +1,4 @@
+
 'use client';
 import { MainLayout } from "@/components/main-layout";
 import {
@@ -123,7 +124,7 @@ export default function ProposalDetailPage({
             <CardFooter className="bg-card-foreground/5 p-4 rounded-b-lg flex justify-end">
                 <div className="text-right">
                     <p className="text-muted-foreground">Total Value</p>
-                    <p className="text-2xl font-bold text-primary">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}</p>
+                    <p className="text-2xl font-bold text-primary">{new Intl.NumberFormat('en-US', { style: 'currency', 'currency': 'USD' }).format(proposal.totalPrice)}</p>
                 </div>
             </CardFooter>
           </Card>
@@ -138,10 +139,10 @@ export default function ProposalDetailPage({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button className="w-full">
+              <Button className="w-full" variant="secondary">
                 <PenSquare className="mr-2 h-4 w-4" /> Accept & E-Sign
               </Button>
-               <Button variant="secondary" className="w-full">
+               <Button variant="outline" className="w-full">
                 <Download className="mr-2 h-4 w-4" /> Download as PDF
               </Button>
               <Separator className="my-2 bg-border" />
@@ -194,7 +195,7 @@ export default function ProposalDetailPage({
                   <div className="flex flex-col items-center">
                     <Avatar className="w-8 h-8 mb-1">
                       <AvatarImage src={version.author.avatarUrl} />
-                      <AvatarFallback>{version.author.initials}</AvatarFallback>
+                      <AvatarFallback>{version.author.initials}</Fallback>
                     </Avatar>
                     <div className="w-px flex-1 bg-border"></div>
                   </div>
