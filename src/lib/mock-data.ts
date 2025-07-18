@@ -107,8 +107,10 @@ const mockClientAuthor = {
 };
 
 export const mockVersions: Version[] = [
-    { number: 4, date: '2024-07-25', author: {uid: mockUser.uid, name: mockUser.displayName, avatarUrl: mockUser.avatarUrl || '', initials: mockUser.initials || ''}, summary: 'Updated pricing for retail analytics and added volume discount.' },
+    { number: 4, date: '2024-07-25', author: {uid: mockUser.uid, name: mockUser.displayName, avatarUrl: mockUser.avatarUrl || '', initials: mockUser.initials || ''}, summary: 'Updated pricing for retail analytics and volume discount.' },
     { number: 3, date: '2024-07-22', author: mockClientAuthor, summary: 'Client requested removal of loyalty program module.' },
     { number: 2, date: '2024-07-21', author: {uid: mockUser.uid, name: mockUser.displayName, avatarUrl: mockUser.avatarUrl || '', initials: mockUser.initials || ''}, summary: 'Added new case study for a similar retail client.' },
     { number: 1, date: '2024-07-20', author: {uid: mockUser.uid, name: mockUser.displayName, avatarUrl: mockUser.avatarUrl || '', initials: mockUser.initials || ''}, summary: 'Initial draft sent to client.' },
 ];
+
+    

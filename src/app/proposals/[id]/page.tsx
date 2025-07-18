@@ -16,7 +16,6 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar";
 import {
-  mockProposals,
   mockClients,
   mockVersions,
 } from "@/lib/mock-data";
@@ -30,6 +29,8 @@ import {
   PenSquare,
   Download,
   Send,
+  Eye,
+  CalendarDays,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
@@ -91,24 +92,22 @@ export default function ProposalDetailPage({
     if (!params.id) return;
 
     const docRef = doc(db, 'proposals', params.id);
-    const getProposal = async () => {
-        const docSnap = await getDoc(docRef);
+    
+    const unsubscribeProposal = onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
             setProposal({ id: docSnap.id, ...docSnap.data() } as Proposal);
         } else {
             notFound();
         }
         setIsLoading(false);
-    }
-
-    getProposal();
+    });
 
     const commentsQuery = query(
       collection(db, "proposals", params.id, "comments"),
       orderBy("createdAt", "asc")
     );
 
-    const unsubscribe = onSnapshot(commentsQuery, (querySnapshot) => {
+    const unsubscribeComments = onSnapshot(commentsQuery, (querySnapshot) => {
       const commentsData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
@@ -117,7 +116,10 @@ export default function ProposalDetailPage({
       setComments(commentsData);
     });
 
-    return () => unsubscribe();
+    return () => {
+        unsubscribeProposal();
+        unsubscribeComments();
+    };
   }, [params.id]);
 
 
@@ -229,6 +231,26 @@ export default function ProposalDetailPage({
               </Button>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Eye /> Engagement Analytics
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+               <div className="flex justify-between items-center text-sm">
+                   <span className="text-muted-foreground flex items-center gap-2"><Eye /> Total Views</span>
+                   <span className="font-bold">{proposal.engagementData.views}</span>
+               </div>
+               <div className="flex justify-between items-center text-sm">
+                   <span className="text-muted-foreground flex items-center gap-2"><CalendarDays /> Last Viewed</span>
+                   <span className="font-bold">
+                       {proposal.engagementData.lastViewed ? <ClientDate dateString={proposal.engagementData.lastViewed} /> : 'Never'}
+                   </span>
+               </div>
+            </CardContent>
+          </Card>
         
           <Card>
             <CardHeader>
@@ -309,3 +331,5 @@ export default function ProposalDetailPage({
     </MainLayout>
   );
 }
+
+    
