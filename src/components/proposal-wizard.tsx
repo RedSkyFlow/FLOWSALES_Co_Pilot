@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -13,13 +14,10 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle,
-  ChevronRight,
-  Lightbulb,
   Loader,
   Users,
   FileText,
   Package,
-  DollarSign,
   ClipboardCheck,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -39,6 +37,9 @@ import type { VenueOSModule } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { generateExecutiveSummary } from "@/ai/flows/generate-executive-summary";
 import { suggestCaseStudies } from "@/ai/flows/suggest-case-studies";
+import { createProposal } from "@/app/proposals/actions";
+import { useToast } from "@/hooks/use-toast";
+import { Lightbulb } from "lucide-react";
 
 const templates = [
   {
@@ -66,6 +67,8 @@ const steps = [
 ];
 
 export function ProposalWizard() {
+  const router = useRouter();
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<string>("");
@@ -74,6 +77,7 @@ export function ProposalWizard() {
   const [caseStudySuggestions, setCaseStudySuggestions] = useState<string[]>([]);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [isCaseStudyLoading, setIsCaseStudyLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [selectedModules, setSelectedModules] = useState<VenueOSModule[]>([]);
 
   const progress = ((currentStep + 1) / steps.length) * 100;
@@ -129,6 +133,33 @@ export function ProposalWizard() {
   };
   
   const totalValue = selectedModules.reduce((sum, module) => sum + module.basePrice, 0);
+
+  const handleSaveAndFinalize = async () => {
+    setIsSaving(true);
+    try {
+        const newProposalId = await createProposal({
+            selectedTemplate,
+            selectedClientId: selectedClient,
+            executiveSummary,
+            selectedModules,
+            totalValue,
+            salesAgentId: 'abc-123', // NOTE: Replace with actual authenticated user ID
+        });
+        toast({
+            title: "Proposal Created!",
+            description: "Your new proposal has been saved successfully.",
+        });
+        router.push(`/proposals/${newProposalId}`);
+    } catch (error) {
+        console.error("Failed to save proposal:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not save the proposal. Please try again.",
+        });
+        setIsSaving(false);
+    }
+  };
 
   return (
     <Card className="w-full max-w-4xl mx-auto shadow-2xl">
@@ -312,7 +343,7 @@ export function ProposalWizard() {
       </CardContent>
       <CardHeader className="border-t">
         <div className="flex justify-between items-center">
-          <Button variant="outline" onClick={handleBack} disabled={currentStep === 0}>
+          <Button variant="outline" onClick={handleBack} disabled={currentStep === 0 || isSaving}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
@@ -322,9 +353,9 @@ export function ProposalWizard() {
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button>
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Save and Finalize
+            <Button onClick={handleSaveAndFinalize} disabled={isSaving}>
+              {isSaving ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+              {isSaving ? 'Saving...' : 'Save and Finalize'}
             </Button>
           )}
         </div>
