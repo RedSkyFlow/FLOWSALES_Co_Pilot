@@ -42,7 +42,6 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { formatDistanceToNow } from 'date-fns';
 
-// Helper functions moved outside the component
 function getStatusBadgeClasses(status: ProposalStatus) {
   const baseClasses = "capitalize text-base font-semibold px-4 py-2 rounded-lg border";
   switch (status) {
@@ -118,7 +117,6 @@ export default function ProposalDetailPage({
         console.error("Error adding comment: ", error);
       }
   };
-
 
   if (!proposal || !client) {
     notFound();
