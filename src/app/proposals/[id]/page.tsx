@@ -34,7 +34,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientDate } from "@/components/client-date";
-import type { ProposalStatus, Comment, User } from '@/lib/types';
+import type { ProposalStatus, Comment } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
@@ -217,7 +217,7 @@ export default function ProposalDetailPage({
                 <div key={comment.id} className="flex gap-3">
                   <Avatar>
                     <AvatarImage src={comment.authorAvatarUrl} />
-                    <AvatarFallback>{getInitials(comment.authorName)}</AvatarFallback>
+                    <AvatarFallback>{getInitials(comment.authorName)}</Fallback>
                   </Avatar>
                   <div className="flex-1">
                     <div className="flex justify-between items-center">
@@ -267,7 +267,7 @@ export default function ProposalDetailPage({
                   <div className="flex flex-col items-center">
                     <Avatar className="w-8 h-8 mb-1">
                       <AvatarImage src={version.author.avatarUrl} />
-                      <AvatarFallback>{version.author.initials}</Fallback>
+                      <AvatarFallback>{version.author.initials}</AvatarFallback>
                     </Avatar>
                     <div className="w-px flex-1 bg-border"></div>
                   </div>
