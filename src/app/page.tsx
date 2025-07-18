@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { MainLayout } from '@/components/main-layout';
 import type { Proposal, ProposalStatus } from '@/lib/types';
 import { mockProposals, mockClients } from '@/lib/mock-data';
@@ -20,27 +19,27 @@ import { ClientDate } from '@/components/client-date';
 import { cn } from '@/lib/utils';
 
 function getStatusBadgeClasses(status: ProposalStatus) {
-  const baseClasses = "capitalize text-xs font-bold px-2 py-1 rounded-full";
+  const baseClasses = "capitalize text-xs font-semibold px-2.5 py-1 rounded-full border";
   switch (status) {
     case 'accepted':
     case 'signed':
     case 'paid':
-      return cn(baseClasses, 'bg-success/20 text-success-foreground border border-success');
+      return cn(baseClasses, 'bg-success/20 text-success border-success/30');
     case 'sent':
     case 'viewed':
-      return cn(baseClasses, 'bg-secondary/20 text-secondary-foreground border border-secondary');
+      return cn(baseClasses, 'bg-secondary/20 text-secondary border-secondary/30');
     case 'changes_requested':
-      return cn(baseClasses, 'bg-impact/20 text-impact-foreground border border-impact');
+      return cn(baseClasses, 'bg-impact/20 text-impact border-impact/30');
     case 'draft':
     default:
-      return cn(baseClasses, 'bg-muted/20 text-muted-foreground border border-muted-foreground/50');
+      return cn(baseClasses, 'bg-muted/20 text-muted-foreground border-muted-foreground/20');
   }
 }
 
 function ProposalCard({ proposal }: { proposal: Proposal }) {
   const client = mockClients.find(c => c.id === proposal.clientId);
   return (
-    <Card className="bg-card border border-border hover:border-primary transition-all duration-300 flex flex-col group">
+    <Card className="bg-card border border-border hover:border-primary transition-all duration-300 flex flex-col group shadow-lg hover:shadow-primary/20">
       <CardHeader>
         <div className="flex justify-between items-start">
           <CardTitle className="text-lg font-bold group-hover:text-primary transition-colors">
@@ -52,7 +51,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
             {proposal.status.replace('_', ' ')}
           </div>
         </div>
-        <CardDescription className="text-muted-foreground">
+        <CardDescription className="text-muted-foreground pt-1">
           For: {client?.name || 'Unknown Client'}
         </CardDescription>
       </CardHeader>
@@ -62,11 +61,11 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
           <span>V{proposal.version} - Updated on <ClientDate dateString={proposal.lastModified} /></span>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between items-center">
+      <CardFooter className="flex justify-between items-center bg-black/20 py-3 px-6">
         <span className="text-2xl font-bold text-primary">
             {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}
         </span>
-        <Button variant="outline" className="border border-border hover:bg-border" asChild>
+        <Button variant="outline" asChild>
           <Link href={`/proposals/${proposal.id}`}>View Details</Link>
         </Button>
       </CardFooter>
@@ -99,7 +98,7 @@ export default function Dashboard() {
               Manage your proposals and track their progress.
             </p>
           </div>
-          <Button size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90">
+          <Button size="lg" asChild>
             <Link href="/proposals/new" className="flex items-center">
               <Plus className="mr-2 h-5 w-5" />
               Create New Proposal
@@ -117,7 +116,7 @@ export default function Dashboard() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" className="w-full sm:w-auto bg-input border-border">
+          <Button variant="secondary" className="w-full sm:w-auto">
             <ListFilter className="mr-2 h-4 w-4" />
             Filter: {filter}
           </Button>

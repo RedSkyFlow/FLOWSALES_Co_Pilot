@@ -38,21 +38,21 @@ import type { ProposalStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 
-function getStatusBadgeVariant(status: ProposalStatus) {
-  const baseClasses = "capitalize";
+function getStatusBadgeClasses(status: ProposalStatus) {
+  const baseClasses = "capitalize text-base font-semibold px-4 py-2 rounded-lg border";
   switch (status) {
     case 'accepted':
     case 'signed':
     case 'paid':
-      return cn(baseClasses, 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800');
+      return cn(baseClasses, 'bg-success/20 text-success border-success/30');
     case 'sent':
     case 'viewed':
-      return cn(baseClasses, 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800');
+      return cn(baseClasses, 'bg-secondary/20 text-secondary border-secondary/30');
     case 'changes_requested':
-      return cn(baseClasses, 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-800');
+      return cn(baseClasses, 'bg-impact/20 text-impact border-impact/30');
     case 'draft':
     default:
-      return cn(baseClasses, 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600');
+      return cn(baseClasses, 'bg-muted/20 text-muted-foreground border-muted-foreground/20');
   }
 }
 
@@ -74,21 +74,21 @@ export default function ProposalDetailPage({
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
             {/* Header */}
-            <div className="pb-6 border-b">
+            <div className="pb-6 border-b border-border">
                 <div className="flex justify-between items-start">
                     <div>
-                        <h1 className="text-4xl font-headline font-bold text-primary">{proposal.title}</h1>
+                        <h1 className="text-4xl font-bold text-foreground">{proposal.title}</h1>
                         <p className="text-lg text-muted-foreground mt-1">For {client.name}</p>
                     </div>
-                    <Badge variant="outline" className={`text-base px-4 py-2 ${getStatusBadgeVariant(proposal.status)}`}>
+                    <div className={getStatusBadgeClasses(proposal.status)}>
                         {proposal.status.replace('_', ' ')}
-                    </Badge>
+                    </div>
                 </div>
                  <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
                     <span>Version {proposal.version}</span>
-                    <Separator orientation="vertical" className="h-4" />
+                    <Separator orientation="vertical" className="h-4 bg-border" />
                     <span>Last updated on <ClientDate dateString={proposal.lastModified} /></span>
-                    <Separator orientation="vertical" className="h-4" />
+                    <Separator orientation="vertical" className="h-4 bg-border" />
                     <span className="font-bold text-lg text-foreground">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}</span>
                 </div>
             </div>
@@ -96,7 +96,7 @@ export default function ProposalDetailPage({
           {/* Proposal Content */}
           <Card>
             <CardHeader>
-              <CardTitle className="font-headline text-2xl flex items-center gap-2"><FileText className="text-primary"/> {proposal.sections[0].title}</CardTitle>
+              <CardTitle className="text-2xl flex items-center gap-2"><FileText className="text-primary"/> {proposal.sections[0].title}</CardTitle>
             </CardHeader>
             <CardContent className="prose dark:prose-invert max-w-none">
                 {proposal.sections.map((section, index) => (
@@ -109,18 +109,18 @@ export default function ProposalDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle className="font-headline text-2xl">Included Modules</CardTitle>
+              <CardTitle className="text-2xl">Included Modules</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {proposal.selectedModules.map((module) => (
-                <div key={module.id} className="p-4 border rounded-lg">
+                <div key={module.id} className="p-4 border border-border rounded-lg bg-black/10">
                   <h3 className="font-semibold">{module.name}</h3>
                   <p className="text-sm text-muted-foreground">{module.description}</p>
                   <p className="text-right font-bold mt-2">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.basePrice)}</p>
                 </div>
               ))}
             </CardContent>
-            <CardFooter className="bg-muted/50 p-4 rounded-b-lg flex justify-end">
+            <CardFooter className="bg-card-foreground/5 p-4 rounded-b-lg flex justify-end">
                 <div className="text-right">
                     <p className="text-muted-foreground">Total Value</p>
                     <p className="text-2xl font-bold text-primary">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}</p>
@@ -133,7 +133,7 @@ export default function ProposalDetailPage({
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2">
                 <CheckCircle /> Client Actions
               </CardTitle>
             </CardHeader>
@@ -144,7 +144,7 @@ export default function ProposalDetailPage({
                <Button variant="secondary" className="w-full">
                 <Download className="mr-2 h-4 w-4" /> Download as PDF
               </Button>
-              <Separator className="my-2" />
+              <Separator className="my-2 bg-border" />
                <Button variant="accent" className="w-full">
                 <DollarSign className="mr-2 h-4 w-4" /> Pay Deposit or Full Amount
               </Button>
@@ -153,7 +153,7 @@ export default function ProposalDetailPage({
         
           <Card>
             <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2">
                 <MessageCircle /> Comments & Discussion
               </CardTitle>
             </CardHeader>
@@ -174,7 +174,7 @@ export default function ProposalDetailPage({
                 </div>
               ))}
             </CardContent>
-            <CardFooter className="border-t pt-4">
+            <CardFooter className="border-t border-border pt-4">
                 <div className="w-full space-y-2">
                     <Textarea placeholder="Add a comment or suggest an edit..." />
                     <Button size="sm" className="w-full">Post Comment</Button>
@@ -184,7 +184,7 @@ export default function ProposalDetailPage({
           
           <Card>
             <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2">
                 <Clock /> Version History
               </CardTitle>
             </CardHeader>
