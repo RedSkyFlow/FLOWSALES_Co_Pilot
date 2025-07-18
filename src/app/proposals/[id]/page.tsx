@@ -1,3 +1,4 @@
+
 'use client';
 import { MainLayout } from "@/components/main-layout";
 import {
@@ -66,7 +67,6 @@ function getInitials(name: string) {
     if (names.length === 1) return names[0][0].toUpperCase();
     return (names[0][0] + names[names.length - 1][0]).toUpperCase();
 }
-
 
 export default function ProposalDetailPage({
   params,
