@@ -3,74 +3,31 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isAuth() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function isAdmin() {
-      // This assumes you have set a custom claim 'role' on your users
-      // You can do this with the Firebase Admin SDK
-      return request.auth.token.role == 'admin';
-    }
-
-    // USERS
+    // Users can only read/write their own document
     match /users/{userId} {
-      // A user can read their own document
-      allow read: if isOwner(userId);
-      // A user can create their own document upon signup
-      allow create: if isOwner(userId);
-      // A user can update their own document
-      allow update: if isOwner(userId);
-      // Users cannot delete their own accounts from the client
-      allow delete: if false;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // PROPOSALS
-    match /proposals/{proposalId} {
-      // Allow read access if the user is the assigned sales agent
-      allow read: if isAuth() && resource.data.salesAgentId == request.auth.uid;
-      
-      // Allow create access to any authenticated user (sales agent)
-      // The salesAgentId should be set to the creator's UID on the client
-      allow create: if isAuth() && request.resource.data.salesAgentId == request.auth.uid;
-
-      // Allow update if the user is the owner
-      allow update: if isAuth() && resource.data.salesAgentId == request.auth.uid;
-      
-      // Allow delete if the user is the owner
-      allow delete: if isAuth() && resource.data.salesAgentId == request.auth.uid;
-
-      // COMMENTS SUBCOLLECTION
-      match /comments/{commentId} {
-        // Allow read access to the proposal owner or an admin.
-        allow read: if get(/databases/$(database)/documents/proposals/$(proposalId)).data.salesAgentId == request.auth.uid
-                    || isAdmin();
-
-        // Allow comment creation by the proposal owner or an admin.
-        allow create: if request.auth.uid == get(/databases/$(database)/documents/proposals/$(proposalId)).data.salesAgentId
-                      || isAdmin();
-
-        // Comments are immutable; they cannot be updated or deleted for audit purposes.
-        allow update, delete: if false;
-      }
-    }
-
-    // SHARED RESOURCES (Read-only for any authenticated user)
-    match /clients/{clientId} {
-      allow read, write: if isAuth();
+    // Shared resources that any authenticated user can read
+    match /{collection}/{docId} where collection in ['clients', 'venueOS_modules', 'content_library'] {
+      allow read: if request.auth != null;
+      allow write: if false; // These are considered read-only for now
     }
     
-    match /venueOS_modules/{moduleId} {
-       allow read, write: if isAuth();
-    }
+    // Proposals
+    match /proposals/{proposalId} {
+      // Allow create, read, update, delete if the user is the sales agent for the proposal
+      allow read, delete: if request.auth != null && resource.data.salesAgentId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.salesAgentId == request.auth.uid;
+      allow update: if request.auth != null; // Allow any authenticated user to update (e.g., for comments or status)
 
-    match /content_library/{contentId} {
-       allow read, write: if isAuth();
+      // Comments subcollection
+      match /comments/{commentId} {
+        // Any authenticated user can read comments and create new ones
+        allow read, create: if request.auth != null;
+        // Only the author of a comment can update or delete it (future-proofing)
+        allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid;
+      }
     }
   }
 }
