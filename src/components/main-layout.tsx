@@ -53,8 +53,8 @@ function NavItem({ href, icon: Icon, label }: typeof navItems[0]) {
         <Link href={href}>
             <div
                 className={cn(
-                    'flex items-center gap-3 rounded-md px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-secondary/10',
-                    isActive && 'bg-secondary/10 text-secondary'
+                    'flex items-center gap-3 px-4 py-2 rounded-lg text-muted-foreground hover:bg-border hover:text-foreground transition-colors',
+                    isActive && 'bg-secondary/20 text-secondary font-semibold'
                 )}
             >
                 <Icon className="h-5 w-5" />

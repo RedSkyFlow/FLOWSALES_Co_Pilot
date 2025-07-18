@@ -14,62 +14,97 @@ import { MainLayout } from '@/components/main-layout';
 import type { Proposal, ProposalStatus } from '@/lib/types';
 import { mockProposals, mockClients } from '@/lib/mock-data';
 import { Plus, ListFilter, FileText, Search } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect, type MouseEvent } from 'react';
 import { ClientDate } from '@/components/client-date';
 import { cn } from '@/lib/utils';
 
-function getStatusBadgeClasses(status: ProposalStatus) {
-  const baseClasses = "capitalize text-xs font-semibold px-2.5 py-1 rounded-full border";
+function StatusBadge({ status }: { status: ProposalStatus }) {
+  const baseClasses = "capitalize text-xs font-medium px-3 py-1 rounded-full";
+  let statusClasses = "";
+
   switch (status) {
     case 'accepted':
     case 'signed':
     case 'paid':
-      return cn(baseClasses, 'bg-success/20 text-success border-success/30');
+      statusClasses = 'bg-success text-success-foreground';
+      break;
     case 'sent':
     case 'viewed':
-      return cn(baseClasses, 'bg-secondary/20 text-secondary border-secondary/30');
+      statusClasses = 'bg-secondary text-secondary-foreground';
+      break;
     case 'changes_requested':
-      return cn(baseClasses, 'bg-impact/20 text-impact border-impact/30');
+      statusClasses = 'bg-impact text-impact-foreground';
+      break;
     case 'draft':
     default:
-      return cn(baseClasses, 'bg-muted/20 text-muted-foreground border-muted-foreground/20');
+      statusClasses = 'bg-border text-muted-foreground';
+      break;
   }
+  return (
+      <div className={cn(baseClasses, statusClasses)}>
+          {status.replace('_', ' ')}
+      </div>
+  );
 }
 
 function ProposalCard({ proposal }: { proposal: Proposal }) {
   const client = mockClients.find(c => c.id === proposal.clientId);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const onMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const { left, top, width, height } = cardRef.current.getBoundingClientRect();
+    const x = (e.clientX - left) / width;
+    const y = (e.clientY - top) / height;
+    
+    const rotateX = (y - 0.5) * -15; // Max rotation 7.5 degrees
+    const rotateY = (x - 0.5) * 15;  // Max rotation 7.5 degrees
+
+    cardRef.current.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
+  };
+
+  const onMouseLeave = () => {
+    if (!cardRef.current) return;
+    cardRef.current.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)';
+  };
+
   return (
-    <Card className="bg-card border border-border hover:border-primary transition-all duration-300 flex flex-col group shadow-lg hover:shadow-primary/20">
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-bold group-hover:text-primary transition-colors">
-            <Link href={`/proposals/${proposal.id}`}>
-              {proposal.title}
-            </Link>
-          </CardTitle>
-           <div className={getStatusBadgeClasses(proposal.status)}>
-            {proposal.status.replace('_', ' ')}
-          </div>
-        </div>
-        <CardDescription className="text-muted-foreground pt-1">
-          For: {client?.name || 'Unknown Client'}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex-grow">
-        <div className="flex items-center text-sm text-muted-foreground">
-          <FileText className="mr-2 h-4 w-4" />
-          <span>V{proposal.version} - Updated on <ClientDate dateString={proposal.lastModified} /></span>
-        </div>
-      </CardContent>
-      <CardFooter className="flex justify-between items-center bg-black/20 py-3 px-6">
-        <span className="text-2xl font-bold text-primary">
-            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}
-        </span>
-        <Button variant="outline" asChild>
-          <Link href={`/proposals/${proposal.id}`}>View Details</Link>
-        </Button>
-      </CardFooter>
-    </Card>
+    <div
+      ref={cardRef}
+      onMouseMove={onMouseMove}
+      onMouseLeave={onMouseLeave}
+      className="transform-style-3d transition-transform duration-300 ease-out"
+    >
+        <Card className="bg-card/60 backdrop-blur-lg border border-border hover:border-primary transition-all duration-300 flex flex-col group h-full">
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <CardTitle className="text-lg font-bold group-hover:text-primary transition-colors">
+                        <Link href={`/proposals/${proposal.id}`}>
+                        {proposal.title}
+                        </Link>
+                    </CardTitle>
+                    <StatusBadge status={proposal.status} />
+                </div>
+                <CardDescription className="text-muted-foreground pt-1">
+                For: {client?.name || 'Unknown Client'}
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                <div className="flex items-center text-sm text-muted-foreground">
+                <FileText className="mr-2 h-4 w-4" />
+                <span>V{proposal.version} - Updated on <ClientDate dateString={proposal.lastModified} /></span>
+                </div>
+            </CardContent>
+            <CardFooter className="flex justify-between items-center bg-black/20 py-3 px-6 rounded-b-lg">
+                <span className="text-2xl font-bold text-primary">
+                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}
+                </span>
+                <Button variant="outline" asChild>
+                <Link href={`/proposals/${proposal.id}`}>View Details</Link>
+                </Button>
+            </CardFooter>
+        </Card>
+    </div>
   );
 }
 
@@ -98,7 +133,11 @@ export default function Dashboard() {
               Manage your proposals and track their progress.
             </p>
           </div>
-          <Button size="lg" asChild>
+          <Button
+            asChild
+            className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
+            size="lg"
+          >
             <Link href="/proposals/new" className="flex items-center">
               <Plus className="mr-2 h-5 w-5" />
               Create New Proposal

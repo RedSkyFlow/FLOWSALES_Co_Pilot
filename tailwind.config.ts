@@ -55,6 +55,9 @@ const config = {
         },
         ring: 'hsl(var(--ring))',
       },
+      boxShadow: {
+        'glow-secondary': '0 0 25px rgba(2, 130, 242, 0.4)',
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
