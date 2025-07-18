@@ -34,13 +34,14 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientDate } from "@/components/client-date";
 import type { ProposalStatus, Comment } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { formatDistanceToNow } from 'date-fns';
 
+// Helper function moved outside the component
 function getStatusBadgeClasses(status: ProposalStatus) {
   const baseClasses = "capitalize text-base font-semibold px-4 py-2 rounded-lg border";
   switch (status) {
@@ -59,6 +60,7 @@ function getStatusBadgeClasses(status: ProposalStatus) {
   }
 }
 
+// Helper function moved outside the component
 function getInitials(name: string) {
     if (!name) return 'U';
     const names = name.split(' ');
@@ -87,17 +89,22 @@ export default function ProposalDetailPage({
     );
 
     const unsubscribe = onSnapshot(commentsQuery, (querySnapshot) => {
-      const commentsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() // Convert Firestore Timestamp to JS Date
-      })) as Comment[];
+      const commentsData = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            text: data.text,
+            authorId: data.authorId,
+            authorName: data.authorName,
+            authorAvatarUrl: data.authorAvatarUrl,
+            createdAt: data.createdAt?.toDate() || new Date()
+        } as Comment;
+      });
       setComments(commentsData);
     });
 
     return () => unsubscribe();
   }, [params.id]);
-
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -116,7 +123,6 @@ export default function ProposalDetailPage({
         console.error("Error adding comment: ", error);
       }
   };
-
 
   if (!proposal || !client) {
     notFound();

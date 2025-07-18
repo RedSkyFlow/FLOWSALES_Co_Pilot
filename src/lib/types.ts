@@ -100,7 +100,7 @@ export interface Comment {
   authorId: string;
   authorName: string;
   authorAvatarUrl?: string;
-  createdAt: Date | null; // Firestore serverTimestamp is null on client until it's set
+  createdAt: Date;
 }
 
 export interface Version {
