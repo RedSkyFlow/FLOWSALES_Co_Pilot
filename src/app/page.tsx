@@ -9,12 +9,21 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from '@/components/ui/input';
 import { MainLayout } from '@/components/main-layout';
 import type { Proposal, ProposalStatus } from '@/lib/types';
 import { mockProposals, mockClients } from '@/lib/mock-data';
 import { Plus, ListFilter, FileText, Search } from 'lucide-react';
-import { useState, useRef, useEffect, type MouseEvent } from 'react';
+import { useState, useRef, type MouseEvent } from 'react';
 import { ClientDate } from '@/components/client-date';
 import { cn } from '@/lib/utils';
 
@@ -73,7 +82,8 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
       ref={cardRef}
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
-      className="transform-style-3d transition-transform duration-300 ease-out"
+      style={{ transformStyle: "preserve-3d" }}
+      className="transition-transform duration-300 ease-out"
     >
         <Card className="bg-card/60 backdrop-blur-lg border border-border hover:border-primary transition-all duration-300 flex flex-col group h-full">
             <CardHeader>
@@ -108,6 +118,9 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
   );
 }
 
+const proposalStatuses: ProposalStatus[] = ['draft', 'sent', 'viewed', 'accepted', 'signed', 'declined', 'changes_requested', 'paid'];
+
+
 export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('All');
@@ -136,7 +149,6 @@ export default function Dashboard() {
           <Button
             asChild
             className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
-            size="lg"
           >
             <Link href="/proposals/new" className="flex items-center">
               <Plus className="mr-2 h-5 w-5" />
@@ -155,10 +167,26 @@ export default function Dashboard() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="secondary" className="w-full sm:w-auto">
-            <ListFilter className="mr-2 h-4 w-4" />
-            Filter: {filter}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="secondary" className="w-full sm:w-auto">
+                    <ListFilter className="mr-2 h-4 w-4" />
+                    Filter: {filter}
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56">
+                <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup value={filter} onValueChange={setFilter}>
+                    <DropdownMenuRadioItem value="All">All</DropdownMenuRadioItem>
+                    {proposalStatuses.map(status => (
+                        <DropdownMenuRadioItem key={status} value={status.replace('_', ' ')} className="capitalize">
+                            {status.replace('_', ' ')}
+                        </DropdownMenuRadioItem>
+                    ))}
+                </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
