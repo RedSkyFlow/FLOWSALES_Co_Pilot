@@ -8,6 +8,7 @@ import {
   Users,
   Briefcase,
   Settings,
+  BookUser
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -74,7 +75,8 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
             <NavItem key={item.href} {...item} />
           ))}
         </nav>
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border space-y-2">
+            <NavItem href="/guide" icon={BookUser} label="Help & Guide" />
             <NavItem href="/settings" icon={Settings} label="Settings" />
         </div>
       </aside>
