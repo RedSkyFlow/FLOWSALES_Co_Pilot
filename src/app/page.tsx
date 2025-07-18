@@ -158,18 +158,18 @@ export default function Dashboard() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="relative w-full sm:max-w-sm">
+          <div className="relative w-full sm:flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               placeholder="Search proposals..."
-              className="bg-input border-border pl-10"
+              className="bg-input border-border pl-10 w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="secondary" className="w-full sm:w-auto">
+                <Button variant="secondary" className="w-full sm:w-auto sm:min-w-[150px]">
                     <ListFilter className="mr-2 h-4 w-4" />
                     Filter: {filter}
                 </Button>
