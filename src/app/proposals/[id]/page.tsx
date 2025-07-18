@@ -217,7 +217,7 @@ export default function ProposalDetailPage({
                 <div key={comment.id} className="flex gap-3">
                   <Avatar>
                     <AvatarImage src={comment.authorAvatarUrl} />
-                    <AvatarFallback>{getInitials(comment.authorName)}</Fallback>
+                    <AvatarFallback>{getInitials(comment.authorName)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <div className="flex justify-between items-center">
