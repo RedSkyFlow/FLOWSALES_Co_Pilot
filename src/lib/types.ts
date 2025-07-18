@@ -1,7 +1,8 @@
 export interface User {
   uid: string;
-  email: string;
-  displayName: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL?: string | null;
   role: 'sales_agent' | 'admin';
   avatarUrl?: string;
   initials?: string;
@@ -95,14 +96,11 @@ export interface OldProposal {
 
 export interface Comment {
   id: string;
-  author: {
-    uid: string;
-    name: string;
-    avatarUrl: string;
-    initials: string;
-  }
-  timestamp: string;
-  content: string;
+  text: string;
+  authorId: string;
+  authorName: string;
+  authorAvatarUrl?: string;
+  createdAt: Date | null; // Firestore serverTimestamp is null on client until it's set
 }
 
 export interface Version {

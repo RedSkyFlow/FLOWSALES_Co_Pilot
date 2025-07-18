@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Avatar,
   AvatarFallback,
@@ -19,7 +18,6 @@ import {
 import {
   mockProposals,
   mockClients,
-  mockComments,
   mockVersions,
 } from "@/lib/mock-data";
 import { notFound } from "next/navigation";
@@ -31,13 +29,18 @@ import {
   DollarSign,
   PenSquare,
   Download,
+  Send,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientDate } from "@/components/client-date";
-import type { ProposalStatus } from '@/lib/types';
+import type { ProposalStatus, Comment, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
-
+import { useState, useEffect } from "react";
+import { db, auth } from "@/lib/firebase";
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { formatDistanceToNow } from 'date-fns';
 
 function getStatusBadgeClasses(status: ProposalStatus) {
   const baseClasses = "capitalize text-base font-semibold px-4 py-2 rounded-lg border";
@@ -57,6 +60,14 @@ function getStatusBadgeClasses(status: ProposalStatus) {
   }
 }
 
+function getInitials(name: string) {
+    if (!name) return 'U';
+    const names = name.split(' ');
+    if (names.length === 1) return names[0][0].toUpperCase();
+    return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+}
+
+
 export default function ProposalDetailPage({
   params,
 }: {
@@ -64,6 +75,49 @@ export default function ProposalDetailPage({
 }) {
   const proposal = mockProposals.find((p) => p.id === params.id);
   const client = proposal ? mockClients.find(c => c.id === proposal.clientId) : null;
+  const [user, loadingAuth] = useAuthState(auth);
+
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
+
+  useEffect(() => {
+    if (!params.id) return;
+
+    const commentsQuery = query(
+      collection(db, "proposals", params.id, "comments"),
+      orderBy("createdAt", "asc")
+    );
+
+    const unsubscribe = onSnapshot(commentsQuery, (querySnapshot) => {
+      const commentsData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() // Convert Firestore Timestamp to JS Date
+      })) as Comment[];
+      setComments(commentsData);
+    });
+
+    return () => unsubscribe();
+  }, [params.id]);
+
+
+  const handleCommentSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!newComment.trim() || !user) return;
+
+      try {
+        await addDoc(collection(db, "proposals", params.id, "comments"), {
+          text: newComment,
+          authorId: user.uid,
+          authorName: user.displayName || "Anonymous",
+          authorAvatarUrl: user.photoURL || "",
+          createdAt: serverTimestamp(),
+        });
+        setNewComment("");
+      } catch (error) {
+        console.error("Error adding comment: ", error);
+      }
+  };
 
 
   if (!proposal || !client) {
@@ -159,27 +213,45 @@ export default function ProposalDetailPage({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {mockComments.map((comment) => (
+              {comments.map((comment) => (
                 <div key={comment.id} className="flex gap-3">
                   <Avatar>
-                    <AvatarImage src={comment.author.avatarUrl} />
-                    <AvatarFallback>{comment.author.initials}</AvatarFallback>
+                    <AvatarImage src={comment.authorAvatarUrl} />
+                    <AvatarFallback>{getInitials(comment.authorName)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <div className="flex justify-between items-center">
-                        <p className="font-semibold">{comment.author.name}</p>
-                        <p className="text-xs text-muted-foreground">{comment.timestamp}</p>
+                        <p className="font-semibold">{comment.authorName}</p>
+                        <p className="text-xs text-muted-foreground">
+                            {comment.createdAt ? formatDistanceToNow(comment.createdAt, { addSuffix: true }) : 'just now'}
+                        </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">{comment.content}</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{comment.text}</p>
                   </div>
                 </div>
               ))}
+              {comments.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">No comments yet. Be the first to start the conversation!</p>
+              )}
             </CardContent>
             <CardFooter className="border-t border-border pt-4">
-                <div className="w-full space-y-2">
-                    <Textarea placeholder="Add a comment or suggest an edit..." />
-                    <Button size="sm" className="w-full">Post Comment</Button>
-                </div>
+                <form onSubmit={handleCommentSubmit} className="w-full space-y-2">
+                    <Textarea 
+                        placeholder="Add a comment or suggest an edit..." 
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        disabled={!user || loadingAuth}
+                    />
+                    <Button 
+                        size="sm" 
+                        className="w-full" 
+                        type="submit" 
+                        disabled={!newComment.trim() || !user || loadingAuth}
+                    >
+                        <Send className="mr-2 h-4 w-4" />
+                        Post Comment
+                    </Button>
+                </form>
             </CardFooter>
           </Card>
           
