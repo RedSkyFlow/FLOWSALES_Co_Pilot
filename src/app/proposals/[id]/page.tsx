@@ -34,13 +34,14 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientDate } from "@/components/client-date";
-import type { ProposalStatus, Comment } from '@/lib/types';
+import type { Proposal, ProposalStatus, Comment } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { formatDistanceToNow } from 'date-fns';
+import { trackProposalView } from "@/app/proposals/actions";
 
 function getStatusBadgeClasses(status: ProposalStatus) {
   const baseClasses = "capitalize text-base font-semibold px-4 py-2 rounded-lg border";
@@ -72,15 +73,35 @@ export default function ProposalDetailPage({
 }: {
   params: { id: string };
 }) {
-  const proposal = mockProposals.find((p) => p.id === params.id);
+  const [proposal, setProposal] = useState<Proposal | null>(null);
   const client = proposal ? mockClients.find(c => c.id === proposal.clientId) : null;
   const [user, loadingAuth] = useAuthState(auth);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (params.id) {
+      trackProposalView(params.id);
+    }
+  }, [params.id]);
 
   useEffect(() => {
     if (!params.id) return;
+
+    const docRef = doc(db, 'proposals', params.id);
+    const getProposal = async () => {
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            setProposal({ id: docSnap.id, ...docSnap.data() } as Proposal);
+        } else {
+            notFound();
+        }
+        setIsLoading(false);
+    }
+
+    getProposal();
 
     const commentsQuery = query(
       collection(db, "proposals", params.id, "comments"),
@@ -118,8 +139,13 @@ export default function ProposalDetailPage({
       }
   };
 
+  if (isLoading) {
+      return <MainLayout><div>Loading proposal...</div></MainLayout>
+  }
+
   if (!proposal || !client) {
-    notFound();
+    // notFound will be called inside useEffect if doc doesn't exist
+    return <MainLayout><div></div></MainLayout>;
   }
 
   return (
