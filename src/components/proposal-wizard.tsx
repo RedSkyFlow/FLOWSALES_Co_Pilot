@@ -92,57 +92,72 @@ export function ProposalWizard() {
   }, [products]);
 
 
+  // Fetch Clients
   useEffect(() => {
-    if (loadingAuth || !user) {
-      if (!loadingAuth) {
-        setLoadingClients(false);
-        setLoadingTemplates(false);
-        setLoadingProducts(false);
-        setLoadingRules(false);
-      }
-      return;
+    if (!user) {
+        if (!loadingAuth) setLoadingClients(false);
+        return;
     }
-
-    const tenantId = 'tenant-001'; 
-
-    const unsubClients = onSnapshot(query(collection(db, 'tenants', tenantId, 'clients')), (snapshot) => {
+    const tenantId = 'tenant-001';
+    const unsub = onSnapshot(query(collection(db, 'tenants', tenantId, 'clients')), (snapshot) => {
         setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
         setLoadingClients(false);
     }, (error) => {
         console.error("Error fetching clients:", error);
         setLoadingClients(false);
     });
+    return () => unsub();
+  }, [user, loadingAuth]);
 
-    const unsubTemplates = onSnapshot(query(collection(db, 'tenants', tenantId, 'proposal_templates')), (snapshot) => {
+  // Fetch Templates
+  useEffect(() => {
+    if (!user) {
+        if (!loadingAuth) setLoadingTemplates(false);
+        return;
+    }
+    const tenantId = 'tenant-001';
+    const unsub = onSnapshot(query(collection(db, 'tenants', tenantId, 'proposal_templates')), (snapshot) => {
         setTemplates(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProposalTemplate)));
         setLoadingTemplates(false);
     }, (error) => {
         console.error("Error fetching templates:", error);
         setLoadingTemplates(false);
     });
+    return () => unsub();
+  }, [user, loadingAuth]);
 
-    const unsubProducts = onSnapshot(query(collection(db, 'tenants', tenantId, 'products')), (snapshot) => {
+  // Fetch Products
+  useEffect(() => {
+    if (!user) {
+        if (!loadingAuth) setLoadingProducts(false);
+        return;
+    }
+    const tenantId = 'tenant-001';
+    const unsub = onSnapshot(query(collection(db, 'tenants', tenantId, 'products')), (snapshot) => {
         setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
         setLoadingProducts(false);
     }, (error) => {
         console.error("Error fetching products:", error);
         setLoadingProducts(false);
     });
-    
-    const unsubRules = onSnapshot(query(collection(db, 'tenants', tenantId, 'product_rules')), (snapshot) => {
+    return () => unsub();
+  }, [user, loadingAuth]);
+
+  // Fetch Rules
+  useEffect(() => {
+    if (!user) {
+        if (!loadingAuth) setLoadingRules(false);
+        return;
+    }
+    const tenantId = 'tenant-001';
+    const unsub = onSnapshot(query(collection(db, 'tenants', tenantId, 'product_rules')), (snapshot) => {
         setRules(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductRule)));
         setLoadingRules(false);
     }, (error) => {
         console.error("Error fetching rules:", error);
         setLoadingRules(false);
     });
-
-    return () => {
-        unsubClients();
-        unsubTemplates();
-        unsubProducts();
-        unsubRules();
-    };
+    return () => unsub();
   }, [user, loadingAuth]);
 
   // Effect to apply product rules
