@@ -99,7 +99,10 @@ Security is managed in `firestore.rules`. The rules enforce that:
 
 We use Genkit to interact with Google's Gemini models for AI-powered features.
 
-*   **Flows:** AI logic is encapsulated in "flows," located in `src/ai/flows/`. Each flow is a server-side function that can be called from the frontend.
+*   **Flows:** AI logic is encapsulated in "flows," located in `src/ai/flows/`. Each flow is a server-side function that can be called from the frontend. Some key flows include:
+    *   `analyzeMeetingTranscript`: Takes a meeting transcript and suggests a proposal template, extracts client pain points, suggests relevant products, and drafts initial "Problem" and "Solution" sections.
+    *   `generateExecutiveSummary`: Creates a compelling summary based on client pain points.
+    *   `generateBrandAnalysis`: Analyzes a company's website URL or a brand image to automatically extract primary/secondary colors and summarize the brand's voice and tone.
 *   **Schemas:** Each flow uses `zod` to define strict input and output schemas, ensuring type safety between the client and the AI model.
 *   **Prompts:** Prompts are defined using `ai.definePrompt` and often use Handlebars templating (`{{{variable}}}`) to insert data into the prompt text.
 *   **Running Genkit Inspector:** To test and inspect your flows locally, you can run `npm run genkit:watch`. This starts the Genkit developer UI.
@@ -111,7 +114,7 @@ We use Genkit to interact with Google's Gemini models for AI-powered features.
 ### Project Structure (Next.js App Router)
 
 The frontend is built using the Next.js App Router.
-*   **Pages/Routes:** Each folder inside `src/app/` represents a URL route (e.g., `src/app/proposals/new/page.tsx` is the page for `/proposals/new`).
+*   **Pages/Routes:** Each folder inside `src/app/` represents a URL route (e.g., `src/app/proposals/new/page.tsx` is the page for `/proposals/new`, and `src/app/(protected)/settings/branding/page.tsx` is the page for `/settings/branding`).
 *   **Layouts:** `src/app/layout.tsx` is the root layout for the entire application. `src/components/main-layout.tsx` provides the main sidebar and content structure for authenticated pages.
 *   **Server Components:** By default, components are React Server Components, which improves performance. Use the `'use client';` directive at the top of a file to make it a Client Component (necessary for hooks like `useState` and `useEffect`).
 
