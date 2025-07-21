@@ -1,3 +1,4 @@
+
 'use client';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -20,12 +21,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from '@/components/ui/input';
 import { MainLayout } from '@/components/main-layout';
-import type { Proposal, ProposalStatus } from '@/lib/types';
-import { mockProposals, mockClients } from '@/lib/mock-data';
-import { Plus, ListFilter, FileText, Search } from 'lucide-react';
-import { useState, useRef, type MouseEvent } from 'react';
+import type { Proposal, ProposalStatus, Client } from '@/lib/types';
+import { mockClients } from '@/lib/mock-data';
+import { Plus, ListFilter, FileText, Search, Loader2 } from 'lucide-react';
+import { useState, useRef, type MouseEvent, useEffect } from 'react';
 import { ClientDate } from '@/components/client-date';
 import { cn } from '@/lib/utils';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+
 
 function StatusBadge({ status }: { status: ProposalStatus }) {
   const baseClasses = "capitalize text-xs font-medium px-3 py-1 rounded-full";
@@ -56,8 +61,7 @@ function StatusBadge({ status }: { status: ProposalStatus }) {
   );
 }
 
-function ProposalCard({ proposal }: { proposal: Proposal }) {
-  const client = mockClients.find(c => c.id === proposal.clientId);
+function ProposalCard({ proposal, client }: { proposal: Proposal, client: Client | undefined }) {
   const cardRef = useRef<HTMLDivElement>(null);
 
   const onMouseMove = (e: MouseEvent<HTMLDivElement>) => {
@@ -122,10 +126,39 @@ const proposalStatuses: ProposalStatus[] = ['draft', 'sent', 'viewed', 'accepted
 
 
 export default function Dashboard() {
+  const [user, loadingAuth] = useAuthState(auth);
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [loadingProposals, setLoadingProposals] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('All');
 
-  const filteredProposals = mockProposals.filter(proposal => {
+  useEffect(() => {
+    if (loadingAuth) return;
+    if (!user) {
+        // Handle case where user is not logged in, maybe redirect or show message
+        setLoadingProposals(false);
+        return;
+    }
+
+    setLoadingProposals(true);
+    const proposalsRef = collection(db, 'proposals');
+    // NOTE: This uses a mock user ID. In a real app, you'd get this from your auth state.
+    const q = query(proposalsRef, where('salesAgentId', '==', 'abc-123'));
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const proposalsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Proposal));
+        setProposals(proposalsData);
+        setLoadingProposals(false);
+    }, (error) => {
+        console.error("Error fetching proposals: ", error);
+        setLoadingProposals(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, loadingAuth]);
+
+
+  const filteredProposals = proposals.filter(proposal => {
     const client = mockClients.find(c => c.id === proposal.clientId);
     const lowerSearchTerm = searchTerm.toLowerCase();
     const matchesSearch = 
@@ -188,16 +221,24 @@ export default function Dashboard() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredProposals.map((proposal) => (
-            <ProposalCard key={proposal.id} proposal={proposal} />
-          ))}
-        </div>
-        {filteredProposals.length === 0 && (
-            <div className="text-center py-16 text-muted-foreground col-span-full">
-                <p>No proposals found for the current filter.</p>
+        {loadingAuth || loadingProposals ? (
+            <div className="flex justify-center items-center py-16 col-span-full">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
+        ) : (
+            <>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredProposals.map((proposal) => {
+                    const client = mockClients.find(c => c.id === proposal.clientId);
+                    return <ProposalCard key={proposal.id} proposal={proposal} client={client} />
+                })}
+                </div>
+                {filteredProposals.length === 0 && !loadingProposals && (
+                    <div className="text-center py-16 text-muted-foreground col-span-full">
+                        <p>No proposals found. <Link href="/proposals/new" className="text-primary underline">Create one now</Link>.</p>
+                    </div>
+                )}
+            </>
         )}
       </div>
     </MainLayout>
