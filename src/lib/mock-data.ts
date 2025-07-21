@@ -34,16 +34,19 @@ export const mockTemplates: ProposalTemplate[] = [
     id: 'tmpl-001',
     name: "Stadium OS Proposal",
     description: "For sports venues and large arenas.",
+    icon: "Users"
   },
   {
     id: 'tmpl-002',
     name: "Shopping Mall Pilot Proposal",
     description: "For retail centers and commercial properties.",
+    icon: "Package"
   },
   {
     id: 'tmpl-003',
     name: "Telco Proposal",
     description: "For telecommunication infrastructure projects.",
+    icon: "FileText"
   },
 ];
 
