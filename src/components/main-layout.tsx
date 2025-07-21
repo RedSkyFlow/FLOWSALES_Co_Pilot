@@ -115,28 +115,38 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
         setLoadingData(true);
         const tenantId = 'tenant-001'; // This should be dynamic based on the user's tenant
 
-        const unsubscribers = [
-            onSnapshot(query(collection(db, 'tenants', tenantId, 'proposal_templates')), snapshot => {
-                setAppData(prev => ({ ...prev, templates: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProposalTemplate)) }));
-            }),
-            onSnapshot(query(collection(db, 'tenants', tenantId, 'clients')), snapshot => {
-                setAppData(prev => ({ ...prev, clients: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)) }));
-            }),
-            onSnapshot(query(collection(db, 'tenants', tenantId, 'products')), snapshot => {
-                setAppData(prev => ({ ...prev, products: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)) }));
-            }),
-            onSnapshot(query(collection(db, 'tenants', tenantId, 'product_rules')), snapshot => {
-                setAppData(prev => ({ ...prev, rules: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductRule)) }));
-            }),
-        ];
+        const collections = {
+            templates: collection(db, 'tenants', tenantId, 'proposal_templates'),
+            clients: collection(db, 'tenants', tenantId, 'clients'),
+            products: collection(db, 'tenants', tenantId, 'products'),
+            rules: collection(db, 'tenants', tenantId, 'product_rules'),
+        };
 
-        // A simple way to 'know' when initial data has loaded.
-        // A more robust solution might use Promise.all with getDocs for the first load.
-        const timer = setTimeout(() => setLoadingData(false), 2000); // Give 2s for data to load
+        const unsubscribers = Object.entries(collections).map(([key, coll]) => 
+            onSnapshot(query(coll), snapshot => {
+                setAppData(prev => ({
+                    ...prev,
+                    [key]: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+                }));
+            })
+        );
+        
+        // This is a simple way to know when initial data has been loaded.
+        // It's imperfect but avoids complex state management for this use case.
+        // We wait for all onSnapshot listeners to fire at least once.
+        const initialLoadChecker = Promise.all(Object.values(collections).map(coll => 
+            new Promise<void>(resolve => {
+                const unsub = onSnapshot(query(coll), () => {
+                    resolve();
+                    unsub();
+                });
+            })
+        )).then(() => {
+            setLoadingData(false);
+        });
 
         return () => {
             unsubscribers.forEach(unsub => unsub());
-            clearTimeout(timer);
         };
     }, [user, loadingAuth]);
 

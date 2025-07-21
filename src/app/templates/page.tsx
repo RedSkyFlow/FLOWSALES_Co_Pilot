@@ -12,6 +12,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -21,7 +22,7 @@ import type { ProposalTemplate, User } from "@/lib/types";
 import Link from 'next/link';
 
 // A map to dynamically render icons based on the string from mock data
-const iconMap: Record<string, React.ForwardRefExoticComponent<Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>> = {
+const iconMap: Record<string, React.FC<LucideProps>> = {
     Users: Users,
     Package: Package,
     FileText: FileText,
