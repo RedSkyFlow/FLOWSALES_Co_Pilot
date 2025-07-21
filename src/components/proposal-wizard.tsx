@@ -53,9 +53,9 @@ const steps = [
 ];
 
 const iconMap = {
-    Users: <Users className="h-8 w-8 text-primary" />,
-    Package: <Package className="h-8 w-8 text-primary" />,
-    FileText: <FileText className="h-8 w-8 text-primary" />,
+    Users: Users,
+    Package: Package,
+    FileText: FileText,
 };
 
 export function ProposalWizard() {
@@ -333,7 +333,7 @@ export function ProposalWizard() {
                         )}
                     >
                         <CardHeader className="flex flex-col items-center text-center gap-4">
-                            <IconComponent />
+                            <IconComponent className="h-8 w-8 text-primary" />
                             <CardTitle>
                                 <span>{template.name}</span>
                             </CardTitle>
