@@ -40,13 +40,13 @@ export type AnalyzeMeetingTranscriptInput = z.infer<
 const DraftProposalSchema = z.object({
   suggestedTemplate: z
     .string()
-    .describe('The name of the most suitable template from the provided `availableTemplates` list.'),
+    .describe("The name of the most suitable template from the provided 'availableTemplates' list."),
   clientPainPoints: z
     .array(z.string())
     .describe('A list of specific pain points or challenges mentioned by the client.'),
   suggestedModules: z
     .array(z.string())
-    .describe('A list of module names from the provided `availableModules` that are relevant to the client\'s needs.'),
+    .describe("A list of module names from the provided 'availableModules' that are relevant to the client's needs."),
   extractedBudget: z
     .string()
     .optional()
@@ -61,10 +61,10 @@ const DraftProposalSchema = z.object({
     .describe('Names or titles of key decision-makers mentioned in the meeting.'),
   problemStatementDraft: z
     .string()
-    .describe('A draft "Problem Statement" section for the proposal, based on the client\'s pain points.'),
+    .describe("A draft 'Problem Statement' section for the proposal, based on the client's pain points."),
     solutionProposalDraft: z
     .string()
-    .describe('A draft "Proposed Solution" section, highlighting how the suggested modules address the problems.'),
+    .describe("A draft 'Proposed Solution' section, highlighting how the suggested modules address the problems."),
 });
 export type AnalyzeMeetingTranscriptOutput = z.infer<typeof DraftProposalSchema>;
 
@@ -86,9 +86,9 @@ Your task is to analyze the following meeting transcript and generate a structur
 The sales agent is "Agent", and the potential customer is "Client".
 
 **Your Instructions:**
-1.  **Select the Best Template:** Based on the context of the conversation, choose the single most appropriate template from the list of `availableTemplates`.
+1.  **Select the Best Template:** Based on the context of the conversation, choose the single most appropriate template from the list of 'availableTemplates'.
 2.  **Identify Pain Points:** Carefully read the client's statements and list their primary business challenges and pain points.
-3.  **Suggest Modules:** Based on the client's needs, select the most relevant modules from the list of `availableModules`. Do not suggest modules that are not on the list.
+3.  **Suggest Modules:** Based on the client's needs, select the most relevant modules from the list of 'availableModules'. Do not suggest modules that are not on the list.
 4.  **Extract Key Information:** Listen for any mentions of budget, project timelines, and the names or titles of decision-makers.
 5.  **Draft Content:** Write a concise "Problem Statement" summarizing the client's challenges and a "Proposed Solution" that explains how the suggested modules will solve these problems.
 
