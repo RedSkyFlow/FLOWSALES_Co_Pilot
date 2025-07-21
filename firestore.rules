@@ -2,37 +2,55 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Users can only read and write their own document
-    match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Authenticated users can read shared data
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Users: Can only read/write their own document
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Shared resources: Authenticated users can read
     match /clients/{clientId} {
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
+      // To-do: Add write access for specific roles if needed
     }
 
     match /venueOS_modules/{moduleId} {
-      allow read: if request.auth != null;
+       allow read: if isSignedIn();
     }
 
-    // Proposals can only be accessed by the assigned sales agent
+    match /templates/{templateId} {
+       allow read: if isSignedIn();
+    }
+    
+    // Proposals:
+    // - Authenticated users can create proposals
+    // - Only the assigned sales agent can read/update/delete
     match /proposals/{proposalId} {
-      allow read, update, delete: if request.auth.uid == resource.data.salesAgentId;
-      allow create: if request.auth.uid == request.resource.data.salesAgentId;
+      allow read, update, delete: if isSignedIn() && resource.data.salesAgentId == request.auth.uid;
+      allow create: if isSignedIn();
 
-      // Anyone authenticated can read comments (clients + agents)
-      // Anyone authenticated can create comments
+      // Comments sub-collection: 
+      // Allow any authenticated user to read/write comments on a proposal.
+      // This allows both clients and sales agents to collaborate.
       match /comments/{commentId} {
-        allow read, create: if request.auth != null;
+        allow read, write: if isSignedIn();
       }
 
-      // Anyone authenticated can create suggestions
-      // Only the sales agent can update (accept/reject) a suggestion
+      // Suggested Edits sub-collection:
+      // - Any authenticated user can create a suggestion (client)
+      // - Only the sales agent can update (accept/reject)
       match /suggested_edits/{editId} {
-        allow read, create: if request.auth != null;
-        allow update: if request.auth.uid == get(/databases/$(database)/documents/proposals/$(proposalId)).data.salesAgentId;
+        allow create: if isSignedIn();
+        allow read, update: if isSignedIn() && get(/databases/$(database)/documents/proposals/$(proposalId)).data.salesAgentId == request.auth.uid;
       }
     }
   }

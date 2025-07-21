@@ -1,4 +1,4 @@
-import type { Proposal, Client, VenueOSModule, User, Version, ContentLibraryItem } from './types';
+import type { Proposal, Client, VenueOSModule, User, Version, ContentLibraryItem, ProposalTemplate } from './types';
 
 export const mockUser: User = {
   uid: 'abc-123',
@@ -25,6 +25,31 @@ export const mockVenueOSModules: VenueOSModule[] = [
   { id: 'mod-006', name: 'Network Optimization Suite', description: 'AI-powered network traffic management.', pricingModel: 'one-time', basePrice: 25000, tags: ['telco', 'network'] },
   { id: 'mod-007', name: '5G Infrastructure Rollout', description: 'End-to-end 5G deployment services.', pricingModel: 'one-time', basePrice: 50000, tags: ['telco', '5g'] },
 ];
+
+export const mockTemplates: ProposalTemplate[] = [
+  {
+    id: 'tmpl-001',
+    name: "Stadium OS Proposal",
+    description: "For sports venues and large arenas.",
+    icon: 'Users',
+    defaultSections: [],
+  },
+  {
+    id: 'tmpl-002',
+    name: "Shopping Mall Pilot Proposal",
+    description: "For retail centers and commercial properties.",
+    icon: 'Package',
+    defaultSections: [],
+  },
+  {
+    id: 'tmpl-003',
+    name: "Telco Proposal",
+    description: "For telecommunication infrastructure projects.",
+    icon: 'FileText',
+    defaultSections: [],
+  },
+];
+
 
 export const mockContentLibrary: ContentLibraryItem[] = [
     { id: 'cl-001', type: 'case_study', title: 'Case Study: Rival Arena Fan Engagement Boost', content: 'Rival Arena saw a 40% increase in fan engagement...', tags: ['sports', 'engagement'] },
@@ -112,5 +137,3 @@ export const mockVersions: Version[] = [
     { number: 2, date: '2024-07-21', author: {uid: mockUser.uid, name: mockUser.displayName, avatarUrl: mockUser.avatarUrl || '', initials: mockUser.initials || ''}, summary: 'Added new case study for a similar retail client.' },
     { number: 1, date: '2024-07-20', author: {uid: mockUser.uid, name: mockUser.displayName, avatarUrl: mockUser.avatarUrl || '', initials: mockUser.initials || ''}, summary: 'Initial draft sent to client.' },
 ];
-
-    

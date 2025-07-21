@@ -107,3 +107,11 @@ export interface Version {
   }
   summary: string;
 }
+
+export interface ProposalTemplate {
+  id: string;
+  name: string;
+  description: string;
+  icon: 'Users' | 'Package' | 'FileText'; // Using Lucide icon names
+  defaultSections: ProposalSection[];
+}
