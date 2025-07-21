@@ -1,6 +1,6 @@
 
 'use client';
-import { MainLayout, useAppData } from "@/components/main-layout";
+import { MainLayout } from "@/components/main-layout";
 import {
   Card,
   CardContent,
@@ -40,22 +40,22 @@ import {
   Check,
   X,
   Loader2,
-  ThumbsUp,
-  ThumbsDown
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientDate } from "@/components/client-date";
 import type { Proposal, ProposalStatus, Comment, SuggestedEdit, ProposalSection, Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc } from "firebase/firestore";
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { formatDistanceToNow } from 'date-fns';
-import { trackProposalView, createSuggestedEdit, acceptSuggestedEdit, rejectSuggestedEdit } from "@/app/proposals/actions";
+import { trackProposalView, createSuggestedEdit, acceptSuggestedEdit, rejectSuggestedEdit, acceptProposal } from "@/app/proposals/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 function getStatusBadgeClasses(status: ProposalStatus) {
   const baseClasses = "capitalize text-base font-semibold px-4 py-2 rounded-lg border";
@@ -88,6 +88,7 @@ export default function ProposalDetailPage() {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [user, loadingAuth] = useAuthState(auth);
   const { toast } = useToast();
+  const proposalContentRef = useRef<HTMLDivElement>(null);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -98,6 +99,8 @@ export default function ProposalDetailPage() {
   const [currentSection, setCurrentSection] = useState<{ section: ProposalSection; index: number } | null>(null);
   const [suggestionText, setSuggestionText] = useState("");
   const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   
   useEffect(() => {
     // Hardcoded tenantId for now
@@ -219,6 +222,44 @@ export default function ProposalDetailPage() {
       }
   };
 
+  const handleDownloadPdf = async () => {
+    if (!proposalContentRef.current || !proposal) return;
+    setIsDownloading(true);
+    try {
+        const canvas = await html2canvas(proposalContentRef.current, {
+            scale: 2, // Improves resolution
+            backgroundColor: '#0A0903' // Match your app's background
+        });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`${proposal.title}.pdf`);
+        toast({ title: "Download Started", description: "Your PDF is being generated." });
+    } catch (error) {
+        console.error("Error generating PDF:", error);
+        toast({ title: "Error", description: "Could not generate PDF.", variant: "destructive" });
+    } finally {
+        setIsDownloading(false);
+    }
+  };
+
+  const handleAcceptProposal = async () => {
+    if (!proposal) return;
+    setIsAccepting(true);
+    try {
+        const tenantId = 'tenant-001'; // Hardcoded for now
+        await acceptProposal(tenantId, proposal.id);
+        toast({ title: "Proposal Accepted!", description: "The sales agent has been notified.", variant: "success" });
+    } catch (error) {
+        console.error("Error accepting proposal:", error);
+        toast({ title: "Error", description: "Could not accept the proposal.", variant: "destructive" });
+    } finally {
+        setIsAccepting(false);
+    }
+  };
+
 
   if (isLoading || loadingAuth) {
       return <MainLayout><div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin"/></div></MainLayout>
@@ -230,11 +271,12 @@ export default function ProposalDetailPage() {
 
   const isSalesAgent = user?.uid === proposal.salesAgentId;
   const pendingSuggestions = suggestedEdits.filter(s => s.status === 'pending');
+  const canBeAccepted = proposal.status === 'sent' || proposal.status === 'viewed';
 
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-8" ref={proposalContentRef}>
             {/* Header */}
             <div className="pb-6 border-b border-border">
                 <div className="flex justify-between items-start">
@@ -330,14 +372,21 @@ export default function ProposalDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button className="w-full" variant="secondary" disabled={isSalesAgent}>
-                <PenSquare className="mr-2 h-4 w-4" /> Accept & E-Sign
+              <Button 
+                className="w-full" 
+                variant="success" 
+                disabled={isSalesAgent || !canBeAccepted || isAccepting}
+                onClick={handleAcceptProposal}
+              >
+                {isAccepting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                Accept & E-Sign
               </Button>
-               <Button variant="outline" className="w-full">
-                <Download className="mr-2 h-4 w-4" /> Download as PDF
+               <Button variant="outline" className="w-full" onClick={handleDownloadPdf} disabled={isDownloading}>
+                {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                Download as PDF
               </Button>
               <Separator className="my-2 bg-border" />
-               <Button variant="default" className="w-full" disabled={isSalesAgent}>
+               <Button variant="default" className="w-full" disabled>
                 <DollarSign className="mr-2 h-4 w-4" /> Pay Deposit or Full Amount
               </Button>
             </CardContent>
