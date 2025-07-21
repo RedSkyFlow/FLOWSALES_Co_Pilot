@@ -40,6 +40,8 @@ import { generateExecutiveSummary } from "@/ai/flows/generate-executive-summary"
 import { suggestCaseStudies } from "@/ai/flows/suggest-case-studies";
 import { createProposal } from "@/app/proposals/actions";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "@/lib/firebase";
 import { Lightbulb } from "lucide-react";
 
 const templates = [
@@ -70,6 +72,7 @@ const steps = [
 export function ProposalWizard() {
   const router = useRouter();
   const { toast } = useToast();
+  const [user, loadingAuth] = useAuthState(auth);
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<string>("");
@@ -136,15 +139,22 @@ export function ProposalWizard() {
   const totalValue = selectedProducts.reduce((sum, module) => sum + module.basePrice, 0);
 
   const handleSaveAndFinalize = async () => {
+    if (!user) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "You must be logged in to create a proposal.",
+        });
+        return;
+    }
     setIsSaving(true);
     try {
-        // NOTE: Hardcoding tenantId and salesAgentId for now. This will come from auth state later.
+        // NOTE: Hardcoding tenantId for now. This will come from auth state later.
         const tenantId = 'tenant-001'; 
-        const salesAgentId = 'abc-123';
-
+        
         const newProposalId = await createProposal({
             tenantId,
-            salesAgentId,
+            salesAgentId: user.uid,
             selectedTemplate,
             selectedClientId: selectedClient,
             executiveSummary,
@@ -349,7 +359,7 @@ export function ProposalWizard() {
       </CardContent>
       <CardHeader className="border-t">
         <div className="flex justify-between items-center">
-          <Button variant="outline" onClick={handleBack} disabled={currentStep === 0 || isSaving}>
+          <Button variant="outline" onClick={handleBack} disabled={currentStep === 0 || isSaving || loadingAuth}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
@@ -359,7 +369,7 @@ export function ProposalWizard() {
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button onClick={handleSaveAndFinalize} disabled={isSaving}>
+            <Button onClick={handleSaveAndFinalize} disabled={isSaving || loadingAuth}>
               {isSaving ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
               {isSaving ? 'Saving...' : 'Save and Finalize'}
             </Button>

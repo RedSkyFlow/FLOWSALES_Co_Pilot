@@ -143,8 +143,7 @@ export default function Dashboard() {
     const tenantId = 'tenant-001';
     const proposalsCollectionRef = collection(db, 'tenants', tenantId, 'proposals');
     
-    // NOTE: This uses a mock user ID. In a real app, you'd get this from your auth state (user.uid).
-    const q = query(proposalsCollectionRef, where('salesAgentId', '==', 'abc-123'));
+    const q = query(proposalsCollectionRef, where('salesAgentId', '==', user.uid));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const proposalsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Proposal));
