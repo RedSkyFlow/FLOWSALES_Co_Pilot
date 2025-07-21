@@ -46,7 +46,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientDate } from "@/components/client-date";
-import type { Proposal, ProposalStatus, Comment, SuggestedEdit, ProposalSection } from '@/lib/types';
+import type { Proposal, ProposalStatus, Comment, SuggestedEdit, ProposalSection, Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
@@ -111,7 +111,9 @@ export default function ProposalDetailPage({
   useEffect(() => {
     if (!params.id) return;
 
-    const docRef = doc(db, 'proposals', params.id);
+    // TODO: tenantId will come from user auth state
+    const tenantId = 'tenant-001';
+    const docRef = doc(db, 'tenants', tenantId, 'proposals', params.id);
     const unsubscribeProposal = onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
             setProposal({ id: docSnap.id, ...docSnap.data() } as Proposal);
@@ -288,14 +290,14 @@ export default function ProposalDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl">Included Modules</CardTitle>
+              <CardTitle className="text-2xl">Included Products</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {proposal.selectedModules.map((module) => (
-                <div key={module.id} className="p-4 border border-border rounded-lg bg-black/10">
-                  <h3 className="font-semibold">{module.name}</h3>
-                  <p className="text-sm text-muted-foreground">{module.description}</p>
-                  <p className="text-right font-bold mt-2">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.basePrice)}</p>
+              {proposal.selectedProducts.map((product: Product) => (
+                <div key={product.id} className="p-4 border border-border rounded-lg bg-black/10">
+                  <h3 className="font-semibold">{product.name}</h3>
+                  <p className="text-sm text-muted-foreground">{product.description}</p>
+                  <p className="text-right font-bold mt-2">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(product.basePrice)}</p>
                 </div>
               ))}
             </CardContent>

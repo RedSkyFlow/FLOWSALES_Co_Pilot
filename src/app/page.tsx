@@ -133,17 +133,18 @@ export default function Dashboard() {
   const [filter, setFilter] = useState('All');
 
   useEffect(() => {
-    if (loadingAuth) return;
-    if (!user) {
-        // Handle case where user is not logged in, maybe redirect or show message
-        setLoadingProposals(false);
-        return;
+    if (loadingAuth || !user) {
+      if (!loadingAuth) setLoadingProposals(false);
+      return;
     }
 
     setLoadingProposals(true);
-    const proposalsRef = collection(db, 'proposals');
-    // NOTE: This uses a mock user ID. In a real app, you'd get this from your auth state.
-    const q = query(proposalsRef, where('salesAgentId', '==', 'abc-123'));
+    // NOTE: This uses a hardcoded tenant ID for now.
+    const tenantId = 'tenant-001';
+    const proposalsCollectionRef = collection(db, 'tenants', tenantId, 'proposals');
+    
+    // NOTE: This uses a mock user ID. In a real app, you'd get this from your auth state (user.uid).
+    const q = query(proposalsCollectionRef, where('salesAgentId', '==', 'abc-123'));
     
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const proposalsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Proposal));
