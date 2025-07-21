@@ -32,6 +32,9 @@
     
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+
+    --impact: 14 93% 54%; /* Functional Orange for attention */
+    --impact-foreground: 0 0% 100%;
     
     --success: 139 59% 41%; /* Functional Green */
     --success-foreground: 0 0% 100%;
@@ -75,6 +78,9 @@
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+    
+    --impact: 14 93% 54%;
+    --impact-foreground: 0 0% 100%;
 
     --success: 139 59% 41%;
     --success-foreground: 0 0% 100%;
