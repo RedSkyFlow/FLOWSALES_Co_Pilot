@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, increment, addDoc, collection, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
-import type { Proposal, Product, SuggestedEdit } from '@/lib/types';
+import type { Proposal, Product, SuggestedEdit, ProposalSection } from '@/lib/types';
 import { mockClients } from '@/lib/mock-data';
 import { revalidatePath } from 'next/cache';
 
@@ -40,6 +40,7 @@ interface CreateProposalInput {
     selectedProducts: Product[];
     totalValue: number;
     salesAgentId: string;
+    extraSections: ProposalSection[];
 }
 
 export async function createProposal(data: CreateProposalInput): Promise<string> {
@@ -52,6 +53,12 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
 
     const client = mockClients.find(c => c.id === data.selectedClientId);
     const clientName = client?.name || 'Unknown Client';
+    
+    const executiveSummarySection: ProposalSection = {
+        title: 'Executive Summary',
+        content: data.executiveSummary || 'No summary was generated.',
+        type: data.executiveSummary ? 'ai_generated' : 'manual',
+    };
 
     const newProposal: Omit<Proposal, 'id'> = {
         title: `${data.selectedTemplate} for ${clientName}`,
@@ -64,13 +71,7 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
         createdAt: new Date().toISOString(),
         lastModified: new Date().toISOString(),
         selectedProducts: data.selectedProducts,
-        sections: [
-            {
-                title: 'Executive Summary',
-                content: data.executiveSummary || 'No summary was generated.',
-                type: data.executiveSummary ? 'ai_generated' : 'manual',
-            }
-        ],
+        sections: [executiveSummarySection, ...data.extraSections],
         engagementData: {
             views: 0,
             timeOnPage: 0,

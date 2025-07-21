@@ -20,10 +20,10 @@ import {
   FileText,
   Package,
   ClipboardCheck,
+  Sparkles,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -34,10 +34,10 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { mockClients, mockTenantProducts } from "@/lib/mock-data";
-import type { Product } from "@/lib/types";
+import type { Product, ProposalSection } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { generateExecutiveSummary } from "@/ai/flows/generate-executive-summary";
-import { suggestCaseStudies } from "@/ai/flows/suggest-case-studies";
+import { analyzeMeetingTranscript } from "@/ai/flows/analyze-meeting-transcript";
 import { createProposal } from "@/app/proposals/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -77,12 +77,14 @@ export function ProposalWizard() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [painPoints, setPainPoints] = useState("");
+  const [meetingTranscript, setMeetingTranscript] = useState("");
   const [executiveSummary, setExecutiveSummary] = useState("");
-  const [caseStudySuggestions, setCaseStudySuggestions] = useState<string[]>([]);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
-  const [isCaseStudyLoading, setIsCaseStudyLoading] = useState(false);
+  const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
+  const [extraSections, setExtraSections] = useState<ProposalSection[]>([]);
+
 
   const progress = ((currentStep + 1) / steps.length) * 100;
 
@@ -104,31 +106,43 @@ export function ProposalWizard() {
     try {
         const result = await generateExecutiveSummary({ clientPainPoints: painPoints, proposalType: selectedTemplate });
         setExecutiveSummary(result.executiveSummary);
+        toast({ title: "Summary Generated", description: "The executive summary has been populated." });
     } catch (error) {
         console.error("Failed to generate summary:", error);
-        setExecutiveSummary("Error: Could not generate executive summary.");
+        toast({ title: "Error", description: "Could not generate summary.", variant: "destructive" });
     } finally {
         setIsSummaryLoading(false);
     }
   };
 
-  const handleSuggestCaseStudies = async () => {
-    if (!painPoints || !selectedTemplate) return;
-    setIsCaseStudyLoading(true);
-    try {
-        const client = mockClients.find(c => c.id === selectedClient);
-        const result = await suggestCaseStudies({ 
-            clientDescription: `${client?.name} in the ${client?.industry} industry.`,
-            proposalContext: `Proposal for ${selectedTemplate}. Key issues are ${painPoints}`,
-            contentLibrary: "Case Study 1: ...; Case Study 2: ..." // a mock library
-        });
-        setCaseStudySuggestions(result.caseStudies);
-    } catch (error) {
-        console.error("Failed to suggest case studies:", error);
-    } finally {
-        setIsCaseStudyLoading(false);
-    }
+  const handleAnalyzeTranscript = async () => {
+      if (!meetingTranscript) return;
+      setIsAnalysisLoading(true);
+      try {
+          const result = await analyzeMeetingTranscript({
+              transcript: [{ speaker: "Combined", text: meetingTranscript }], // Simplified for now
+              availableModules: mockTenantProducts.map(p => p.name)
+          });
+          
+          setPainPoints(result.clientPainPoints.join('\n'));
+          setExtraSections([
+              { title: "Problem Statement", content: result.problemStatementDraft, type: "ai_generated" },
+              { title: "Proposed Solution", content: result.solutionProposalDraft, type: "ai_generated" }
+          ]);
+          
+          const suggestedProducts = mockTenantProducts.filter(p => result.suggestedModules.includes(p.name));
+          setSelectedProducts(suggestedProducts);
+
+          toast({ title: "Analysis Complete", description: "Pain points, products, and draft sections have been populated." });
+
+      } catch (error) {
+          console.error("Failed to analyze transcript:", error);
+          toast({ title: "Error", description: "Could not analyze transcript.", variant: "destructive" });
+      } finally {
+          setIsAnalysisLoading(false);
+      }
   };
+
 
   const handleModuleToggle = (module: Product, checked: boolean) => {
     setSelectedProducts((prev) =>
@@ -149,7 +163,6 @@ export function ProposalWizard() {
     }
     setIsSaving(true);
     try {
-        // NOTE: Hardcoding tenantId for now. This will come from auth state later.
         const tenantId = 'tenant-001'; 
         
         const newProposalId = await createProposal({
@@ -160,6 +173,7 @@ export function ProposalWizard() {
             executiveSummary,
             selectedProducts: selectedProducts,
             totalValue,
+            extraSections,
         });
         toast({
             title: "Proposal Created!",
@@ -236,7 +250,7 @@ export function ProposalWizard() {
         {currentStep === 1 && (
           <div className="grid md:grid-cols-2 gap-8">
             <div className="space-y-4">
-                <h2 className="text-2xl font-headline font-semibold">Client & Pain Points</h2>
+                <h2 className="text-2xl font-headline font-semibold">Client & AI Content</h2>
                 <div>
                     <Label htmlFor="client">Select Client</Label>
                     <Select onValueChange={setSelectedClient} defaultValue={selectedClient}>
@@ -253,11 +267,26 @@ export function ProposalWizard() {
                     </Select>
                 </div>
                 <div>
+                    <Label htmlFor="meeting-transcript">Meeting Transcript (Optional)</Label>
+                    <Textarea
+                        id="meeting-transcript"
+                        placeholder="Paste the full meeting transcript here..."
+                        rows={8}
+                        value={meetingTranscript}
+                        onChange={(e) => setMeetingTranscript(e.target.value)}
+                    />
+                     <Button onClick={handleAnalyzeTranscript} disabled={isAnalysisLoading || !meetingTranscript} className="mt-2" size="sm">
+                        {isAnalysisLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                        <Sparkles className="mr-2 h-4 w-4"/>
+                        Analyze Transcript
+                    </Button>
+                </div>
+                <div>
                     <Label htmlFor="pain-points">Client Pain Points / Meeting Notes</Label>
                     <Textarea
                     id="pain-points"
                     placeholder="e.g., struggling with fan engagement, long concession lines, outdated ticketing..."
-                    rows={6}
+                    rows={4}
                     value={painPoints}
                     onChange={(e) => setPainPoints(e.target.value)}
                     />
@@ -266,10 +295,6 @@ export function ProposalWizard() {
                     <Button onClick={handleGenerateSummary} disabled={isSummaryLoading || !painPoints || !selectedTemplate}>
                         {isSummaryLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                         Generate Executive Summary
-                    </Button>
-                    <Button onClick={handleSuggestCaseStudies} variant="outline" disabled={isCaseStudyLoading || !painPoints || !selectedTemplate}>
-                        {isCaseStudyLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                        Suggest Case Studies
                     </Button>
                 </div>
             </div>
@@ -280,13 +305,18 @@ export function ProposalWizard() {
                     <Textarea readOnly value={executiveSummary || "AI-generated summary will appear here."} rows={6} className="bg-background"/>
                 </div>
                  <div>
-                    <Label>Suggested Case Studies</Label>
-                    {caseStudySuggestions.length > 0 ? (
-                        <ul className="space-y-2">
-                            {caseStudySuggestions.map((study, index) => <li key={index} className="text-sm p-2 bg-background rounded-md">{study}</li>)}
-                        </ul>
+                    <Label>Additional Sections</Label>
+                    {extraSections.length > 0 ? (
+                        <div className="space-y-2 text-sm p-2 bg-background rounded-md">
+                           {extraSections.map((section, index) => (
+                               <div key={index}>
+                                   <p className="font-semibold">{section.title}</p>
+                                   <p className="text-muted-foreground truncate">{section.content}</p>
+                               </div>
+                           ))}
+                        </div>
                     ) : (
-                        <p className="text-sm text-muted-foreground p-2 bg-background rounded-md">Suggestions will appear here.</p>
+                        <p className="text-sm text-muted-foreground p-2 bg-background rounded-md">Draft sections from transcript analysis will appear here.</p>
                     )}
                 </div>
             </div>
