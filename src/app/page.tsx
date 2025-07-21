@@ -21,8 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from '@/components/ui/input';
 import { MainLayout } from '@/components/main-layout';
-import type { Proposal, ProposalStatus, Client } from '@/lib/types';
-import { mockClients } from '@/lib/mock-data';
+import type { Proposal, ProposalStatus } from '@/lib/types';
 import { Plus, ListFilter, FileText, Search, Loader2 } from 'lucide-react';
 import { useState, useRef, type MouseEvent, useEffect } from 'react';
 import { ClientDate } from '@/components/client-date';
@@ -61,7 +60,7 @@ function StatusBadge({ status }: { status: ProposalStatus }) {
   );
 }
 
-function ProposalCard({ proposal, client }: { proposal: Proposal, client: Client | undefined }) {
+function ProposalCard({ proposal }: { proposal: Proposal }) {
   const cardRef = useRef<HTMLDivElement>(null);
 
   const onMouseMove = (e: MouseEvent<HTMLDivElement>) => {
@@ -100,7 +99,7 @@ function ProposalCard({ proposal, client }: { proposal: Proposal, client: Client
                     <StatusBadge status={proposal.status} />
                 </div>
                 <CardDescription className="text-muted-foreground pt-1">
-                For: {client?.name || 'Unknown Client'}
+                For: {proposal.clientName || 'Unknown Client'}
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
@@ -159,11 +158,10 @@ export default function Dashboard() {
 
 
   const filteredProposals = proposals.filter(proposal => {
-    const client = mockClients.find(c => c.id === proposal.clientId);
     const lowerSearchTerm = searchTerm.toLowerCase();
     const matchesSearch = 
       proposal.title.toLowerCase().includes(lowerSearchTerm) || 
-      (client && client.name.toLowerCase().includes(lowerSearchTerm));
+      (proposal.clientName && proposal.clientName.toLowerCase().includes(lowerSearchTerm));
     const matchesFilter = filter === 'All' || proposal.status.replace('_', ' ').toLowerCase() === filter.toLowerCase();
     return matchesSearch && matchesFilter;
   });
@@ -229,8 +227,7 @@ export default function Dashboard() {
             <>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredProposals.map((proposal) => {
-                    const client = mockClients.find(c => c.id === proposal.clientId);
-                    return <ProposalCard key={proposal.id} proposal={proposal} client={client} />
+                    return <ProposalCard key={proposal.id} proposal={proposal} />
                 })}
                 </div>
                 {filteredProposals.length === 0 && !loadingProposals && (

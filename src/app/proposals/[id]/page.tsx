@@ -23,7 +23,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { mockClients, mockVersions } from "@/lib/mock-data";
+import { mockVersions } from "@/lib/mock-data";
 import { notFound } from "next/navigation";
 import {
   FileText,
@@ -88,7 +88,6 @@ export default function ProposalDetailPage({
   params: { id: string };
 }) {
   const [proposal, setProposal] = useState<Proposal | null>(null);
-  const client = proposal ? mockClients.find(c => c.id === proposal.clientId) : null;
   const [user, loadingAuth] = useAuthState(auth);
   const { toast } = useToast();
 
@@ -227,7 +226,7 @@ export default function ProposalDetailPage({
       return <MainLayout><div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin"/></div></MainLayout>
   }
 
-  if (!proposal || !client) {
+  if (!proposal) {
     return <MainLayout><div></div></MainLayout>;
   }
 
@@ -243,7 +242,7 @@ export default function ProposalDetailPage({
                 <div className="flex justify-between items-start">
                     <div>
                         <h1 className="text-4xl font-bold text-foreground">{proposal.title}</h1>
-                        <p className="text-lg text-muted-foreground mt-1">For {client.name}</p>
+                        <p className="text-lg text-muted-foreground mt-1">For {proposal.clientName || 'Unknown Client'}</p>
                     </div>
                     <div className={getStatusBadgeClasses(proposal.status)}>
                         {proposal.status.replace('_', ' ')}

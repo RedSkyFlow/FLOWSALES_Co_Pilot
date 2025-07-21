@@ -69,12 +69,13 @@ export interface Proposal {
   salesAgentId: string;
   // This refers to a client of the tenant
   clientId: string;
+  clientName?: string;
   version: number;
   totalPrice: number;
   createdAt: string; // ISO 8601 date string
   lastModified: string; // ISO 8601 date string
   sections: ProposalSection[];
-  selectedProducts: Product[]; // Formerly selectedModules
+  selectedProducts: Product[];
   engagementData: {
     views: number;
     timeOnPage: number;

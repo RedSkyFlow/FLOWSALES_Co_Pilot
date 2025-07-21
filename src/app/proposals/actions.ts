@@ -51,10 +51,12 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
     }
 
     const client = mockClients.find(c => c.id === data.selectedClientId);
+    const clientName = client?.name || 'Unknown Client';
 
     const newProposal: Omit<Proposal, 'id'> = {
-        title: `${data.selectedTemplate} for ${client?.name || 'New Client'}`,
+        title: `${data.selectedTemplate} for ${clientName}`,
         clientId: data.selectedClientId,
+        clientName: clientName,
         salesAgentId: data.salesAgentId,
         status: 'draft',
         version: 1,
