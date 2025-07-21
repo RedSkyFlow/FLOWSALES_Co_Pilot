@@ -6,6 +6,7 @@ import { useTour } from '@/hooks/use-tour';
 import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export const TourStep = () => {
     const { isOpen, stopTour, currentStep, steps, nextStep, prevStep } = useTour();
@@ -46,7 +47,7 @@ export const TourStep = () => {
             <PopoverContent
                 side={step.side || 'bottom'}
                 align="center"
-                className="w-80 shadow-2xl border-impact border-2"
+                className={cn("w-80 glass-card-accent")}
                 onEscapeKeyDown={stopTour}
             >
                 <div className="space-y-4">
@@ -69,7 +70,7 @@ export const TourStep = () => {
                                     Previous
                                 </Button>
                             )}
-                            <Button size="sm" onClick={nextStep}>
+                            <Button size="sm" onClick={nextStep} variant="secondary">
                                 {currentStep === steps.length - 1 ? 'Finish' : 'Next'}
                             </Button>
                         </div>
