@@ -40,6 +40,7 @@ import {
   Check,
   X,
   Loader2,
+  Briefcase,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
@@ -376,16 +377,22 @@ export default function ProposalDetailPage() {
 
             <Card>
                 <CardHeader>
-                <CardTitle className="text-2xl">Included Products</CardTitle>
+                    <CardTitle className="text-2xl flex items-center gap-2"><Briefcase className="text-primary"/> Included Products</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                {proposal.selectedProducts.map((product: Product) => (
-                    <div key={product.id} className="p-4 border border-border rounded-lg bg-black/10">
-                    <h3 className="font-semibold">{product.name}</h3>
-                    <p className="text-sm text-muted-foreground">{product.description}</p>
-                    <p className="text-right font-bold mt-2">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(product.basePrice)}</p>
+                <CardContent className="space-y-0">
+                    <div className="divide-y divide-border">
+                        {proposal.selectedProducts.map((product: Product) => (
+                            <div key={product.id} className="flex items-center justify-between py-4">
+                                <div>
+                                    <h3 className="font-semibold">{product.name}</h3>
+                                    <p className="text-sm text-muted-foreground">{product.description}</p>
+                                </div>
+                                <p className="text-right font-bold shrink-0 ml-4">
+                                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(product.basePrice)}
+                                </p>
+                            </div>
+                        ))}
                     </div>
-                ))}
                 </CardContent>
                 <CardFooter className="bg-card-foreground/5 p-4 rounded-b-lg flex justify-end">
                     <div className="text-right">
