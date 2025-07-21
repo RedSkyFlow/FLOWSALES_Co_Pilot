@@ -13,6 +13,7 @@ export interface User {
   // Role is now within the context of a tenant
   role: 'admin' | 'sales_agent';
   tenantId: string; // The tenant this user belongs to
+  companyWebsite?: string;
 }
 
 // Client of our Tenant
@@ -58,7 +59,7 @@ export interface BrandAsset {
     secondaryColor: string; // hex
     fontHeadline: string;
     fontBody: string;
-    brandVoiceTone: string;
+    brandVoice: string;
 }
 
 export interface LegalDocument {
@@ -152,5 +153,3 @@ export interface ProposalTemplate {
   icon: string;
   sections: ProposalSection[];
 }
-
-    

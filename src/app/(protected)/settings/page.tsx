@@ -25,8 +25,8 @@ const settingsPanels = [
         title: "Branding",
         description: "Upload your logo and set brand colors.",
         icon: <Palette className="h-6 w-6 text-primary" />,
-        href: "#",
-        disabled: true,
+        href: "/settings/branding",
+        disabled: false,
     },
     {
         title: "Product Catalog",
