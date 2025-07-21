@@ -24,7 +24,7 @@ import {
   SheetFooter,
 } from "@/components/ui/sheet";
 import { mockVersions } from "@/lib/mock-data";
-import { notFound } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 import {
   FileText,
   MessageCircle,
@@ -48,7 +48,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ClientDate } from "@/components/client-date";
 import type { Proposal, ProposalStatus, Comment, SuggestedEdit, ProposalSection, Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc } from "firebase/firestore";
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -87,6 +87,7 @@ export default function ProposalDetailPage({
 }: {
   params: { id: string };
 }) {
+  const { id: proposalId } = use(params);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [user, loadingAuth] = useAuthState(auth);
   const { toast } = useToast();
@@ -102,16 +103,14 @@ export default function ProposalDetailPage({
   const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
   
   useEffect(() => {
-    const proposalId = params.id;
     // Hardcoded tenantId for now
     const tenantId = 'tenant-001'; 
     if (proposalId && user) {
       trackProposalView(tenantId, proposalId);
     }
-  }, [params, user]);
+  }, [proposalId, user]);
 
   useEffect(() => {
-    const proposalId = params.id;
     if (!proposalId) return;
 
     // Hardcoded tenantId for now
@@ -145,14 +144,13 @@ export default function ProposalDetailPage({
         unsubscribeComments();
         unsubscribeEdits();
     };
-  }, [params]);
+  }, [proposalId]);
 
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!newComment.trim() || !user) return;
       try {
-        const proposalId = params.id;
         // Hardcoded tenantId for now
         const tenantId = 'tenant-001';
         const commentsCollectionPath = `tenants/${tenantId}/proposals/${proposalId}/comments`;
@@ -180,7 +178,6 @@ export default function ProposalDetailPage({
     if (!suggestionText.trim() || !user || !currentSection) return;
     setIsSubmittingSuggestion(true);
     try {
-        const proposalId = params.id;
         // Hardcoded tenantId for now
         const tenantId = 'tenant-001';
         await createSuggestedEdit({
