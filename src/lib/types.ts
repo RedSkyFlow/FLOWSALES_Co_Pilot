@@ -19,7 +19,7 @@ export interface User {
 export interface Client {
   id: string;
   name: string;
-  industry: 'Hospitality' | 'Retail' | 'Education' | 'Sports & Entertainment' | 'Telecommunications';
+  industry: string;
   contactPerson: string;
   contactEmail: string;
   notes: string;
@@ -136,4 +136,5 @@ export interface ProposalTemplate {
   name: string;
   description: string;
   icon: 'Users' | 'Package' | 'FileText';
+  sections: ProposalSection[];
 }
