@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -34,16 +34,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { mockClients, mockTenantProducts } from "@/lib/mock-data";
-import type { Product, ProposalSection } from "@/lib/types";
+import { mockTenantProducts } from "@/lib/mock-data";
+import type { Product, ProposalSection, Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { generateExecutiveSummary } from "@/ai/flows/generate-executive-summary";
 import { analyzeMeetingTranscript } from "@/ai/flows/analyze-meeting-transcript";
 import { createProposal } from "@/app/proposals/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { Skeleton } from "./ui/skeleton";
+import { collection, query, onSnapshot } from "firebase/firestore";
 
 const templates = [
   {
@@ -77,6 +78,8 @@ export function ProposalWizard() {
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<string>("");
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(true);
   const [painPoints, setPainPoints] = useState("");
   const [meetingTranscript, setMeetingTranscript] = useState("");
   const [executiveSummary, setExecutiveSummary] = useState("");
@@ -85,6 +88,31 @@ export function ProposalWizard() {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [extraSections, setExtraSections] = useState<ProposalSection[]>([]);
+
+
+  useEffect(() => {
+    if (loadingAuth || !user) {
+      if (!loadingAuth) setLoadingClients(false);
+      return;
+    }
+
+    setLoadingClients(true);
+    // NOTE: This uses a hardcoded tenant ID for now.
+    const tenantId = 'tenant-001';
+    const clientsCollectionRef = collection(db, 'tenants', tenantId, 'clients');
+    const q = query(clientsCollectionRef);
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const clientsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+        setClients(clientsData);
+        setLoadingClients(false);
+    }, (error) => {
+        console.error("Error fetching clients: ", error);
+        setLoadingClients(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, loadingAuth]);
 
 
   const progress = ((currentStep + 1) / steps.length) * 100;
@@ -180,12 +208,14 @@ export function ProposalWizard() {
     setIsSaving(true);
     try {
         const tenantId = 'tenant-001'; 
+        const client = clients.find(c => c.id === selectedClient);
         
         const newProposalId = await createProposal({
             tenantId,
             salesAgentId: user.uid,
             selectedTemplate,
             selectedClientId: selectedClient,
+            clientName: client?.name,
             executiveSummary,
             selectedProducts,
             totalValue,
@@ -269,18 +299,20 @@ export function ProposalWizard() {
                 <h2 className="text-2xl font-headline font-semibold">Client & AI Content</h2>
                 <div>
                     <Label htmlFor="client">Select Client</Label>
-                    <Select onValueChange={setSelectedClient} defaultValue={selectedClient}>
-                    <SelectTrigger id="client">
-                        <SelectValue placeholder="Select a client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {mockClients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                            {client.name}
-                        </SelectItem>
-                        ))}
-                    </SelectContent>
-                    </Select>
+                    {loadingClients ? <Skeleton className="h-10 w-full" /> : (
+                        <Select onValueChange={setSelectedClient} defaultValue={selectedClient}>
+                        <SelectTrigger id="client">
+                            <SelectValue placeholder="Select a client" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {clients.map((client) => (
+                            <SelectItem key={client.id} value={client.id}>
+                                {client.name}
+                            </SelectItem>
+                            ))}
+                        </SelectContent>
+                        </Select>
+                    )}
                 </div>
                 <div>
                     <Label htmlFor="meeting-transcript">Meeting Transcript (Optional)</Label>
@@ -403,7 +435,7 @@ export function ProposalWizard() {
                     </CardHeader>
                     <CardContent className="space-y-2">
                         <p><strong>Template:</strong> {selectedTemplate}</p>
-                        <p><strong>Client:</strong> {mockClients.find(c => c.id === selectedClient)?.name}</p>
+                        <p><strong>Client:</strong> {clients.find(c => c.id === selectedClient)?.name}</p>
                         <p><strong>Modules:</strong> {selectedProducts.map(m => m.name).join(', ')}</p>
                         <p className="font-bold"><strong>Total Value:</strong> {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalValue)}</p>
                     </CardContent>
@@ -434,5 +466,3 @@ export function ProposalWizard() {
     </Card>
   );
 }
-
-    

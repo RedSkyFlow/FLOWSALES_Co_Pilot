@@ -48,7 +48,8 @@ function FlowSalesLogo() {
 
 const navItems = [
   { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/proposals/new', icon: FileText, label: 'Proposals' },
+  { href: '/proposals', icon: FileText, label: 'Proposals' },
+  { href: '/clients', icon: Users, label: 'Clients' },
   { href: '/templates', icon: Briefcase, label: 'Templates' },
 ];
 

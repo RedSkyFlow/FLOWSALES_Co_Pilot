@@ -3,8 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, increment, addDoc, collection, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
-import type { Proposal, Product, SuggestedEdit, ProposalSection } from '@/lib/types';
-import { mockClients } from '@/lib/mock-data';
+import type { Proposal, Product, SuggestedEdit, ProposalSection, Client } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -36,6 +35,7 @@ interface CreateProposalInput {
     tenantId: string;
     selectedTemplate: string | null;
     selectedClientId: string;
+    clientName?: string;
     executiveSummary: string;
     selectedProducts: Product[];
     totalValue: number;
@@ -50,9 +50,6 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
     if (!data.selectedTemplate || !data.selectedClientId) {
         throw new Error('Template and Client are required to create a proposal.');
     }
-
-    const client = mockClients.find(c => c.id === data.selectedClientId);
-    const clientName = client?.name || 'Unknown Client';
     
     const executiveSummarySection: ProposalSection = {
         title: 'Executive Summary',
@@ -61,9 +58,9 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
     };
 
     const newProposal: Omit<Proposal, 'id'> = {
-        title: `${data.selectedTemplate} for ${clientName}`,
+        title: `${data.selectedTemplate} for ${data.clientName || 'Unknown Client'}`,
         clientId: data.selectedClientId,
-        clientName: clientName,
+        clientName: data.clientName,
         salesAgentId: data.salesAgentId,
         status: 'draft',
         version: 1,
