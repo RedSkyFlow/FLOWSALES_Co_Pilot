@@ -63,17 +63,19 @@ export function ProposalWizard() {
   const { toast } = useToast();
   const [user, loadingAuth] = useAuthState(auth);
   const [currentStep, setCurrentStep] = useState(0);
+  
+  // Data States
+  const [templates, setTemplates] = useState<ProposalTemplate[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [rules, setRules] = useState<ProductRule[]>([]);
+  
+  // Unified Loading State
+  const [loadingData, setLoadingData] = useState(true);
+
+  // Wizard Input States
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<string>("");
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loadingClients, setLoadingClients] = useState(true);
-  const [templates, setTemplates] = useState<ProposalTemplate[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(true);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
-  const [rules, setRules] = useState<ProductRule[]>([]);
-  const [loadingRules, setLoadingRules] = useState(true);
-
   const [painPoints, setPainPoints] = useState("");
   const [meetingTranscript, setMeetingTranscript] = useState("");
   const [executiveSummary, setExecutiveSummary] = useState("");
@@ -83,7 +85,37 @@ export function ProposalWizard() {
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [extraSections, setExtraSections] = useState<ProposalSection[]>([]);
 
-  // Memoize product map for quick lookups
+  // Fetch all data
+  useEffect(() => {
+    if (!user) {
+        if (!loadingAuth) setLoadingData(false);
+        return;
+    }
+    const tenantId = 'tenant-001';
+
+    const collections = {
+        templates: collection(db, 'tenants', tenantId, 'proposal_templates'),
+        clients: collection(db, 'tenants', tenantId, 'clients'),
+        products: collection(db, 'tenants', tenantId, 'products'),
+        rules: collection(db, 'tenants', tenantId, 'product_rules'),
+    };
+
+    const unsubscribers = [
+      onSnapshot(query(collections.templates), snapshot => setTemplates(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProposalTemplate)))),
+      onSnapshot(query(collections.clients), snapshot => setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)))),
+      onSnapshot(query(collections.products), snapshot => setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)))),
+      onSnapshot(query(collections.rules), snapshot => setRules(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductRule)))),
+    ];
+    
+    // Once all listeners are attached, we can consider initial loading done.
+    setLoadingData(false);
+
+    // Cleanup function
+    return () => unsubscribers.forEach(unsub => unsub());
+
+  }, [user, loadingAuth]);
+
+
   const productMap = useMemo(() => {
     return products.reduce((map, product) => {
       map[product.id] = product;
@@ -92,77 +124,9 @@ export function ProposalWizard() {
   }, [products]);
 
 
-  // Fetch Clients
-  useEffect(() => {
-    if (!user) {
-        if (!loadingAuth) setLoadingClients(false);
-        return;
-    }
-    const tenantId = 'tenant-001';
-    const unsub = onSnapshot(query(collection(db, 'tenants', tenantId, 'clients')), (snapshot) => {
-        setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)));
-        setLoadingClients(false);
-    }, (error) => {
-        console.error("Error fetching clients:", error);
-        setLoadingClients(false);
-    });
-    return () => unsub();
-  }, [user, loadingAuth]);
-
-  // Fetch Templates
-  useEffect(() => {
-    if (!user) {
-        if (!loadingAuth) setLoadingTemplates(false);
-        return;
-    }
-    const tenantId = 'tenant-001';
-    const unsub = onSnapshot(query(collection(db, 'tenants', tenantId, 'proposal_templates')), (snapshot) => {
-        setTemplates(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProposalTemplate)));
-        setLoadingTemplates(false);
-    }, (error) => {
-        console.error("Error fetching templates:", error);
-        setLoadingTemplates(false);
-    });
-    return () => unsub();
-  }, [user, loadingAuth]);
-
-  // Fetch Products
-  useEffect(() => {
-    if (!user) {
-        if (!loadingAuth) setLoadingProducts(false);
-        return;
-    }
-    const tenantId = 'tenant-001';
-    const unsub = onSnapshot(query(collection(db, 'tenants', tenantId, 'products')), (snapshot) => {
-        setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
-        setLoadingProducts(false);
-    }, (error) => {
-        console.error("Error fetching products:", error);
-        setLoadingProducts(false);
-    });
-    return () => unsub();
-  }, [user, loadingAuth]);
-
-  // Fetch Rules
-  useEffect(() => {
-    if (!user) {
-        if (!loadingAuth) setLoadingRules(false);
-        return;
-    }
-    const tenantId = 'tenant-001';
-    const unsub = onSnapshot(query(collection(db, 'tenants', tenantId, 'product_rules')), (snapshot) => {
-        setRules(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductRule)));
-        setLoadingRules(false);
-    }, (error) => {
-        console.error("Error fetching rules:", error);
-        setLoadingRules(false);
-    });
-    return () => unsub();
-  }, [user, loadingAuth]);
-
   // Effect to apply product rules
   useEffect(() => {
-    if (loadingRules || rules.length === 0 || selectedProducts.length === 0) return;
+    if (rules.length === 0 || selectedProducts.length === 0) return;
 
     const selectedProductIds = new Set(selectedProducts.map(p => p.id));
     let productsToAdd: Product[] = [];
@@ -221,7 +185,7 @@ export function ProposalWizard() {
         }
     })
 
-  }, [selectedProducts, rules, loadingRules, productMap, toast]);
+  }, [selectedProducts, rules, productMap, toast]);
 
 
   const progress = ((currentStep + 1) / steps.length) * 100;
@@ -381,7 +345,7 @@ export function ProposalWizard() {
               Choose a Proposal Template
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {loadingTemplates ? (
+              {loadingData || loadingAuth ? (
                 Array.from({ length: 3 }).map((_, i) => (
                     <Card key={i}>
                         <CardHeader className="flex flex-col items-center text-center gap-4">
@@ -422,7 +386,7 @@ export function ProposalWizard() {
                 })
               )}
             </div>
-             { !loadingTemplates && templates.length === 0 && (
+             { !loadingData && !loadingAuth && templates.length === 0 && (
                 <p className="text-center text-muted-foreground col-span-full py-8">No proposal templates found for your organization.</p>
             )}
           </div>
@@ -434,7 +398,7 @@ export function ProposalWizard() {
                 <h2 className="text-2xl font-headline font-semibold">Client & AI Content</h2>
                 <div>
                     <Label htmlFor="client">Select Client</Label>
-                    {loadingClients ? <Skeleton className="h-10 w-full" /> : (
+                    {loadingData ? <Skeleton className="h-10 w-full" /> : (
                         <Select onValueChange={setSelectedClient} defaultValue={selectedClient}>
                         <SelectTrigger id="client">
                             <SelectValue placeholder="Select a client" />
@@ -520,7 +484,7 @@ export function ProposalWizard() {
             <h2 className="text-2xl font-headline font-semibold">Select Modules</h2>
             <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                    {loadingProducts ? (
+                    {loadingData ? (
                        Array.from({ length: 4 }).map((_, i) => (
                            <div key={i} className="flex items-start space-x-3 rounded-lg border p-4">
                                <Skeleton className="h-4 w-4 mt-1" />
@@ -549,7 +513,7 @@ export function ProposalWizard() {
                             </div>
                         ))
                     )}
-                    {!loadingProducts && products.length === 0 && <p className="text-muted-foreground">No products found. An admin needs to add products in Settings.</p>}
+                    {!loadingData && products.length === 0 && <p className="text-muted-foreground">No products found. An admin needs to add products in Settings.</p>}
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50 h-fit sticky top-4">
                     <h3 className="font-headline text-lg font-semibold">Dynamic Pricing</h3>
@@ -600,7 +564,7 @@ export function ProposalWizard() {
             Back
           </Button>
           {currentStep < steps.length - 1 ? (
-            <Button onClick={handleNext} disabled={(currentStep === 0 && !selectedTemplate) || (currentStep === 1 && !selectedClient)}>
+            <Button onClick={handleNext} disabled={loadingData || (currentStep === 0 && !selectedTemplate) || (currentStep === 1 && !selectedClient)}>
               Next
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
