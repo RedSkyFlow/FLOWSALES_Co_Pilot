@@ -103,11 +103,6 @@ export function ProposalWizard() {
       return;
     }
 
-    setLoadingClients(true);
-    setLoadingTemplates(true);
-    setLoadingProducts(true);
-    setLoadingRules(true);
-
     const tenantId = 'tenant-001';
     
     const collectionsToLoad = [
@@ -137,7 +132,7 @@ export function ProposalWizard() {
 
   // Effect to apply product rules
   useEffect(() => {
-    if (loadingRules || rules.length === 0) return;
+    if (loadingRules || rules.length === 0 || selectedProducts.length === 0) return;
 
     const selectedProductIds = new Set(selectedProducts.map(p => p.id));
     let productsToAdd: Product[] = [];
@@ -160,20 +155,23 @@ export function ProposalWizard() {
       // Use a Set to avoid duplicates before adding
       const newSelectedProducts = [...selectedProducts];
       const addedProductNames: string[] = [];
+      const currentSelectedIds = new Set(newSelectedProducts.map(p => p.id));
 
       productsToAdd.forEach(product => {
-        if (!selectedProductIds.has(product.id)) {
+        if (!currentSelectedIds.has(product.id)) {
           newSelectedProducts.push(product);
-          selectedProductIds.add(product.id);
+          currentSelectedIds.add(product.id);
           addedProductNames.push(product.name);
         }
       });
       
-      setSelectedProducts(newSelectedProducts);
-      toast({
-        title: "Product(s) Automatically Added",
-        description: `${addedProductNames.join(', ')} added due to a dependency rule.`,
-      });
+      if (addedProductNames.length > 0) {
+        setSelectedProducts(newSelectedProducts);
+        toast({
+          title: "Product(s) Automatically Added",
+          description: `${addedProductNames.join(', ')} added due to a dependency rule.`,
+        });
+      }
     }
 
     // --- Conflict Rules ---
@@ -585,5 +583,3 @@ export function ProposalWizard() {
     </Card>
   );
 }
-
-    
