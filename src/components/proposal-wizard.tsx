@@ -408,7 +408,9 @@ export function ProposalWizard() {
                     >
                         <CardHeader className="flex flex-col items-center text-center gap-4">
                         <IconComponent />
-                        <CardTitle className="font-sans text-base">{template.name}</CardTitle>
+                        <CardTitle className="font-sans text-base">
+                            <span>{template.name}</span>
+                        </CardTitle>
                         </CardHeader>
                         <CardContent>
                         <p className="text-sm text-muted-foreground text-center">
