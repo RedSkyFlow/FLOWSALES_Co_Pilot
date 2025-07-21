@@ -93,17 +93,16 @@ export function ProposalWizard() {
 
 
   useEffect(() => {
-    if (loadingAuth || !user) {
-      if (!loadingAuth) {
-          setLoadingClients(false);
-          setLoadingTemplates(false);
-          setLoadingProducts(false);
-          setLoadingRules(false);
-      }
-      return;
+    if (loadingAuth) return;
+    if (!user) {
+        setLoadingClients(false);
+        setLoadingTemplates(false);
+        setLoadingProducts(false);
+        setLoadingRules(false);
+        return;
     }
 
-    const tenantId = 'tenant-001';
+    const tenantId = 'tenant-001'; 
     
     const collectionsToLoad = [
         { path: 'clients', setState: setClients, setLoading: setLoadingClients },
@@ -366,7 +365,7 @@ export function ProposalWizard() {
                 ))
               ) : (
                 templates.map((template) => {
-                  const Icon = iconMap[template.icon as keyof typeof iconMap] || FileText;
+                  const IconComponent = iconMap[template.icon as keyof typeof iconMap] || FileText;
                   return (
                     <Card
                         key={template.id}
@@ -377,7 +376,7 @@ export function ProposalWizard() {
                         )}
                     >
                         <CardHeader className="flex flex-col items-center text-center gap-4">
-                        <Icon />
+                        <IconComponent />
                         <CardTitle className="font-sans text-base">{template.name}</CardTitle>
                         </CardHeader>
                         <CardContent>
