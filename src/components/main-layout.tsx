@@ -19,7 +19,7 @@ import { auth } from '@/lib/firebase';
 import { useEffect } from 'react';
 import { Button } from './ui/button';
 import { useAppData } from './app-data-provider';
-import { useTour } from '@/hooks/use-tour';
+import { useTour, TourStep } from '@/hooks/use-tour';
 
 function FlowSalesLogo() {
   return (
@@ -125,6 +125,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
         </aside>
         <main className="ml-64 flex-1">
             <div className="p-8">{children}</div>
+            <TourStep />
         </main>
     </div>
   )
