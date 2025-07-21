@@ -1,16 +1,23 @@
+
 "use client";
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   FileText,
   Users,
   Briefcase,
   Settings,
-  BookUser
+  BookUser,
+  LogOut,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuthState, useSignOut } from 'react-firebase-hooks/auth';
+import { auth } from '@/lib/firebase';
+import { useEffect } from 'react';
+import { Button } from './ui/button';
 
 function FlowSalesLogo() {
   return (
@@ -65,6 +72,28 @@ function NavItem({ href, icon: Icon, label }: typeof navItems[0]) {
 }
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
+  const [user, loading] = useAuthState(auth);
+  const [signOut] = useSignOut(auth);
+  const router = useRouter();
+
+  useEffect(() => {
+      if (!loading && !user) {
+          router.push('/login');
+      }
+  }, [user, loading, router]);
+  
+  if (loading) {
+      return (
+          <div className="flex items-center justify-center min-h-screen">
+              <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+          </div>
+      )
+  }
+
+  if (!user) {
+      return null;
+  }
+
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <aside className="fixed top-0 left-0 h-full w-64 bg-card border-r border-border flex flex-col">
@@ -77,6 +106,10 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         <div className="p-4 border-t border-border space-y-2">
             <NavItem href="/guide" icon={BookUser} label="Help & Guide" />
             <NavItem href="/settings" icon={Settings} label="Settings" />
+            <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={async () => await signOut()}>
+                <LogOut className="h-5 w-5 mr-3"/>
+                <span>Log Out</span>
+            </Button>
         </div>
       </aside>
       <main className="ml-64 flex-1">

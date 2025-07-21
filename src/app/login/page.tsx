@@ -1,4 +1,8 @@
+
+'use client';
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,6 +13,11 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useSignInWithEmailAndPassword, useCreateUserWithEmailAndPassword } from 'react-firebase-hooks/auth';
+import { auth } from '@/lib/firebase';
+import { useState, useEffect } from 'react';
+import { Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 function FlowSalesLogo() {
   return (
@@ -38,6 +47,39 @@ function FlowSalesLogo() {
 }
 
 export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [signInWithEmailAndPassword, user, loading, error] = useSignInWithEmailAndPassword(auth);
+  const [createUserWithEmailAndPassword, newUser, creating, createError] = useCreateUserWithEmailAndPassword(auth);
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    signInWithEmailAndPassword(email, password);
+  };
+  
+  const handleSignUp = (e: React.FormEvent) => {
+      e.preventDefault();
+      createUserWithEmailAndPassword(email, password);
+  };
+
+  useEffect(() => {
+    if (user || newUser) {
+      router.push('/');
+    }
+  }, [user, newUser, router]);
+
+  useEffect(() => {
+    if (error) {
+        toast({ title: "Login Failed", description: error.message, variant: "destructive"});
+    }
+    if (createError) {
+        toast({ title: "Sign Up Failed", description: createError.message, variant: "destructive"});
+    }
+  }, [error, createError, toast]);
+
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="mx-auto max-w-sm w-full">
@@ -46,14 +88,15 @@ export default function LoginPage() {
             <FlowSalesLogo />
           </div>
           <div className="text-center">
-            <CardTitle className="text-2xl font-headline">Welcome Back</CardTitle>
+            <CardTitle className="text-2xl font-headline">Welcome</CardTitle>
             <CardDescription>
               Enter your credentials to access your sales dashboard.
+              Use agent@flowsales.com / password to sign in.
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4">
+          <form onSubmit={handleLogin} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -61,6 +104,8 @@ export default function LoginPage() {
                 type="email"
                 placeholder="agent@flowsales.com"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
@@ -73,20 +118,24 @@ export default function LoginPage() {
                   Forgot your password?
                 </Link>
               </div>
-              <Input id="password" type="password" required />
+              <Input 
+                id="password" 
+                type="password" 
+                required 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
-            <Button type="submit" className="w-full" asChild>
-                <Link href="/">Log in</Link>
+            <Button type="submit" className="w-full" disabled={loading || creating}>
+                {(loading || creating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Log in
             </Button>
-            <Button variant="outline" className="w-full">
-              Login with Google
-            </Button>
-          </div>
-          <div className="mt-4 text-center text-sm">
+          </form>
+           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{" "}
-            <Link href="#" className="underline">
+            <Button variant="link" onClick={handleSignUp} className="underline p-0 h-auto" disabled={loading || creating}>
               Sign up
-            </Link>
+            </Button>
           </div>
         </CardContent>
       </Card>
