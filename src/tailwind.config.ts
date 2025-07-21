@@ -18,6 +18,7 @@ const config = {
     extend: {
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
+        headline: ['"Playfair Display"', 'serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -63,8 +64,12 @@ const config = {
         },
       },
       boxShadow: {
-        'glow-primary': '0 0 25px hsl(var(--primary) / 0.4)',
-        'glow-secondary': '0 0 25px hsl(var(--secondary) / 0.4)',
+        'glow-primary': 'var(--glow-primary)',
+        'glow-primary-strong': 'var(--glow-primary-strong)',
+        'glow-secondary': 'var(--glow-secondary)',
+        'glow-secondary-strong': 'var(--glow-secondary-strong)',
+        'glow-accent': 'var(--glow-accent)',
+        'glow-accent-strong': 'var(--glow-accent-strong)',
       },
       borderRadius: {
         lg: 'var(--radius)',

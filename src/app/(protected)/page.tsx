@@ -61,35 +61,9 @@ function StatusBadge({ status }: { status: ProposalStatus }) {
 }
 
 function ProposalCard({ proposal }: { proposal: Proposal }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  const onMouseMove = (e: MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const { left, top, width, height } = cardRef.current.getBoundingClientRect();
-    const x = (e.clientX - left) / width;
-    const y = (e.clientY - top) / height;
-    
-    const rotateX = (y - 0.5) * -15; // Max rotation 7.5 degrees
-    const rotateY = (x - 0.5) * 15;  // Max rotation 7.5 degrees
-
-    cardRef.current.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
-  };
-
-  const onMouseLeave = () => {
-    if (!cardRef.current) return;
-    cardRef.current.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale3d(1, 1, 1)';
-  };
-
   return (
-    <div
-      ref={cardRef}
-      onMouseMove={onMouseMove}
-      onMouseLeave={onMouseLeave}
-      style={{ transformStyle: "preserve-3d" }}
-      className="transition-transform duration-300 ease-out"
-      data-tour-id="proposal-card"
-    >
-        <Card className="bg-card/60 backdrop-blur-lg border border-border hover:border-primary transition-all duration-300 flex flex-col group h-full">
+    <div data-tour-id="proposal-card">
+        <Card className="glass-card flex flex-col group h-full">
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <CardTitle className="text-lg font-bold group-hover:text-primary transition-colors">
@@ -110,7 +84,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
                 </div>
             </CardContent>
             <CardFooter className="flex justify-between items-center bg-black/20 py-3 px-6 rounded-b-lg">
-                <span className="text-2xl font-bold text-primary">
+                <span className="text-2xl font-bold text-accent">
                     {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}
                 </span>
                 <Button variant="ghost" asChild>
@@ -205,14 +179,15 @@ export default function Dashboard() {
       <div className="space-y-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" data-tour-id="dashboard-header">
           <div>
-            <h1 className="text-4xl font-bold">Sales Dashboard</h1>
+            <h1 className="text-4xl font-bold font-headline">Sales Dashboard</h1>
             <p className="text-muted-foreground mt-1">
               Manage your proposals and track their progress.
             </p>
           </div>
           <Button
             asChild
-            className="font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-primary/90 hover:shadow-glow-primary hover:-translate-y-0.5"
+            variant="secondary"
+            className="font-semibold rounded-lg px-4 py-2 flex items-center gap-2 hover-glow-secondary"
             data-tour-id="create-proposal-btn"
           >
             <Link href="/proposals/new" className="flex items-center">
