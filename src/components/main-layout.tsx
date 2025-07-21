@@ -15,10 +15,13 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthState, useSignOut } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase';
-import { useEffect, useContext } from 'react';
+import { auth } from '@/lib/firebase';
+import { useEffect } from 'react';
 import { Button } from './ui/button';
-import { AppDataProvider, useAppData } from './app-data-provider';
+// Import useAppData, but not the provider itself
+import { useAppData } from './app-data-provider';
+
+// FlowSalesLogo, navItems, secondaryNavItems, and NavItem components remain the same...
 
 function FlowSalesLogo() {
   return (
@@ -77,9 +80,9 @@ function NavItem({ href, icon: Icon, label }: typeof navItems[0]) {
     );
 }
 
-
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
   const [signOut] = useSignOut(auth);
+  // useAppData now correctly consumes the context from a parent provider
   const { loading: loadingData } = useAppData();
 
   if (loadingData) {
@@ -116,6 +119,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
   )
 }
 
+// MainLayout now only worries about auth and rendering the children within the layout
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const [user, loading] = useAuthState(auth);
   const router = useRouter();
@@ -126,6 +130,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
       }
   }, [user, loading, router]);
   
+  // This loading state is for authentication only
   if (loading) {
       return (
           <div className="flex items-center justify-center min-h-screen">
@@ -135,15 +140,12 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-      return null;
+      return null; // or a login page redirect
   }
   
-  return (
-    <AppDataProvider>
-      <MainLayoutContent>{children}</MainLayoutContent>
-    </AppDataProvider>
-  )
+  // Notice we removed the AppDataProvider wrapper from here
+  return <MainLayoutContent>{children}</MainLayoutContent>
 }
 
-// Re-export useAppData for convenience in other components
+// We still re-export this for convenience
 export { useAppData };

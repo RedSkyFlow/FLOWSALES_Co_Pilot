@@ -211,5 +211,3 @@ export default function NewTemplatePage() {
     </MainLayout>
   );
 }
-
-    
