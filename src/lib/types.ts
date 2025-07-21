@@ -12,7 +12,7 @@ export interface User {
   displayName: string | null;
   photoURL?: string | null;
   // Role is now within the context of a tenant
-  role: 'admin' | 'sales_agent';
+  role: 'admin' | 'sales_agent' | 'client';
   tenantId: string; // The tenant this user belongs to
   companyWebsite?: string;
 }
@@ -131,6 +131,7 @@ export interface SuggestedEdit {
     status: SuggestedEditStatus;
     authorId: string;
     authorName: string;
+    authorAvatarUrl?: string;
     createdAt: Date;
 }
 

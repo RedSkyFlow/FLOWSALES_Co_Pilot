@@ -197,7 +197,6 @@ export default function ProposalDetailPage() {
             suggestedContent: suggestionText,
             authorId: user.uid,
             authorName: user.displayName || "Anonymous User",
-            authorAvatarUrl: user.photoURL || undefined,
         });
         toast({ title: "Suggestion Submitted", description: "The sales agent has been notified of your suggestion." });
         setIsSheetOpen(false);
@@ -216,7 +215,7 @@ export default function ProposalDetailPage() {
           await acceptSuggestedEdit({
               tenantId,
               suggestion,
-              actor: { id: user.uid, name: user.displayName || 'Sales Agent', avatarUrl: user.photoURL || undefined }
+              actor: { id: user.uid, name: user.displayName || 'Sales Agent' }
             });
           toast({ title: "Suggestion Accepted", description: "The proposal has been updated." });
       } catch (error) {
@@ -263,19 +262,30 @@ export default function ProposalDetailPage() {
       const canvasWidth = canvas.width;
       const canvasHeight = canvas.height;
       const canvasAspectRatio = canvasWidth / canvasHeight;
-      const pageAspectRatio = pdfWidth / pdfHeight;
 
       let imgHeightOnPage = pdfWidth / canvasAspectRatio;
-      let heightLeft = canvasHeight;
+      let totalCanvasPixelHeight = canvasHeight;
+      let canvasPixelHeightLeft = totalCanvasPixelHeight;
       let position = 0;
 
-      const imgHeightInPixels = canvasWidth / pageAspectRatio;
+      const pagePixelHeight = canvasWidth / (pdfWidth / pdfHeight);
 
-      while (heightLeft > 0) {
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeightOnPage, '', 'FAST');
-        heightLeft -= imgHeightInPixels;
-        position -= pdfHeight;
-        if (heightLeft > 0) {
+      while (canvasPixelHeightLeft > 0) {
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvasWidth;
+        pageCanvas.height = pagePixelHeight;
+        const pageCtx = pageCanvas.getContext('2d');
+        if (pageCtx) {
+            pageCtx.drawImage(canvas, 0, -position, canvasWidth, totalCanvasPixelHeight);
+        }
+
+        const imgData = pageCanvas.toDataURL('image/jpeg', 0.9);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, '', 'FAST');
+
+        canvasPixelHeightLeft -= pagePixelHeight;
+        position += pagePixelHeight;
+
+        if (canvasPixelHeightLeft > 0) {
           pdf.addPage();
         }
       }
@@ -309,11 +319,11 @@ export default function ProposalDetailPage() {
 
 
   if (isLoading || loadingAuth) {
-      return <MainLayout><div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin"/></div></MainLayout>
+      return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin"/></div>
   }
 
   if (!proposal) {
-    return <MainLayout><div></div></MainLayout>;
+    return <div></div>;
   }
 
   const isSalesAgent = user?.uid === proposal.salesAgentId;
@@ -321,7 +331,7 @@ export default function ProposalDetailPage() {
   const canBeAccepted = proposal.status === 'sent' || proposal.status === 'viewed' || proposal.status === 'changes_requested';
 
   return (
-    <MainLayout>
+    <>
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
             <div ref={proposalContentRef} className="space-y-8 bg-background p-8 rounded-lg">
@@ -355,7 +365,7 @@ export default function ProposalDetailPage() {
                     {pendingSuggestions.map(edit => (
                         <div key={edit.id} className="border p-4 rounded-lg bg-muted/20">
                         <p className="text-sm font-semibold">Section: "{edit.sectionTitle}"</p>
-                        <p className="text-xs text-muted-foreground mb-2">Suggested by {edit.authorName} - {formatDistanceToNow(edit.createdAt, { addSuffix: true })}</p>
+                        <p className="text-xs text-muted-foreground mb-2">Suggested by {edit.authorName} - {edit.createdAt ? formatDistanceToNow(edit.createdAt, { addSuffix: true }) : 'just now'}</p>
                         <div className="mt-2 p-2 bg-background rounded-md border border-dashed">
                             <p className="text-sm whitespace-pre-wrap">{edit.suggestedContent}</p>
                         </div>
@@ -378,7 +388,7 @@ export default function ProposalDetailPage() {
                     {proposal.sections.map((section, index) => (
                         <div key={index} className="relative group">
                         <h3 className="text-xl font-semibold border-b border-border pb-2 mb-2">{section.title}</h3>
-                        <p>{section.content}</p>
+                        <p className="whitespace-pre-wrap">{section.content}</p>
                         {!isSalesAgent && (
                             <Button size="sm" variant="outline" className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleSuggestEditClick(section, index)}>
                                 <PenSquare className="h-4 w-4 mr-2" /> Suggest Edit
@@ -574,6 +584,6 @@ export default function ProposalDetailPage() {
               </SheetFooter>
           </SheetContent>
       </Sheet>
-    </MainLayout>
+    </>
   );
 }
