@@ -149,6 +149,8 @@ export interface ProposalTemplate {
   id: string;
   name: string;
   description: string;
-  icon: 'Users' | 'Package' | 'FileText';
+  icon: string;
   sections: ProposalSection[];
 }
+
+    

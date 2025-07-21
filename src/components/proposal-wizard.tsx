@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { Product, ProposalSection, Client, ProposalTemplate } from "@/lib/types";
+import type { Product, ProposalSection, Client, ProposalTemplate, ProductRule } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { generateExecutiveSummary } from "@/ai/flows/generate-executive-summary";
 import { analyzeMeetingTranscript } from "@/ai/flows/analyze-meeting-transcript";
@@ -71,6 +71,9 @@ export function ProposalWizard() {
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [rules, setRules] = useState<ProductRule[]>([]);
+  const [loadingRules, setLoadingRules] = useState(true);
+
   const [painPoints, setPainPoints] = useState("");
   const [meetingTranscript, setMeetingTranscript] = useState("");
   const [executiveSummary, setExecutiveSummary] = useState("");
@@ -80,6 +83,14 @@ export function ProposalWizard() {
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [extraSections, setExtraSections] = useState<ProposalSection[]>([]);
 
+  // Memoize product map for quick lookups
+  const productMap = useMemo(() => {
+    return products.reduce((map, product) => {
+      map[product.id] = product;
+      return map;
+    }, {} as Record<string, Product>);
+  }, [products]);
+
 
   useEffect(() => {
     if (loadingAuth || !user) {
@@ -87,6 +98,7 @@ export function ProposalWizard() {
           setLoadingClients(false);
           setLoadingTemplates(false);
           setLoadingProducts(false);
+          setLoadingRules(false);
       }
       return;
     }
@@ -94,49 +106,94 @@ export function ProposalWizard() {
     setLoadingClients(true);
     setLoadingTemplates(true);
     setLoadingProducts(true);
-    // NOTE: This uses a hardcoded tenant ID for now.
+    setLoadingRules(true);
+
     const tenantId = 'tenant-001';
     
-    const clientsCollectionRef = collection(db, 'tenants', tenantId, 'clients');
-    const clientsQuery = query(clientsCollectionRef);
-    const unsubscribeClients = onSnapshot(clientsQuery, (querySnapshot) => {
-        const clientsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
-        setClients(clientsData);
-        setLoadingClients(false);
-    }, (error) => {
-        console.error("Error fetching clients: ", error);
-        setLoadingClients(false);
-    });
+    const collectionsToLoad = [
+        { path: 'clients', setState: setClients, setLoading: setLoadingClients },
+        { path: 'proposal_templates', setState: setTemplates, setLoading: setLoadingTemplates },
+        { path: 'products', setState: setProducts, setLoading: setLoadingProducts },
+        { path: 'product_rules', setState: setRules, setLoading: setLoadingRules },
+    ];
 
-    const templatesCollectionRef = collection(db, 'tenants', tenantId, 'proposal_templates');
-    const templatesQuery = query(templatesCollectionRef);
-    const unsubscribeTemplates = onSnapshot(templatesQuery, (querySnapshot) => {
-        const templatesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProposalTemplate));
-        setTemplates(templatesData);
-        setLoadingTemplates(false);
-    }, (error) => {
-        console.error("Error fetching templates: ", error);
-        setLoadingTemplates(false);
+    const unsubscribes = collectionsToLoad.map(({ path, setState, setLoading }) => {
+        const collectionRef = collection(db, 'tenants', tenantId, path);
+        const q = query(collectionRef);
+        return onSnapshot(q, (querySnapshot) => {
+            const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setState(data as any);
+            setLoading(false);
+        }, (error) => {
+            console.error(`Error fetching ${path}: `, error);
+            setLoading(false);
+        });
     });
-    
-    const productsCollectionRef = collection(db, 'tenants', tenantId, 'products');
-    const productsQuery = query(productsCollectionRef);
-    const unsubscribeProducts = onSnapshot(productsQuery, (querySnapshot) => {
-        const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-        setProducts(productsData);
-        setLoadingProducts(false);
-    }, (error) => {
-        console.error("Error fetching products: ", error);
-        setLoadingProducts(false);
-    });
-
 
     return () => {
-        unsubscribeClients();
-        unsubscribeTemplates();
-        unsubscribeProducts();
+        unsubscribes.forEach(unsub => unsub());
     };
   }, [user, loadingAuth]);
+
+  // Effect to apply product rules
+  useEffect(() => {
+    if (loadingRules || rules.length === 0) return;
+
+    const selectedProductIds = new Set(selectedProducts.map(p => p.id));
+    let productsToAdd: Product[] = [];
+
+    // --- Dependency Rules ---
+    rules.forEach(rule => {
+      if (rule.type === 'dependency' && selectedProductIds.has(rule.primaryProductId)) {
+        rule.relatedProductIds.forEach(relatedId => {
+          if (!selectedProductIds.has(relatedId)) {
+            const productToAdd = productMap[relatedId];
+            if (productToAdd) {
+              productsToAdd.push(productToAdd);
+            }
+          }
+        });
+      }
+    });
+
+    if (productsToAdd.length > 0) {
+      // Use a Set to avoid duplicates before adding
+      const newSelectedProducts = [...selectedProducts];
+      const addedProductNames: string[] = [];
+
+      productsToAdd.forEach(product => {
+        if (!selectedProductIds.has(product.id)) {
+          newSelectedProducts.push(product);
+          selectedProductIds.add(product.id);
+          addedProductNames.push(product.name);
+        }
+      });
+      
+      setSelectedProducts(newSelectedProducts);
+      toast({
+        title: "Product(s) Automatically Added",
+        description: `${addedProductNames.join(', ')} added due to a dependency rule.`,
+      });
+    }
+
+    // --- Conflict Rules ---
+    rules.forEach(rule => {
+        if (rule.type === 'conflict' && selectedProductIds.has(rule.primaryProductId)) {
+            rule.relatedProductIds.forEach(relatedId => {
+                if(selectedProductIds.has(relatedId)) {
+                    const primaryProductName = productMap[rule.primaryProductId]?.name || 'A product';
+                    const relatedProductName = productMap[relatedId]?.name || 'another product';
+                    toast({
+                        variant: 'destructive',
+                        title: 'Product Conflict',
+                        description: `${primaryProductName} conflicts with ${relatedProductName}. Please review your selections.`,
+                    })
+                }
+            })
+        }
+    })
+
+  }, [selectedProducts, rules, loadingRules, productMap, toast]);
 
 
   const progress = ((currentStep + 1) / steps.length) * 100;
@@ -311,7 +368,7 @@ export function ProposalWizard() {
                 ))
               ) : (
                 templates.map((template) => {
-                  const Icon = iconMap[template.icon] || FileText;
+                  const Icon = iconMap[template.icon as keyof typeof iconMap] || FileText;
                   return (
                     <Card
                         key={template.id}
@@ -528,3 +585,5 @@ export function ProposalWizard() {
     </Card>
   );
 }
+
+    
