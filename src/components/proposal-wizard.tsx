@@ -21,6 +21,7 @@ import {
   Package,
   ClipboardCheck,
   Sparkles,
+  Lightbulb,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
@@ -42,7 +43,7 @@ import { createProposal } from "@/app/proposals/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase";
-import { Lightbulb } from "lucide-react";
+import { Skeleton } from "./ui/skeleton";
 
 const templates = [
   {
@@ -103,6 +104,7 @@ export function ProposalWizard() {
   const handleGenerateSummary = async () => {
     if (!painPoints || !selectedTemplate) return;
     setIsSummaryLoading(true);
+    setExecutiveSummary("");
     try {
         const result = await generateExecutiveSummary({ clientPainPoints: painPoints, proposalType: selectedTemplate });
         setExecutiveSummary(result.executiveSummary);
@@ -118,9 +120,14 @@ export function ProposalWizard() {
   const handleAnalyzeTranscript = async () => {
       if (!meetingTranscript) return;
       setIsAnalysisLoading(true);
+      setPainPoints("");
+      setExecutiveSummary("");
+      setExtraSections([]);
+      setSelectedProducts([]);
+      
       try {
           const result = await analyzeMeetingTranscript({
-              transcript: [{ speaker: "Combined", text: meetingTranscript }], // Simplified for now
+              transcript: [{ speaker: "Combined", text: meetingTranscript }],
               availableModules: mockTenantProducts.map(p => p.name)
           });
           
@@ -135,11 +142,20 @@ export function ProposalWizard() {
 
           toast({ title: "Analysis Complete", description: "Pain points, products, and draft sections have been populated." });
 
+          // Now, generate the executive summary based on the new pain points
+          if (result.clientPainPoints.join('\n') && selectedTemplate) {
+            setIsSummaryLoading(true);
+            const summaryResult = await generateExecutiveSummary({ clientPainPoints: result.clientPainPoints.join('\n'), proposalType: selectedTemplate });
+            setExecutiveSummary(summaryResult.executiveSummary);
+            toast({ title: "Summary Generated", description: "An executive summary was also created based on the transcript." });
+          }
+
       } catch (error) {
           console.error("Failed to analyze transcript:", error);
           toast({ title: "Error", description: "Could not analyze transcript.", variant: "destructive" });
       } finally {
           setIsAnalysisLoading(false);
+          setIsSummaryLoading(false);
       }
   };
 
@@ -171,7 +187,7 @@ export function ProposalWizard() {
             selectedTemplate,
             selectedClientId: selectedClient,
             executiveSummary,
-            selectedProducts: selectedProducts,
+            selectedProducts,
             totalValue,
             extraSections,
         });
@@ -274,11 +290,11 @@ export function ProposalWizard() {
                         rows={8}
                         value={meetingTranscript}
                         onChange={(e) => setMeetingTranscript(e.target.value)}
+                        className="text-xs"
                     />
-                     <Button onClick={handleAnalyzeTranscript} disabled={isAnalysisLoading || !meetingTranscript} className="mt-2" size="sm">
-                        {isAnalysisLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                        <Sparkles className="mr-2 h-4 w-4"/>
-                        Analyze Transcript
+                     <Button onClick={handleAnalyzeTranscript} disabled={isAnalysisLoading || !meetingTranscript || !selectedTemplate} className="mt-2 w-full" size="sm">
+                        {isAnalysisLoading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4"/>}
+                        Analyze Transcript & Generate All Content
                     </Button>
                 </div>
                 <div>
@@ -290,33 +306,42 @@ export function ProposalWizard() {
                     value={painPoints}
                     onChange={(e) => setPainPoints(e.target.value)}
                     />
-                </div>
-                <div className="flex gap-2">
-                    <Button onClick={handleGenerateSummary} disabled={isSummaryLoading || !painPoints || !selectedTemplate}>
+                     <Button onClick={handleGenerateSummary} disabled={isSummaryLoading || !painPoints || !selectedTemplate} className="mt-2" size="sm">
                         {isSummaryLoading && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                         Generate Executive Summary
                     </Button>
                 </div>
             </div>
-             <div className="space-y-4 rounded-lg bg-muted/50 p-4">
-                <h3 className="font-semibold font-headline text-lg">AI Generated Content</h3>
+             <div className="space-y-4 rounded-lg bg-muted/20 p-4 border border-border">
+                <h3 className="font-semibold font-headline text-lg flex items-center gap-2"><Sparkles className="text-primary"/> AI Generated Content</h3>
                 <div>
                     <Label>Executive Summary</Label>
-                    <Textarea readOnly value={executiveSummary || "AI-generated summary will appear here."} rows={6} className="bg-background"/>
+                    {isSummaryLoading ? (
+                        <Skeleton className="h-24 w-full" />
+                    ) : (
+                        <Textarea readOnly value={executiveSummary || "AI-generated summary will appear here."} rows={6} className="bg-background"/>
+                    )}
                 </div>
                  <div>
                     <Label>Additional Sections</Label>
-                    {extraSections.length > 0 ? (
-                        <div className="space-y-2 text-sm p-2 bg-background rounded-md">
-                           {extraSections.map((section, index) => (
-                               <div key={index}>
-                                   <p className="font-semibold">{section.title}</p>
-                                   <p className="text-muted-foreground truncate">{section.content}</p>
-                               </div>
-                           ))}
+                    {isAnalysisLoading ? (
+                         <div className="space-y-2 text-sm p-2 bg-background rounded-md">
+                           <Skeleton className="h-10 w-full" />
+                           <Skeleton className="h-10 w-full" />
                         </div>
                     ) : (
-                        <p className="text-sm text-muted-foreground p-2 bg-background rounded-md">Draft sections from transcript analysis will appear here.</p>
+                        extraSections.length > 0 ? (
+                            <div className="space-y-2 text-sm p-2 bg-background rounded-md">
+                               {extraSections.map((section, index) => (
+                                   <div key={index} className="border-b border-border last:border-none pb-2 mb-2">
+                                       <p className="font-semibold">{section.title}</p>
+                                       <p className="text-muted-foreground line-clamp-2">{section.content}</p>
+                                   </div>
+                               ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-muted-foreground p-2 bg-background rounded-md h-[96px]">Draft sections from transcript analysis will appear here.</p>
+                        )
                     )}
                 </div>
             </div>
@@ -409,3 +434,5 @@ export function ProposalWizard() {
     </Card>
   );
 }
+
+    
