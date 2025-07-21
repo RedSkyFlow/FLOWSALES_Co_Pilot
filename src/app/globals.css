@@ -138,13 +138,22 @@
 }
 
 .pdf-export-light .text-foreground,
-.pdf-export-light .text-muted-foreground,
-.pdf-export-light .text-primary {
+.pdf-export-light .text-muted-foreground {
   color: #000000 !important;
 }
 
 .pdf-export-light .border-border {
   border-color: #e5e7eb !important; /* A light grey for borders */
+}
+
+.pdf-export-light .bg-background {
+    background-color: #ffffff !important;
+}
+
+.pdf-export-light .bg-card,
+.pdf-export-light .prose {
+    background-color: #ffffff !important;
+    color: #000000 !important;
 }
 
 .pdf-export-light .bg-black\/10 {
@@ -159,14 +168,10 @@
     color: #000000 !important;
 }
 
-.pdf-export-light h1, .pdf-export-light h2, .pdf-export-light h3, .pdf-export-light p, .pdf-export-light span {
+.pdf-export-light h1, .pdf-export-light h2, .pdf-export-light h3, .pdf-export-light p, .pdf-export-light span, .pdf-export-light div {
     color: #000000 !important;
 }
 
 .pdf-export-light .text-primary {
     color: hsl(var(--primary)) !important;
-}
-
-.pdf-export-light .prose {
-    color: #000000 !important;
 }
