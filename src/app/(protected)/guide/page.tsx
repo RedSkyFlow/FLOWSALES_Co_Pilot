@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Lightbulb,
   MessageSquare,
+  MessageCircle,
   PlusCircle,
   PenSquare,
   CheckCircle,
