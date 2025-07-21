@@ -223,25 +223,40 @@ export default function ProposalDetailPage() {
   };
 
   const handleDownloadPdf = async () => {
-    if (!proposalContentRef.current || !proposal) return;
+    const elementToCapture = proposalContentRef.current;
+    if (!elementToCapture || !proposal) return;
+
     setIsDownloading(true);
+    // Add a class to switch to light mode for PDF generation
+    elementToCapture.classList.add('pdf-export-light');
+
     try {
-        const canvas = await html2canvas(proposalContentRef.current, {
+        const canvas = await html2canvas(elementToCapture, {
             scale: 2,
-            backgroundColor: null, // Use element's background color
+            // Use the new light theme background color
+            backgroundColor: '#ffffff',
+            // Allow time for styles to apply, though html2canvas should wait
+            onclone: (document) => {
+                // You can perform additional DOM manipulations on the cloned document if needed
+            }
         });
-        // Use JPEG for better compression of photographic/complex content
-        const imgData = canvas.toDataURL('image/jpeg', 0.9); // Quality 0.9
+
+        // Use JPEG for better compression
+        const imgData = canvas.toDataURL('image/jpeg', 0.9);
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
         pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`${proposal.title}.pdf`);
         toast({ title: "Download Started", description: "Your PDF is being generated." });
+
     } catch (error) {
         console.error("Error generating PDF:", error);
         toast({ title: "Error", description: "Could not generate PDF.", variant: "destructive" });
     } finally {
+        // IMPORTANT: Remove the class to revert to dark mode on screen
+        elementToCapture.classList.remove('pdf-export-light');
         setIsDownloading(false);
     }
   };
@@ -277,91 +292,93 @@ export default function ProposalDetailPage() {
   return (
     <MainLayout>
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8" ref={proposalContentRef}>
-            {/* Header */}
-            <div className="pb-6 border-b border-border">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-4xl font-bold text-foreground">{proposal.title}</h1>
-                        <p className="text-lg text-muted-foreground mt-1">For {proposal.clientName || 'Unknown Client'}</p>
+        <div className="lg:col-span-2 space-y-8">
+            <div ref={proposalContentRef} className="space-y-8 bg-background p-8 rounded-lg">
+                {/* Header */}
+                <div className="pb-6 border-b border-border">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h1 className="text-4xl font-bold text-foreground">{proposal.title}</h1>
+                            <p className="text-lg text-muted-foreground mt-1">For {proposal.clientName || 'Unknown Client'}</p>
+                        </div>
+                        <div className={getStatusBadgeClasses(proposal.status)}>
+                            {proposal.status.replace('_', ' ')}
+                        </div>
                     </div>
-                    <div className={getStatusBadgeClasses(proposal.status)}>
-                        {proposal.status.replace('_', ' ')}
+                    <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
+                        <span>Version {proposal.version}</span>
+                        <Separator orientation="vertical" className="h-4 bg-border" />
+                        <span>Last updated on <ClientDate dateString={proposal.lastModified} /></span>
+                        <Separator orientation="vertical" className="h-4 bg-border" />
+                        <span className="font-bold text-lg text-foreground">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}</span>
                     </div>
                 </div>
-                 <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
-                    <span>Version {proposal.version}</span>
-                    <Separator orientation="vertical" className="h-4 bg-border" />
-                    <span>Last updated on <ClientDate dateString={proposal.lastModified} /></span>
-                    <Separator orientation="vertical" className="h-4 bg-border" />
-                    <span className="font-bold text-lg text-foreground">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}</span>
-                </div>
-            </div>
 
-            {isSalesAgent && pendingSuggestions.length > 0 && (
-              <Card className="border-impact/50">
+                {isSalesAgent && pendingSuggestions.length > 0 && (
+                <Card className="border-impact/50">
+                    <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-impact"><GitPullRequest /> Pending Suggestions</CardTitle>
+                    <CardDescription>The client has suggested the following edits. Accept or reject them below.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                    {pendingSuggestions.map(edit => (
+                        <div key={edit.id} className="border p-4 rounded-lg bg-muted/20">
+                        <p className="text-sm font-semibold">Section: "{edit.sectionTitle}"</p>
+                        <p className="text-xs text-muted-foreground mb-2">Suggested by {edit.authorName} - {formatDistanceToNow(edit.createdAt, { addSuffix: true })}</p>
+                        <div className="mt-2 p-2 bg-background rounded-md border border-dashed">
+                            <p className="text-sm whitespace-pre-wrap">{edit.suggestedContent}</p>
+                        </div>
+                        <div className="flex gap-2 mt-4 justify-end">
+                            <Button size="sm" variant="destructive" onClick={() => handleRejectSuggestion(edit)}><X className="h-4 w-4 mr-2" /> Reject</Button>
+                            <Button size="sm" variant="success" onClick={() => handleAcceptSuggestion(edit)}><Check className="h-4 w-4 mr-2" /> Accept</Button>
+                        </div>
+                        </div>
+                    ))}
+                    </CardContent>
+                </Card>
+                )}
+
+            {/* Proposal Content */}
+            <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-impact"><GitPullRequest /> Pending Suggestions</CardTitle>
-                  <CardDescription>The client has suggested the following edits. Accept or reject them below.</CardDescription>
+                <CardTitle className="text-2xl flex items-center gap-2"><FileText className="text-primary"/> Proposal Sections</CardTitle>
+                </CardHeader>
+                <CardContent className="prose dark:prose-invert max-w-none space-y-6">
+                    {proposal.sections.map((section, index) => (
+                        <div key={index} className="relative group">
+                        <h3 className="text-xl font-semibold border-b border-border pb-2 mb-2">{section.title}</h3>
+                        <p>{section.content}</p>
+                        {!isSalesAgent && (
+                            <Button size="sm" variant="outline" className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleSuggestEditClick(section, index)}>
+                                <PenSquare className="h-4 w-4 mr-2" /> Suggest Edit
+                            </Button>
+                        )}
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                <CardTitle className="text-2xl">Included Products</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {pendingSuggestions.map(edit => (
-                    <div key={edit.id} className="border p-4 rounded-lg bg-muted/20">
-                      <p className="text-sm font-semibold">Section: "{edit.sectionTitle}"</p>
-                      <p className="text-xs text-muted-foreground mb-2">Suggested by {edit.authorName} - {formatDistanceToNow(edit.createdAt, { addSuffix: true })}</p>
-                      <div className="mt-2 p-2 bg-background rounded-md border border-dashed">
-                        <p className="text-sm whitespace-pre-wrap">{edit.suggestedContent}</p>
-                      </div>
-                      <div className="flex gap-2 mt-4 justify-end">
-                        <Button size="sm" variant="destructive" onClick={() => handleRejectSuggestion(edit)}><X className="h-4 w-4 mr-2" /> Reject</Button>
-                        <Button size="sm" variant="success" onClick={() => handleAcceptSuggestion(edit)}><Check className="h-4 w-4 mr-2" /> Accept</Button>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
-          {/* Proposal Content */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2"><FileText className="text-primary"/> Proposal Sections</CardTitle>
-            </CardHeader>
-            <CardContent className="prose dark:prose-invert max-w-none space-y-6">
-                {proposal.sections.map((section, index) => (
-                    <div key={index} className="relative group">
-                      <h3 className="text-xl font-semibold border-b border-border pb-2 mb-2">{section.title}</h3>
-                      <p>{section.content}</p>
-                      {!isSalesAgent && (
-                         <Button size="sm" variant="outline" className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleSuggestEditClick(section, index)}>
-                            <PenSquare className="h-4 w-4 mr-2" /> Suggest Edit
-                         </Button>
-                      )}
+                {proposal.selectedProducts.map((product: Product) => (
+                    <div key={product.id} className="p-4 border border-border rounded-lg bg-black/10">
+                    <h3 className="font-semibold">{product.name}</h3>
+                    <p className="text-sm text-muted-foreground">{product.description}</p>
+                    <p className="text-right font-bold mt-2">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(product.basePrice)}</p>
                     </div>
                 ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl">Included Products</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {proposal.selectedProducts.map((product: Product) => (
-                <div key={product.id} className="p-4 border border-border rounded-lg bg-black/10">
-                  <h3 className="font-semibold">{product.name}</h3>
-                  <p className="text-sm text-muted-foreground">{product.description}</p>
-                  <p className="text-right font-bold mt-2">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(product.basePrice)}</p>
-                </div>
-              ))}
-            </CardContent>
-            <CardFooter className="bg-card-foreground/5 p-4 rounded-b-lg flex justify-end">
-                <div className="text-right">
-                    <p className="text-muted-foreground">Total Value</p>
-                    <p className="text-2xl font-bold text-primary">{new Intl.NumberFormat('en-US', { style: 'currency', 'currency': 'USD' }).format(proposal.totalPrice)}</p>
-                </div>
-            </CardFooter>
-          </Card>
+                </CardContent>
+                <CardFooter className="bg-card-foreground/5 p-4 rounded-b-lg flex justify-end">
+                    <div className="text-right">
+                        <p className="text-muted-foreground">Total Value</p>
+                        <p className="text-2xl font-bold text-primary">{new Intl.NumberFormat('en-US', { style: 'currency', 'currency': 'USD' }).format(proposal.totalPrice)}</p>
+                    </div>
+                </CardFooter>
+            </Card>
+           </div>
         </div>
 
         {/* Sidebar */}
