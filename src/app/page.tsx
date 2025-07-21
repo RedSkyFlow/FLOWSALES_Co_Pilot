@@ -39,18 +39,18 @@ function StatusBadge({ status }: { status: ProposalStatus }) {
     case 'accepted':
     case 'signed':
     case 'paid':
-      statusClasses = 'bg-success text-success-foreground';
+      statusClasses = 'bg-success/20 text-success';
       break;
     case 'sent':
     case 'viewed':
-      statusClasses = 'bg-secondary text-secondary-foreground';
+      statusClasses = 'bg-secondary/20 text-secondary';
       break;
     case 'changes_requested':
-      statusClasses = 'bg-impact text-impact-foreground';
+      statusClasses = 'bg-impact/20 text-impact';
       break;
     case 'draft':
     default:
-      statusClasses = 'bg-border text-muted-foreground';
+      statusClasses = 'bg-muted text-muted-foreground';
       break;
   }
   return (
@@ -179,7 +179,7 @@ export default function Dashboard() {
           </div>
           <Button
             asChild
-            className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
+            className="font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-primary/90 hover:shadow-glow-primary hover:-translate-y-0.5"
           >
             <Link href="/proposals/new" className="flex items-center">
               <Plus className="mr-2 h-5 w-5" />
@@ -193,14 +193,14 @@ export default function Dashboard() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               placeholder="Search proposals..."
-              className="bg-input border-border pl-10 w-full"
+              className="pl-10 w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="secondary" className="w-full sm:w-auto sm:min-w-[150px]">
+                <Button variant="outline" className="w-full sm:w-auto sm:min-w-[150px]">
                     <ListFilter className="mr-2 h-4 w-4" />
                     Filter: {filter}
                 </Button>

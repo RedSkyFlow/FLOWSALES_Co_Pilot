@@ -87,7 +87,8 @@ export default function ProposalDetailPage({
 }: {
   params: { id: string };
 }) {
-  const { id: proposalId } = use(params);
+  const unwrappedParams = use(params);
+  const proposalId = unwrappedParams.id;
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [user, loadingAuth] = useAuthState(auth);
   const { toast } = useToast();
@@ -340,7 +341,7 @@ export default function ProposalDetailPage({
                 <Download className="mr-2 h-4 w-4" /> Download as PDF
               </Button>
               <Separator className="my-2 bg-border" />
-               <Button variant="accent" className="w-full" disabled={isSalesAgent}>
+               <Button variant="default" className="w-full" disabled={isSalesAgent}>
                 <DollarSign className="mr-2 h-4 w-4" /> Pay Deposit or Full Amount
               </Button>
             </CardContent>
