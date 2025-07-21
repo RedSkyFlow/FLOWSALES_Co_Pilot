@@ -1,6 +1,6 @@
 
 'use client';
-import { MainLayout } from "@/components/main-layout";
+import { MainLayout, useAppData } from "@/components/main-layout";
 import {
   Card,
   CardContent,
@@ -48,7 +48,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ClientDate } from "@/components/client-date";
 import type { Proposal, ProposalStatus, Comment, SuggestedEdit, ProposalSection, Product } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc } from "firebase/firestore";
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -82,13 +82,9 @@ function getInitials(name: string) {
     return (names[0][0] + names[names.length - 1][0]).toUpperCase();
 }
 
-export default function ProposalDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const unwrappedParams = use(params);
-  const proposalId = unwrappedParams.id;
+export default function ProposalDetailPage() {
+  const params = useParams();
+  const proposalId = params.id as string;
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [user, loadingAuth] = useAuthState(auth);
   const { toast } = useToast();

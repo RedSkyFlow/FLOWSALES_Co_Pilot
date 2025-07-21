@@ -15,9 +15,29 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthState, useSignOut } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
-import { useEffect } from 'react';
+import { auth, db } from '@/lib/firebase';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { Button } from './ui/button';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import type { Client, Product, ProductRule, ProposalTemplate } from '@/lib/types';
+
+interface AppDataContextType {
+  templates: ProposalTemplate[];
+  clients: Client[];
+  products: Product[];
+  rules: ProductRule[];
+  loading: boolean;
+}
+
+const AppDataContext = createContext<AppDataContextType>({
+  templates: [],
+  clients: [],
+  products: [],
+  rules: [],
+  loading: true,
+});
+
+export const useAppData = () => useContext(AppDataContext);
 
 function FlowSalesLogo() {
   return (
@@ -76,6 +96,57 @@ function NavItem({ href, icon: Icon, label }: typeof navItems[0]) {
     );
 }
 
+function AppDataProvider({ children }: { children: React.ReactNode }) {
+    const [user, loadingAuth] = useAuthState(auth);
+    const [appData, setAppData] = useState<Omit<AppDataContextType, 'loading'>>({
+        templates: [],
+        clients: [],
+        products: [],
+        rules: [],
+    });
+    const [loadingData, setLoadingData] = useState(true);
+
+    useEffect(() => {
+        if (!user) {
+            if (!loadingAuth) setLoadingData(false);
+            return;
+        }
+
+        setLoadingData(true);
+        const tenantId = 'tenant-001'; // This should be dynamic based on the user's tenant
+
+        const unsubscribers = [
+            onSnapshot(query(collection(db, 'tenants', tenantId, 'proposal_templates')), snapshot => {
+                setAppData(prev => ({ ...prev, templates: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProposalTemplate)) }));
+            }),
+            onSnapshot(query(collection(db, 'tenants', tenantId, 'clients')), snapshot => {
+                setAppData(prev => ({ ...prev, clients: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)) }));
+            }),
+            onSnapshot(query(collection(db, 'tenants', tenantId, 'products')), snapshot => {
+                setAppData(prev => ({ ...prev, products: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)) }));
+            }),
+            onSnapshot(query(collection(db, 'tenants', tenantId, 'product_rules')), snapshot => {
+                setAppData(prev => ({ ...prev, rules: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductRule)) }));
+            }),
+        ];
+
+        // A simple way to 'know' when initial data has loaded.
+        // A more robust solution might use Promise.all with getDocs for the first load.
+        const timer = setTimeout(() => setLoadingData(false), 2000); // Give 2s for data to load
+
+        return () => {
+            unsubscribers.forEach(unsub => unsub());
+            clearTimeout(timer);
+        };
+    }, [user, loadingAuth]);
+
+    return (
+        <AppDataContext.Provider value={{ ...appData, loading: loadingData }}>
+            {children}
+        </AppDataContext.Provider>
+    );
+}
+
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const [user, loading] = useAuthState(auth);
   const [signOut] = useSignOut(auth);
@@ -100,27 +171,29 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
-      <aside className="fixed top-0 left-0 h-full w-64 bg-card border-r border-border flex flex-col">
-        <FlowSalesLogo />
-        <nav className="flex-grow p-4 space-y-2">
-          {navItems.map((item) => (
-            <NavItem key={item.href} {...item} />
-          ))}
-        </nav>
-        <div className="p-4 border-t border-border space-y-2">
-            {secondaryNavItems.map((item) => (
+    <AppDataProvider>
+        <div className="flex min-h-screen bg-background text-foreground">
+        <aside className="fixed top-0 left-0 h-full w-64 bg-card border-r border-border flex flex-col">
+            <FlowSalesLogo />
+            <nav className="flex-grow p-4 space-y-2">
+            {navItems.map((item) => (
                 <NavItem key={item.href} {...item} />
             ))}
-            <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={async () => await signOut()}>
-                <LogOut className="h-5 w-5 mr-3"/>
-                <span>Log Out</span>
-            </Button>
+            </nav>
+            <div className="p-4 border-t border-border space-y-2">
+                {secondaryNavItems.map((item) => (
+                    <NavItem key={item.href} {...item} />
+                ))}
+                <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={async () => await signOut()}>
+                    <LogOut className="h-5 w-5 mr-3"/>
+                    <span>Log Out</span>
+                </Button>
+            </div>
+        </aside>
+        <main className="ml-64 flex-1">
+            <div className="p-8">{children}</div>
+        </main>
         </div>
-      </aside>
-      <main className="ml-64 flex-1">
-        <div className="p-8">{children}</div>
-      </main>
-    </div>
+    </AppDataProvider>
   );
 }

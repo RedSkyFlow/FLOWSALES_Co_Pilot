@@ -41,9 +41,9 @@ import { analyzeMeetingTranscript } from "@/ai/flows/analyze-meeting-transcript"
 import { createProposal } from "@/app/proposals/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { Skeleton } from "./ui/skeleton";
-import { collection, query, onSnapshot } from "firebase/firestore";
+import { useAppData } from "./main-layout";
 
 const steps = [
   { name: "Select Template", icon: <FileText /> },
@@ -62,16 +62,9 @@ export function ProposalWizard() {
   const router = useRouter();
   const { toast } = useToast();
   const [user, loadingAuth] = useAuthState(auth);
+  const { templates, clients, products, rules, loading: loadingData } = useAppData();
+  
   const [currentStep, setCurrentStep] = useState(0);
-  
-  // Data States
-  const [templates, setTemplates] = useState<ProposalTemplate[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [rules, setRules] = useState<ProductRule[]>([]);
-  
-  // Unified Loading State
-  const [loadingData, setLoadingData] = useState(true);
 
   // Wizard Input States
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -84,37 +77,6 @@ export function ProposalWizard() {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [extraSections, setExtraSections] = useState<ProposalSection[]>([]);
-
-  // Fetch all data
-  useEffect(() => {
-    if (!user) {
-        if (!loadingAuth) setLoadingData(false);
-        return;
-    }
-    const tenantId = 'tenant-001';
-
-    const collections = {
-        templates: collection(db, 'tenants', tenantId, 'proposal_templates'),
-        clients: collection(db, 'tenants', tenantId, 'clients'),
-        products: collection(db, 'tenants', tenantId, 'products'),
-        rules: collection(db, 'tenants', tenantId, 'product_rules'),
-    };
-
-    const unsubscribers = [
-      onSnapshot(query(collections.templates), snapshot => setTemplates(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProposalTemplate)))),
-      onSnapshot(query(collections.clients), snapshot => setClients(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client)))),
-      onSnapshot(query(collections.products), snapshot => setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)))),
-      onSnapshot(query(collections.rules), snapshot => setRules(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductRule)))),
-    ];
-    
-    // Once all listeners are attached, we can consider initial loading done.
-    setLoadingData(false);
-
-    // Cleanup function
-    return () => unsubscribers.forEach(unsub => unsub());
-
-  }, [user, loadingAuth]);
-
 
   const productMap = useMemo(() => {
     return products.reduce((map, product) => {
@@ -371,10 +333,10 @@ export function ProposalWizard() {
                         )}
                     >
                         <CardHeader className="flex flex-col items-center text-center gap-4">
-                        <IconComponent />
-                        <CardTitle className="font-sans text-base">
-                            <span>{template.name}</span>
-                        </CardTitle>
+                            <IconComponent />
+                            <CardTitle>
+                                <span>{template.name}</span>
+                            </CardTitle>
                         </CardHeader>
                         <CardContent>
                         <p className="text-sm text-muted-foreground text-center">
