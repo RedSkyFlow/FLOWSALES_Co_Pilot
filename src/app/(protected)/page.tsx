@@ -84,7 +84,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
                 </div>
             </CardContent>
             <CardFooter className="flex justify-between items-center bg-black/20 py-3 px-6 rounded-b-lg">
-                <span className="text-2xl font-bold text-accent">
+                <span className="text-xl font-bold text-accent">
                     {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}
                 </span>
                 <Button variant="link" asChild>
