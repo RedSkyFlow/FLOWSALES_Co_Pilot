@@ -169,4 +169,14 @@ export async function rejectSuggestedEdit(tenantId: string, suggestion: Suggeste
     revalidatePath(`/proposals/${suggestion.proposalId}`);
 }
 
-    
+export async function acceptProposal(tenantId: string, proposalId: string) {
+    if (!tenantId || !proposalId) {
+        throw new Error('Tenant ID and Proposal ID are required.');
+    }
+    const proposalRef = doc(db, 'tenants', tenantId, 'proposals', proposalId);
+    await updateDoc(proposalRef, {
+        status: 'accepted',
+        lastModified: new Date().toISOString(),
+    });
+    revalidatePath(`/proposals/${proposalId}`);
+}
