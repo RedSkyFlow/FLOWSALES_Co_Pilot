@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, PlusCircle, Trash2, GripVertical, Users, Package, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { createTemplate } from '../actions';
+import { createTemplate } from '@/app/templates/actions';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
 
