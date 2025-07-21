@@ -227,37 +227,53 @@ export default function ProposalDetailPage() {
     if (!elementToCapture || !proposal) return;
 
     setIsDownloading(true);
-    // Add a class to switch to light mode for PDF generation
+    toast({ title: "Preparing PDF...", description: "Please wait while we generate your document." });
+
     elementToCapture.classList.add('pdf-export-light');
 
     try {
-        const canvas = await html2canvas(elementToCapture, {
-            scale: 2,
-            // Use the new light theme background color
-            backgroundColor: '#ffffff',
-            // Allow time for styles to apply, though html2canvas should wait
-            onclone: (document) => {
-                // You can perform additional DOM manipulations on the cloned document if needed
-            }
-        });
+      const canvas = await html2canvas(elementToCapture, {
+        scale: 2,
+        backgroundColor: null, 
+        useCORS: true,
+        height: elementToCapture.scrollHeight,
+        windowHeight: elementToCapture.scrollHeight,
+      });
 
-        // Use JPEG for better compression
-        const imgData = canvas.toDataURL('image/jpeg', 0.9);
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-        pdf.save(`${proposal.title}.pdf`);
-        toast({ title: "Download Started", description: "Your PDF is being generated." });
+      const imgData = canvas.toDataURL('image/jpeg', 0.9);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      const canvasAspectRatio = canvasWidth / canvasHeight;
+      const pageAspectRatio = pdfWidth / pdfHeight;
+
+      let imgHeightOnPage = pdfWidth / canvasAspectRatio;
+      let heightLeft = canvasHeight;
+      let position = 0;
+
+      const imgHeightInPixels = canvasWidth / pageAspectRatio;
+
+      while (heightLeft > 0) {
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeightOnPage, '', 'FAST');
+        heightLeft -= imgHeightInPixels;
+        position -= pdfHeight;
+        if (heightLeft > 0) {
+          pdf.addPage();
+        }
+      }
+
+      pdf.save(`${proposal.title}.pdf`);
+      toast({ title: "Download Started", description: "Your PDF is being generated." });
 
     } catch (error) {
-        console.error("Error generating PDF:", error);
-        toast({ title: "Error", description: "Could not generate PDF.", variant: "destructive" });
+      console.error("Error generating PDF:", error);
+      toast({ title: "Error", description: "Could not generate PDF.", variant: "destructive" });
     } finally {
-        // IMPORTANT: Remove the class to revert to dark mode on screen
-        elementToCapture.classList.remove('pdf-export-light');
-        setIsDownloading(false);
+      elementToCapture.classList.remove('pdf-export-light');
+      setIsDownloading(false);
     }
   };
 
