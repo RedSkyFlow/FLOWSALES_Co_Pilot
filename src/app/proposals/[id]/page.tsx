@@ -100,21 +100,22 @@ export default function ProposalDetailPage({
   const [currentSection, setCurrentSection] = useState<{ section: ProposalSection; index: number } | null>(null);
   const [suggestionText, setSuggestionText] = useState("");
   const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
+  const { id: proposalId } = params;
   
   useEffect(() => {
     // Hardcoded tenantId for now
     const tenantId = 'tenant-001'; 
-    if (params.id && user) {
-      trackProposalView(tenantId, params.id);
+    if (proposalId && user) {
+      trackProposalView(tenantId, proposalId);
     }
-  }, [params.id, user]);
+  }, [proposalId, user]);
 
   useEffect(() => {
-    if (!params.id) return;
+    if (!proposalId) return;
 
     // Hardcoded tenantId for now
     const tenantId = 'tenant-001';
-    const docRef = doc(db, 'tenants', tenantId, 'proposals', params.id);
+    const docRef = doc(db, 'tenants', tenantId, 'proposals', proposalId);
     const unsubscribeProposal = onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
             setProposal({ id: docSnap.id, ...docSnap.data() } as Proposal);
@@ -124,7 +125,7 @@ export default function ProposalDetailPage({
         setIsLoading(false);
     });
     
-    const proposalSubCollectionPath = `tenants/${tenantId}/proposals/${params.id}`;
+    const proposalSubCollectionPath = `tenants/${tenantId}/proposals/${proposalId}`;
 
     const commentsQuery = query(collection(db, proposalSubCollectionPath, "comments"), orderBy("createdAt", "asc"));
     const unsubscribeComments = onSnapshot(commentsQuery, (querySnapshot) => {
@@ -143,7 +144,7 @@ export default function ProposalDetailPage({
         unsubscribeComments();
         unsubscribeEdits();
     };
-  }, [params.id]);
+  }, [proposalId]);
 
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
@@ -152,7 +153,7 @@ export default function ProposalDetailPage({
       try {
         // Hardcoded tenantId for now
         const tenantId = 'tenant-001';
-        const commentsCollectionPath = `tenants/${tenantId}/proposals/${params.id}/comments`;
+        const commentsCollectionPath = `tenants/${tenantId}/proposals/${proposalId}/comments`;
         await addDoc(collection(db, commentsCollectionPath), {
           text: newComment,
           authorId: user.uid,
@@ -181,7 +182,7 @@ export default function ProposalDetailPage({
         const tenantId = 'tenant-001';
         await createSuggestedEdit({
             tenantId,
-            proposalId: params.id,
+            proposalId: proposalId,
             sectionIndex: currentSection.index,
             suggestedContent: suggestionText,
             authorId: user.uid,
