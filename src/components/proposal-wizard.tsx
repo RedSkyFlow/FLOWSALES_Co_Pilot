@@ -34,7 +34,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { mockTenantProducts } from "@/lib/mock-data";
 import type { Product, ProposalSection, Client, ProposalTemplate } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { generateExecutiveSummary } from "@/ai/flows/generate-executive-summary";
@@ -70,6 +69,8 @@ export function ProposalWizard() {
   const [loadingClients, setLoadingClients] = useState(true);
   const [templates, setTemplates] = useState<ProposalTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
   const [painPoints, setPainPoints] = useState("");
   const [meetingTranscript, setMeetingTranscript] = useState("");
   const [executiveSummary, setExecutiveSummary] = useState("");
@@ -85,12 +86,14 @@ export function ProposalWizard() {
       if (!loadingAuth) {
           setLoadingClients(false);
           setLoadingTemplates(false);
+          setLoadingProducts(false);
       }
       return;
     }
 
     setLoadingClients(true);
     setLoadingTemplates(true);
+    setLoadingProducts(true);
     // NOTE: This uses a hardcoded tenant ID for now.
     const tenantId = 'tenant-001';
     
@@ -115,11 +118,23 @@ export function ProposalWizard() {
         console.error("Error fetching templates: ", error);
         setLoadingTemplates(false);
     });
+    
+    const productsCollectionRef = collection(db, 'tenants', tenantId, 'products');
+    const productsQuery = query(productsCollectionRef);
+    const unsubscribeProducts = onSnapshot(productsQuery, (querySnapshot) => {
+        const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+        setProducts(productsData);
+        setLoadingProducts(false);
+    }, (error) => {
+        console.error("Error fetching products: ", error);
+        setLoadingProducts(false);
+    });
 
 
     return () => {
         unsubscribeClients();
         unsubscribeTemplates();
+        unsubscribeProducts();
     };
   }, [user, loadingAuth]);
 
@@ -165,7 +180,7 @@ export function ProposalWizard() {
       try {
           const result = await analyzeMeetingTranscript({
               transcript: [{ speaker: "Combined", text: meetingTranscript }],
-              availableModules: mockTenantProducts.map(p => p.name)
+              availableModules: products.map(p => p.name)
           });
           
           setPainPoints(result.clientPainPoints.join('\n'));
@@ -174,7 +189,7 @@ export function ProposalWizard() {
               { title: "Proposed Solution", content: result.solutionProposalDraft, type: "ai_generated" }
           ]);
           
-          const suggestedProducts = mockTenantProducts.filter(p => result.suggestedModules.includes(p.name));
+          const suggestedProducts = products.filter(p => result.suggestedModules.includes(p.name));
           setSelectedProducts(suggestedProducts);
 
           toast({ title: "Analysis Complete", description: "Pain points, products, and draft sections have been populated." });
@@ -418,22 +433,36 @@ export function ProposalWizard() {
             <h2 className="text-2xl font-headline font-semibold">Select Modules</h2>
             <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                    {mockTenantProducts.map((module) => (
-                        <div key={module.id} className="flex items-start space-x-3 rounded-lg border p-4">
-                        <Checkbox
-                            id={module.id}
-                            checked={selectedProducts.some((m) => m.id === module.id)}
-                            onCheckedChange={(checked) => handleModuleToggle(module, !!checked)}
-                        />
-                        <div className="grid gap-1.5 leading-none">
-                            <label htmlFor={module.id} className="font-medium cursor-pointer">
-                            {module.name}
-                            </label>
-                            <p className="text-sm text-muted-foreground">{module.description}</p>
-                        </div>
-                         <p className="ml-auto font-semibold">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.basePrice)}</p>
-                        </div>
-                    ))}
+                    {loadingProducts ? (
+                       Array.from({ length: 4 }).map((_, i) => (
+                           <div key={i} className="flex items-start space-x-3 rounded-lg border p-4">
+                               <Skeleton className="h-4 w-4 mt-1" />
+                               <div className="flex-grow space-y-2">
+                                   <Skeleton className="h-4 w-1/2" />
+                                   <Skeleton className="h-3 w-full" />
+                               </div>
+                               <Skeleton className="h-5 w-16" />
+                           </div>
+                       ))
+                    ) : (
+                        products.map((module) => (
+                            <div key={module.id} className="flex items-start space-x-3 rounded-lg border p-4">
+                            <Checkbox
+                                id={module.id}
+                                checked={selectedProducts.some((m) => m.id === module.id)}
+                                onCheckedChange={(checked) => handleModuleToggle(module, !!checked)}
+                            />
+                            <div className="grid gap-1.5 leading-none">
+                                <label htmlFor={module.id} className="font-medium cursor-pointer">
+                                {module.name}
+                                </label>
+                                <p className="text-sm text-muted-foreground">{module.description}</p>
+                            </div>
+                            <p className="ml-auto font-semibold">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.basePrice)}</p>
+                            </div>
+                        ))
+                    )}
+                    {!loadingProducts && products.length === 0 && <p className="text-muted-foreground">No products found. An admin needs to add products in Settings.</p>}
                 </div>
                 <div className="p-4 rounded-lg bg-muted/50 h-fit sticky top-4">
                     <h3 className="font-headline text-lg font-semibold">Dynamic Pricing</h3>
@@ -499,5 +528,3 @@ export function ProposalWizard() {
     </Card>
   );
 }
-
-    
