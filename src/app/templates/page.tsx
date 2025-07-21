@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, onSnapshot, doc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { MainLayout } from "@/components/main-layout";
+import { MainLayout, useAppData } from "@/components/main-layout";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,7 +21,7 @@ import type { ProposalTemplate, User } from "@/lib/types";
 import Link from 'next/link';
 
 // A map to dynamically render icons based on the string from mock data
-const iconMap: Record<ProposalTemplate['icon'], React.ForwardRefExoticComponent<Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>> = {
+const iconMap: Record<string, React.ForwardRefExoticComponent<Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>> = {
     Users: Users,
     Package: Package,
     FileText: FileText,
@@ -30,41 +30,22 @@ const iconMap: Record<ProposalTemplate['icon'], React.ForwardRefExoticComponent<
 export default function TemplatesPage() {
     const router = useRouter();
     const [user, loadingAuth] = useAuthState(auth);
+    const { templates, loading } = useAppData();
     const [userData, setUserData] = useState<User | null>(null);
-    const [templates, setTemplates] = useState<ProposalTemplate[]>([]);
-    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (loadingAuth || !user) {
-            if (!loadingAuth) setLoading(false);
-            return;
+     useEffect(() => {
+        if (!loadingAuth && user) {
+             // In a real app, user data (especially role) would come from a secure source
+             // like a custom claim or a user document in Firestore.
+             // For now, we mock it based on the logged-in user.
+            setUserData({
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                role: 'admin', // MOCK: Assume anyone logged in is an admin for this view
+                tenantId: 'tenant-001' // MOCK: Using hardcoded tenant
+            });
         }
-
-        const userDocRef = doc(db, 'users', user.uid);
-        const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const fetchedUserData = docSnap.data() as User;
-                setUserData(fetchedUserData);
-                
-                // Once we have tenantId, fetch templates
-                const templatesCollectionRef = collection(db, 'tenants', fetchedUserData.tenantId, 'proposal_templates');
-                const q = query(templatesCollectionRef);
-                const unsubscribeTemplates = onSnapshot(q, (querySnapshot) => {
-                    const templatesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProposalTemplate));
-                    setTemplates(templatesData);
-                    setLoading(false);
-                }, (error) => {
-                    console.error("Error fetching templates: ", error);
-                    setLoading(false);
-                });
-                return () => unsubscribeTemplates();
-            } else {
-                // Handle case where user doc might not exist yet
-                setLoading(false);
-            }
-        });
-
-        return () => unsubscribeUser();
     }, [user, loadingAuth]);
 
   return (
@@ -97,14 +78,14 @@ export default function TemplatesPage() {
         ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {templates.map((template) => {
-                    const Icon = iconMap[template.icon];
+                    const Icon = iconMap[template.icon] || FileText;
                     return (
                         <Card key={template.id} className="flex flex-col group">
                             <CardHeader>
                                 <div className="flex items-start justify-between">
                                     <CardTitle className="flex items-center gap-3 text-lg">
                                         <div className="p-3 rounded-md bg-primary/10 border border-primary/20 text-primary">
-                                            {Icon ? <Icon className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
+                                            <Icon className="h-6 w-6" />
                                         </div>
                                         {template.name}
                                     </CardTitle>
@@ -123,7 +104,7 @@ export default function TemplatesPage() {
                 })}
                  {templates.length === 0 && (
                     <div className="text-center py-16 text-muted-foreground col-span-full">
-                        <p>No proposal templates found.</p>
+                        <p className="mb-2">No proposal templates found.</p>
                         {userData?.role === 'admin' && <p>Click "Create New Template" to get started.</p>}
                     </div>
                  )}
@@ -134,3 +115,5 @@ export default function TemplatesPage() {
     </MainLayout>
   );
 }
+
+    

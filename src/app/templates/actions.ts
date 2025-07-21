@@ -28,8 +28,11 @@ export async function createTemplate(data: CreateTemplateInput) {
             sections: data.sections,
         });
         revalidatePath('/templates');
+        revalidatePath('/proposals/new'); // Revalidate wizard to pick up new template
     } catch (error) {
         console.error("Error creating template: ", error);
         throw new Error('Could not create the template. Please try again.');
     }
 }
+
+    

@@ -18,7 +18,6 @@ import { useToast } from '@/hooks/use-toast';
 import { createTemplate } from '../actions';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
-import type { ProposalSection } from '@/lib/types';
 
 const sectionSchema = z.object({
     title: z.string().min(1, 'Section title is required'),
@@ -95,11 +94,8 @@ export default function NewTemplatePage() {
   };
 
   if(loadingAuth) {
-    return <MainLayout><Loader2 className="h-8 w-8 animate-spin" /></MainLayout>
+    return <MainLayout><div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div></MainLayout>
   }
-
-  // A real app would also check the user's role from a database
-  // For now, we assume anyone logged in can create if they find the page
   
   return (
     <MainLayout>
@@ -215,3 +211,5 @@ export default function NewTemplatePage() {
     </MainLayout>
   );
 }
+
+    
