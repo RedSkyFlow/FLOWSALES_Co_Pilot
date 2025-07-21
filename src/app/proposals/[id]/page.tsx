@@ -83,7 +83,7 @@ function getInitials(name: string) {
 }
 
 export default function ProposalDetailPage({
-  params,
+  params: { id: proposalId },
 }: {
   params: { id: string };
 }) {
@@ -100,7 +100,6 @@ export default function ProposalDetailPage({
   const [currentSection, setCurrentSection] = useState<{ section: ProposalSection; index: number } | null>(null);
   const [suggestionText, setSuggestionText] = useState("");
   const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
-  const { id: proposalId } = params;
   
   useEffect(() => {
     // Hardcoded tenantId for now
