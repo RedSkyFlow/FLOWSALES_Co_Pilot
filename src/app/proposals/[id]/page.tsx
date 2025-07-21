@@ -103,15 +103,17 @@ export default function ProposalDetailPage({
   const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
   
   useEffect(() => {
+    // Hardcoded tenantId for now
+    const tenantId = 'tenant-001'; 
     if (params.id && user) {
-      trackProposalView(params.id);
+      trackProposalView(tenantId, params.id);
     }
   }, [params.id, user]);
 
   useEffect(() => {
     if (!params.id) return;
 
-    // TODO: tenantId will come from user auth state
+    // Hardcoded tenantId for now
     const tenantId = 'tenant-001';
     const docRef = doc(db, 'tenants', tenantId, 'proposals', params.id);
     const unsubscribeProposal = onSnapshot(docRef, (docSnap) => {
@@ -122,14 +124,18 @@ export default function ProposalDetailPage({
         }
         setIsLoading(false);
     });
+    
+    // NOTE: Subcollections for comments and edits are still on the root proposal for now.
+    // This will be refactored later if needed.
+    const proposalSubCollectionPath = `tenants/${tenantId}/proposals/${params.id}`;
 
-    const commentsQuery = query(collection(db, "proposals", params.id, "comments"), orderBy("createdAt", "asc"));
+    const commentsQuery = query(collection(db, proposalSubCollectionPath, "comments"), orderBy("createdAt", "asc"));
     const unsubscribeComments = onSnapshot(commentsQuery, (querySnapshot) => {
       const commentsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() })) as Comment[];
       setComments(commentsData);
     });
 
-    const editsQuery = query(collection(db, "proposals", params.id, "suggested_edits"), orderBy("createdAt", "desc"));
+    const editsQuery = query(collection(db, proposalSubCollectionPath, "suggested_edits"), orderBy("createdAt", "desc"));
     const unsubscribeEdits = onSnapshot(editsQuery, (querySnapshot) => {
       const editsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() })) as SuggestedEdit[];
       setSuggestedEdits(editsData);
@@ -147,7 +153,10 @@ export default function ProposalDetailPage({
       e.preventDefault();
       if (!newComment.trim() || !user) return;
       try {
-        await addDoc(collection(db, "proposals", params.id, "comments"), {
+        // Hardcoded tenantId for now
+        const tenantId = 'tenant-001';
+        const commentsCollectionPath = `tenants/${tenantId}/proposals/${params.id}/comments`;
+        await addDoc(collection(db, commentsCollectionPath), {
           text: newComment,
           authorId: user.uid,
           authorName: user.displayName || "Anonymous",
@@ -171,7 +180,10 @@ export default function ProposalDetailPage({
     if (!suggestionText.trim() || !user || !currentSection) return;
     setIsSubmittingSuggestion(true);
     try {
+        // Hardcoded tenantId for now
+        const tenantId = 'tenant-001';
         await createSuggestedEdit({
+            tenantId,
             proposalId: params.id,
             sectionIndex: currentSection.index,
             suggestedContent: suggestionText,
@@ -190,7 +202,9 @@ export default function ProposalDetailPage({
   
   const handleAcceptSuggestion = async (suggestion: SuggestedEdit) => {
       try {
-          await acceptSuggestedEdit(suggestion);
+          // Hardcoded tenantId for now
+          const tenantId = 'tenant-001';
+          await acceptSuggestedEdit(tenantId, suggestion);
           toast({ title: "Suggestion Accepted", description: "The proposal has been updated." });
       } catch (error) {
           console.error("Error accepting suggestion:", error);
@@ -200,7 +214,9 @@ export default function ProposalDetailPage({
 
   const handleRejectSuggestion = async (suggestion: SuggestedEdit) => {
       try {
-          await rejectSuggestedEdit(suggestion);
+          // Hardcoded tenantId for now
+          const tenantId = 'tenant-001';
+          await rejectSuggestedEdit(tenantId, suggestion);
           toast({ title: "Suggestion Rejected", description: "The suggestion has been archived." });
       } catch (error) {
           console.error("Error rejecting suggestion:", error);

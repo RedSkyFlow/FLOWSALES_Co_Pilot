@@ -1,3 +1,4 @@
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -7,46 +8,40 @@ import { mockClients } from '@/lib/mock-data';
 import { revalidatePath } from 'next/cache';
 
 /**
- * Tracks a view for a given proposal.
+ * Tracks a view for a given proposal within a tenant.
  * Increments the view count and updates the last viewed timestamp.
+ * @param tenantId The ID of the tenant.
  * @param proposalId The ID of the proposal to track.
  */
-export async function trackProposalView(proposalId: string) {
-  if (!proposalId) {
-    console.error('Proposal ID is required for tracking.');
+export async function trackProposalView(tenantId: string, proposalId: string) {
+  if (!tenantId || !proposalId) {
+    console.error('Tenant ID and Proposal ID are required for tracking.');
     return;
   }
   
   try {
-    // Note: This will need to be updated to be tenant-aware once proposal loading is refactored.
-    const proposalRef = doc(db, 'proposals', proposalId);
+    const proposalRef = doc(db, 'tenants', tenantId, 'proposals', proposalId);
     
     await updateDoc(proposalRef, {
       'engagementData.views': increment(1),
-      'engagementData.lastViewed': new Date().toISOString(), // Using ISO string to match type
+      'engagementData.lastViewed': new Date().toISOString(),
     });
 
   } catch (error) {
     console.error('Error tracking proposal view:', error);
-    // In a real app, you might want more robust error handling or logging.
   }
 }
 
 interface CreateProposalInput {
-    tenantId: string; // NEW: Required for multi-tenancy
+    tenantId: string;
     selectedTemplate: string | null;
     selectedClientId: string;
     executiveSummary: string;
-    selectedProducts: Product[]; // UPDATED from selectedModules
+    selectedProducts: Product[];
     totalValue: number;
     salesAgentId: string;
 }
 
-/**
- * Creates a new proposal document in a tenant's sub-collection in Firestore.
- * @param data The data for the new proposal from the wizard.
- * @returns The ID of the newly created proposal.
- */
 export async function createProposal(data: CreateProposalInput): Promise<string> {
     if (!data.tenantId) {
         throw new Error('Tenant ID is required to create a proposal.');
@@ -66,7 +61,7 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
         totalPrice: data.totalValue,
         createdAt: new Date().toISOString(),
         lastModified: new Date().toISOString(),
-        selectedProducts: data.selectedProducts, // UPDATED from selectedModules
+        selectedProducts: data.selectedProducts,
         sections: [
             {
                 title: 'Executive Summary',
@@ -91,7 +86,6 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
         },
     };
     
-    // Create the proposal in the correct tenant's sub-collection
     const proposalsCollectionRef = collection(db, 'tenants', data.tenantId, 'proposals');
     const docRef = await addDoc(proposalsCollectionRef, newProposal);
     return docRef.id;
@@ -101,6 +95,7 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
 // --- Edit Suggestion Actions ---
 
 interface CreateSuggestedEditInput {
+    tenantId: string;
     proposalId: string;
     sectionIndex: number;
     suggestedContent: string;
@@ -109,8 +104,7 @@ interface CreateSuggestedEditInput {
 }
 
 export async function createSuggestedEdit(input: CreateSuggestedEditInput) {
-    // Note: This will need to be updated to be tenant-aware.
-    const proposalRef = doc(db, 'proposals', input.proposalId);
+    const proposalRef = doc(db, 'tenants', input.tenantId, 'proposals', input.proposalId);
     const proposalSnap = await getDoc(proposalRef);
 
     if (!proposalSnap.exists()) {
@@ -134,8 +128,9 @@ export async function createSuggestedEdit(input: CreateSuggestedEditInput) {
         authorId: input.authorId,
         authorName: input.authorName,
     };
-
-    await addDoc(collection(db, 'proposals', input.proposalId, 'suggested_edits'), {
+    
+    const editsCollectionPath = `tenants/${input.tenantId}/proposals/${input.proposalId}/suggested_edits`;
+    await addDoc(collection(db, editsCollectionPath), {
         ...suggestion,
         createdAt: serverTimestamp(),
     });
@@ -143,14 +138,12 @@ export async function createSuggestedEdit(input: CreateSuggestedEditInput) {
     revalidatePath(`/proposals/${input.proposalId}`);
 }
 
-export async function acceptSuggestedEdit(suggestion: SuggestedEdit) {
+export async function acceptSuggestedEdit(tenantId: string, suggestion: SuggestedEdit) {
     const batch = writeBatch(db);
 
-    // Note: This will need to be updated to be tenant-aware.
-    const proposalRef = doc(db, 'proposals', suggestion.proposalId);
-    const suggestionRef = doc(db, 'proposals', suggestion.proposalId, 'suggested_edits', suggestion.id);
+    const proposalRef = doc(db, 'tenants', tenantId, 'proposals', suggestion.proposalId);
+    const suggestionRef = doc(db, `tenants/${tenantId}/proposals/${suggestion.proposalId}/suggested_edits`, suggestion.id);
 
-    // Update the specific section in the proposal's sections array
     const proposalSnap = await getDoc(proposalRef);
     if (!proposalSnap.exists()) throw new Error("Proposal not found");
     const proposalData = proposalSnap.data() as Proposal;
@@ -164,16 +157,14 @@ export async function acceptSuggestedEdit(suggestion: SuggestedEdit) {
         version: increment(1)
     });
 
-    // Update the suggestion's status
     batch.update(suggestionRef, { status: 'accepted' });
 
     await batch.commit();
     revalidatePath(`/proposals/${suggestion.proposalId}`);
 }
 
-export async function rejectSuggestedEdit(suggestion: SuggestedEdit) {
-    // Note: This will need to be updated to be tenant-aware.
-    const suggestionRef = doc(db, 'proposals', suggestion.proposalId, 'suggested_edits', suggestion.id);
+export async function rejectSuggestedEdit(tenantId: string, suggestion: SuggestedEdit) {
+    const suggestionRef = doc(db, `tenants/${tenantId}/proposals/${suggestion.proposalId}/suggested_edits`, suggestion.id);
     await updateDoc(suggestionRef, { status: 'rejected' });
     revalidatePath(`/proposals/${suggestion.proposalId}`);
 }
