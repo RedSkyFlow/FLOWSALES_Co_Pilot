@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -20,7 +21,7 @@ const TranscriptLineSchema = z.object({
 });
 
 // Define the input schema for our main flow
-export const AnalyzeMeetingTranscriptInputSchema = z.object({
+const AnalyzeMeetingTranscriptInputSchema = z.object({
   transcript: z
     .array(TranscriptLineSchema)
     .describe('The full meeting transcript with speaker diarization.'),
@@ -33,7 +34,7 @@ export type AnalyzeMeetingTranscriptInput = z.infer<
 >;
 
 // Define the structured output we want from the AI
-export const DraftProposalSchema = z.object({
+const DraftProposalSchema = z.object({
   clientPainPoints: z
     .array(z.string())
     .describe('A list of specific pain points or challenges mentioned by the client.'),
