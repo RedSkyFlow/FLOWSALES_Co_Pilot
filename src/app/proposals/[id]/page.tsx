@@ -125,8 +125,6 @@ export default function ProposalDetailPage({
         setIsLoading(false);
     });
     
-    // NOTE: Subcollections for comments and edits are still on the root proposal for now.
-    // This will be refactored later if needed.
     const proposalSubCollectionPath = `tenants/${tenantId}/proposals/${params.id}`;
 
     const commentsQuery = query(collection(db, proposalSubCollectionPath, "comments"), orderBy("createdAt", "asc"));
