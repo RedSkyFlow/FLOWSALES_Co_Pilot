@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { mockTenantProducts } from "@/lib/mock-data";
-import type { Product, ProposalSection, Client } from "@/lib/types";
+import type { Product, ProposalSection, Client, ProposalTemplate } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { generateExecutiveSummary } from "@/ai/flows/generate-executive-summary";
 import { analyzeMeetingTranscript } from "@/ai/flows/analyze-meeting-transcript";
@@ -46,30 +46,18 @@ import { auth, db } from "@/lib/firebase";
 import { Skeleton } from "./ui/skeleton";
 import { collection, query, onSnapshot } from "firebase/firestore";
 
-const templates = [
-  {
-    name: "Stadium OS Proposal",
-    description: "For sports venues and large arenas.",
-    icon: <Users className="h-8 w-8 text-primary" />,
-  },
-  {
-    name: "Shopping Mall Pilot Proposal",
-    description: "For retail centers and commercial properties.",
-    icon: <Package className="h-8 w-8 text-primary" />,
-  },
-  {
-    name: "Telco Proposal",
-    description: "For telecommunication infrastructure projects.",
-    icon: <FileText className="h-8 w-8 text-primary" />,
-  },
-];
-
 const steps = [
   { name: "Select Template", icon: <FileText /> },
   { name: "Client & AI Content", icon: <Lightbulb /> },
   { name: "Select Modules", icon: <Package /> },
   { name: "Review & Finalize", icon: <ClipboardCheck /> },
 ];
+
+const iconMap = {
+    Users: <Users className="h-8 w-8 text-primary" />,
+    Package: <Package className="h-8 w-8 text-primary" />,
+    FileText: <FileText className="h-8 w-8 text-primary" />,
+};
 
 export function ProposalWizard() {
   const router = useRouter();
@@ -80,6 +68,8 @@ export function ProposalWizard() {
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
+  const [templates, setTemplates] = useState<ProposalTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [painPoints, setPainPoints] = useState("");
   const [meetingTranscript, setMeetingTranscript] = useState("");
   const [executiveSummary, setExecutiveSummary] = useState("");
@@ -92,17 +82,21 @@ export function ProposalWizard() {
 
   useEffect(() => {
     if (loadingAuth || !user) {
-      if (!loadingAuth) setLoadingClients(false);
+      if (!loadingAuth) {
+          setLoadingClients(false);
+          setLoadingTemplates(false);
+      }
       return;
     }
 
     setLoadingClients(true);
+    setLoadingTemplates(true);
     // NOTE: This uses a hardcoded tenant ID for now.
     const tenantId = 'tenant-001';
+    
     const clientsCollectionRef = collection(db, 'tenants', tenantId, 'clients');
-    const q = query(clientsCollectionRef);
-
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const clientsQuery = query(clientsCollectionRef);
+    const unsubscribeClients = onSnapshot(clientsQuery, (querySnapshot) => {
         const clientsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
         setClients(clientsData);
         setLoadingClients(false);
@@ -111,7 +105,22 @@ export function ProposalWizard() {
         setLoadingClients(false);
     });
 
-    return () => unsubscribe();
+    const templatesCollectionRef = collection(db, 'tenants', tenantId, 'proposal_templates');
+    const templatesQuery = query(templatesCollectionRef);
+    const unsubscribeTemplates = onSnapshot(templatesQuery, (querySnapshot) => {
+        const templatesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProposalTemplate));
+        setTemplates(templatesData);
+        setLoadingTemplates(false);
+    }, (error) => {
+        console.error("Error fetching templates: ", error);
+        setLoadingTemplates(false);
+    });
+
+
+    return () => {
+        unsubscribeClients();
+        unsubscribeTemplates();
+    };
   }, [user, loadingAuth]);
 
 
@@ -210,6 +219,9 @@ export function ProposalWizard() {
         const tenantId = 'tenant-001'; 
         const client = clients.find(c => c.id === selectedClient);
         
+        const template = templates.find(t => t.name === selectedTemplate);
+        const templateSections = template ? template.sections : [];
+
         const newProposalId = await createProposal({
             tenantId,
             salesAgentId: user.uid,
@@ -219,7 +231,7 @@ export function ProposalWizard() {
             executiveSummary,
             selectedProducts,
             totalValue,
-            extraSections,
+            extraSections: [...extraSections, ...templateSections],
         });
         toast({
             title: "Proposal Created!",
@@ -269,27 +281,48 @@ export function ProposalWizard() {
               Choose a Proposal Template
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {templates.map((template) => (
-                <Card
-                  key={template.name}
-                  onClick={() => setSelectedTemplate(template.name)}
-                  className={cn(
-                    "cursor-pointer transition-all hover:shadow-lg hover:border-primary",
-                    selectedTemplate === template.name && "border-2 border-primary shadow-lg"
-                  )}
-                >
-                  <CardHeader className="flex flex-col items-center text-center gap-4">
-                    {template.icon}
-                    <CardTitle className="font-sans text-base">{template.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground text-center">
-                      {template.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
+              {loadingTemplates ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i}>
+                        <CardHeader className="flex flex-col items-center text-center gap-4">
+                            <Skeleton className="h-8 w-8 rounded-md" />
+                            <Skeleton className="h-5 w-3/4" />
+                        </CardHeader>
+                        <CardContent>
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-1/2 mt-2" />
+                        </CardContent>
+                    </Card>
+                ))
+              ) : (
+                templates.map((template) => {
+                  const Icon = iconMap[template.icon] || FileText;
+                  return (
+                    <Card
+                        key={template.id}
+                        onClick={() => setSelectedTemplate(template.name)}
+                        className={cn(
+                        "cursor-pointer transition-all hover:shadow-lg hover:border-primary",
+                        selectedTemplate === template.name && "border-2 border-primary shadow-lg"
+                        )}
+                    >
+                        <CardHeader className="flex flex-col items-center text-center gap-4">
+                        <Icon />
+                        <CardTitle className="font-sans text-base">{template.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                        <p className="text-sm text-muted-foreground text-center">
+                            {template.description}
+                        </p>
+                        </CardContent>
+                    </Card>
+                  )
+                })
+              )}
             </div>
+             { !loadingTemplates && templates.length === 0 && (
+                <p className="text-center text-muted-foreground col-span-full py-8">No proposal templates found for your organization.</p>
+            )}
           </div>
         )}
 
@@ -466,3 +499,5 @@ export function ProposalWizard() {
     </Card>
   );
 }
+
+    

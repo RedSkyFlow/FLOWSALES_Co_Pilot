@@ -138,3 +138,5 @@ export interface ProposalTemplate {
   icon: 'Users' | 'Package' | 'FileText';
   sections: ProposalSection[];
 }
+
+    

@@ -168,3 +168,5 @@ export async function rejectSuggestedEdit(tenantId: string, suggestion: Suggeste
     await updateDoc(suggestionRef, { status: 'rejected' });
     revalidatePath(`/proposals/${suggestion.proposalId}`);
 }
+
+    
