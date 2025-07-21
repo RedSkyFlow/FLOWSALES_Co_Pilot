@@ -1,13 +1,21 @@
+
+export interface Tenant {
+  id: string;
+  companyName: string;
+  subscriptionStatus: 'active' | 'trial' | 'lapsed';
+}
+
 export interface User {
   uid: string;
   email: string | null;
   displayName: string | null;
   photoURL?: string | null;
-  role: 'sales_agent' | 'admin';
-  avatarUrl?: string;
-  initials?: string;
+  // Role is now within the context of a tenant
+  role: 'admin' | 'sales_agent';
+  tenantId: string; // The tenant this user belongs to
 }
 
+// Client of our Tenant
 export interface Client {
   id: string;
   name: string;
@@ -17,21 +25,32 @@ export interface Client {
   notes: string;
 }
 
-export interface VenueOSModule {
+// A product or service offered by a Tenant
+export interface Product {
   id: string;
   name: string;
   description: string;
-  pricingModel: 'subscription' | 'one-time';
+  pricingModel: 'subscription' | 'one-time' | 'per_item';
   basePrice: number;
   tags: string[];
+  dependencies?: string[]; // IDs of other products
+  type: 'product' | 'service' | 'license';
 }
 
-export interface ContentLibraryItem {
-  id: string;
-  type: 'case_study' | 'team_bio' | 'legal_clause';
-  title: string;
-  content: string; // Markdown
-  tags: string[];
+export interface BrandAsset {
+    id: string;
+    logoUrl: string;
+    primaryColor: string; // hex
+    secondaryColor: string; // hex
+    fontHeadline: string;
+    fontBody: string;
+    brandVoiceTone: string;
+}
+
+export interface LegalDocument {
+    id: string;
+    title: string;
+    content: string; // markdown
 }
 
 export type ProposalStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'signed' | 'declined' | 'changes_requested' | 'paid';
@@ -46,14 +65,16 @@ export interface Proposal {
   id:string;
   title: string;
   status: ProposalStatus;
-  salesAgentId: string; // Reference to users collection
-  clientId: string; // Reference to clients collection
+  // This now refers to a user within the tenant
+  salesAgentId: string;
+  // This refers to a client of the tenant
+  clientId: string;
   version: number;
   totalPrice: number;
   createdAt: string; // ISO 8601 date string
   lastModified: string; // ISO 8601 date string
   sections: ProposalSection[];
-  selectedModules: VenueOSModule[];
+  selectedProducts: Product[]; // Formerly selectedModules
   engagementData: {
     views: number;
     timeOnPage: number;
@@ -108,10 +129,10 @@ export interface Version {
   summary: string;
 }
 
+// Templates are now tenant-specific configurations
 export interface ProposalTemplate {
   id: string;
   name: string;
   description: string;
-  icon: 'Users' | 'Package' | 'FileText'; // Using Lucide icon names
-  defaultSections: ProposalSection[];
+  // This would be managed within the tenant's collections
 }

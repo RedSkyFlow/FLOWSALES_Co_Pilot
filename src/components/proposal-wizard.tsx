@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -32,8 +33,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { mockClients, mockVenueOSModules } from "@/lib/mock-data";
-import type { VenueOSModule } from "@/lib/types";
+import { mockClients, mockTenantProducts } from "@/lib/mock-data";
+import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { generateExecutiveSummary } from "@/ai/flows/generate-executive-summary";
 import { suggestCaseStudies } from "@/ai/flows/suggest-case-studies";
@@ -78,7 +79,7 @@ export function ProposalWizard() {
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [isCaseStudyLoading, setIsCaseStudyLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedModules, setSelectedModules] = useState<VenueOSModule[]>([]);
+  const [selectedModules, setSelectedModules] = useState<Product[]>([]);
 
   const progress = ((currentStep + 1) / steps.length) * 100;
 
@@ -126,7 +127,7 @@ export function ProposalWizard() {
     }
   };
 
-  const handleModuleToggle = (module: VenueOSModule, checked: boolean) => {
+  const handleModuleToggle = (module: Product, checked: boolean) => {
     setSelectedModules((prev) =>
       checked ? [...prev, module] : prev.filter((m) => m.id !== module.id)
     );
@@ -141,7 +142,7 @@ export function ProposalWizard() {
             selectedTemplate,
             selectedClientId: selectedClient,
             executiveSummary,
-            selectedModules,
+            selectedProducts: selectedModules,
             totalValue,
             salesAgentId: 'abc-123', // NOTE: Replace with actual authenticated user ID
         });
@@ -282,7 +283,7 @@ export function ProposalWizard() {
             <h2 className="text-2xl font-headline font-semibold">Select Modules</h2>
             <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                    {mockVenueOSModules.map((module) => (
+                    {mockTenantProducts.map((module) => (
                         <div key={module.id} className="flex items-start space-x-3 rounded-lg border p-4">
                         <Checkbox
                             id={module.id}
