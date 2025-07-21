@@ -227,14 +227,15 @@ export default function ProposalDetailPage() {
     setIsDownloading(true);
     try {
         const canvas = await html2canvas(proposalContentRef.current, {
-            scale: 2, // Improves resolution
-            backgroundColor: '#0A0903' // Match your app's background
+            scale: 2,
+            backgroundColor: null, // Use element's background color
         });
-        const imgData = canvas.toDataURL('image/png');
+        // Use JPEG for better compression of photographic/complex content
+        const imgData = canvas.toDataURL('image/jpeg', 0.9); // Quality 0.9
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
         pdf.save(`${proposal.title}.pdf`);
         toast({ title: "Download Started", description: "Your PDF is being generated." });
     } catch (error) {
