@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,6 +18,7 @@ import { Loader2, Palette, Sparkles, Upload, Wand2 } from 'lucide-react';
 import { generateBrandAnalysis } from './actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
+import { useTour, TourStep } from '@/hooks/use-tour';
 
 const brandingSchema = z.object({
     companyName: z.string().min(1, "Company name is required"),
@@ -31,12 +32,40 @@ const brandingSchema = z.object({
 
 type BrandingFormData = z.infer<typeof brandingSchema>;
 
+const brandingTourSteps: TourStep[] = [
+    {
+        selector: '[data-tour-id="branding-header"]',
+        title: "Brand Configuration",
+        content: "Welcome to the Branding Hub! Here you can set up your company's visual identity to ensure all your proposals are perfectly on-brand."
+    },
+    {
+        selector: '[data-tour-id="ai-discovery-card"]',
+        title: "AI Brand Discovery",
+        content: "This is the magic wand. Provide your website URL or upload a brand image, and our AI will automatically extract your colors and summarize your brand's voice."
+    },
+    {
+        selector: '[data-tour-id="manual-config-card"]',
+        title: "Manual Configuration",
+        content: "If you prefer hands-on control or want to tweak the AI's suggestions, you can manually set your brand colors and define your brand voice here."
+    },
+    {
+        selector: '[data-tour-id="save-branding-btn"]',
+        title: "Save Your Settings",
+        content: "Once you're happy with your branding setup, click here to save it. These settings will be used to style your future proposals."
+    }
+];
+
 export default function BrandingPage() {
     const { toast } = useToast();
     const [user, loadingAuth] = useAuthState(auth);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const { startTour } = useTour();
+
+    useEffect(() => {
+        startTour('branding', brandingTourSteps);
+    }, [startTour]);
 
     const { register, handleSubmit, reset, control, setValue, watch, formState: { errors } } = useForm<BrandingFormData>({
         resolver: zodResolver(brandingSchema),
@@ -86,7 +115,7 @@ export default function BrandingPage() {
     return (
         <MainLayout>
             <div className="space-y-8">
-                <div>
+                <div data-tour-id="branding-header">
                     <h1 className="text-4xl font-bold font-headline">Branding</h1>
                     <p className="text-muted-foreground mt-1">
                         Customize the look and feel of your proposals.
@@ -110,7 +139,7 @@ export default function BrandingPage() {
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card data-tour-id="ai-discovery-card">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2"><Sparkles className="text-primary"/> AI Brand Discovery</CardTitle>
                             <CardDescription>
@@ -141,7 +170,7 @@ export default function BrandingPage() {
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card data-tour-id="manual-config-card">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2"><Palette /> Manual Configuration</CardTitle>
                             <CardDescription>
@@ -169,7 +198,7 @@ export default function BrandingPage() {
                         </CardContent>
                     </Card>
 
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2" data-tour-id="save-branding-btn">
                         <Button type="submit" disabled={isSubmitting || loadingAuth}>
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Save Branding
