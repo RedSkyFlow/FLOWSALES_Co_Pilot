@@ -48,7 +48,7 @@ export interface BrandAsset {
 }
 
 export interface LegalDocument {
-    id: string;
+    id:string;
     title: string;
     content: string; // markdown
 }
@@ -134,5 +134,5 @@ export interface ProposalTemplate {
   id: string;
   name: string;
   description: string;
-  // This would be managed within the tenant's collections
+  icon: 'Users' | 'Package' | 'FileText';
 }

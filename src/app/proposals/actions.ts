@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, increment, addDoc, collection, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
-import type { Proposal, VenueOSModule, SuggestedEdit } from '@/lib/types';
+import type { Proposal, Product, SuggestedEdit } from '@/lib/types';
 import { mockClients } from '@/lib/mock-data';
 import { revalidatePath } from 'next/cache';
 
@@ -18,6 +18,7 @@ export async function trackProposalView(proposalId: string) {
   }
   
   try {
+    // Note: This will need to be updated to be tenant-aware once proposal loading is refactored.
     const proposalRef = doc(db, 'proposals', proposalId);
     
     await updateDoc(proposalRef, {
@@ -32,20 +33,24 @@ export async function trackProposalView(proposalId: string) {
 }
 
 interface CreateProposalInput {
+    tenantId: string; // NEW: Required for multi-tenancy
     selectedTemplate: string | null;
     selectedClientId: string;
     executiveSummary: string;
-    selectedModules: VenueOSModule[];
+    selectedProducts: Product[]; // UPDATED from selectedModules
     totalValue: number;
-    salesAgentId: string; // Assuming we'll pass the current user's ID
+    salesAgentId: string;
 }
 
 /**
- * Creates a new proposal document in Firestore.
+ * Creates a new proposal document in a tenant's sub-collection in Firestore.
  * @param data The data for the new proposal from the wizard.
  * @returns The ID of the newly created proposal.
  */
 export async function createProposal(data: CreateProposalInput): Promise<string> {
+    if (!data.tenantId) {
+        throw new Error('Tenant ID is required to create a proposal.');
+    }
     if (!data.selectedTemplate || !data.selectedClientId) {
         throw new Error('Template and Client are required to create a proposal.');
     }
@@ -61,7 +66,7 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
         totalPrice: data.totalValue,
         createdAt: new Date().toISOString(),
         lastModified: new Date().toISOString(),
-        selectedModules: data.selectedModules,
+        selectedProducts: data.selectedProducts, // UPDATED from selectedModules
         sections: [
             {
                 title: 'Executive Summary',
@@ -85,8 +90,10 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
             paidAt: null,
         },
     };
-
-    const docRef = await addDoc(collection(db, 'proposals'), newProposal);
+    
+    // Create the proposal in the correct tenant's sub-collection
+    const proposalsCollectionRef = collection(db, 'tenants', data.tenantId, 'proposals');
+    const docRef = await addDoc(proposalsCollectionRef, newProposal);
     return docRef.id;
 }
 
@@ -102,6 +109,7 @@ interface CreateSuggestedEditInput {
 }
 
 export async function createSuggestedEdit(input: CreateSuggestedEditInput) {
+    // Note: This will need to be updated to be tenant-aware.
     const proposalRef = doc(db, 'proposals', input.proposalId);
     const proposalSnap = await getDoc(proposalRef);
 
@@ -138,6 +146,7 @@ export async function createSuggestedEdit(input: CreateSuggestedEditInput) {
 export async function acceptSuggestedEdit(suggestion: SuggestedEdit) {
     const batch = writeBatch(db);
 
+    // Note: This will need to be updated to be tenant-aware.
     const proposalRef = doc(db, 'proposals', suggestion.proposalId);
     const suggestionRef = doc(db, 'proposals', suggestion.proposalId, 'suggested_edits', suggestion.id);
 
@@ -163,6 +172,7 @@ export async function acceptSuggestedEdit(suggestion: SuggestedEdit) {
 }
 
 export async function rejectSuggestedEdit(suggestion: SuggestedEdit) {
+    // Note: This will need to be updated to be tenant-aware.
     const suggestionRef = doc(db, 'proposals', suggestion.proposalId, 'suggested_edits', suggestion.id);
     await updateDoc(suggestionRef, { status: 'rejected' });
     revalidatePath(`/proposals/${suggestion.proposalId}`);

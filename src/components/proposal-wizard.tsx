@@ -79,7 +79,7 @@ export function ProposalWizard() {
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [isCaseStudyLoading, setIsCaseStudyLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedModules, setSelectedModules] = useState<Product[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
 
   const progress = ((currentStep + 1) / steps.length) * 100;
 
@@ -128,23 +128,28 @@ export function ProposalWizard() {
   };
 
   const handleModuleToggle = (module: Product, checked: boolean) => {
-    setSelectedModules((prev) =>
+    setSelectedProducts((prev) =>
       checked ? [...prev, module] : prev.filter((m) => m.id !== module.id)
     );
   };
   
-  const totalValue = selectedModules.reduce((sum, module) => sum + module.basePrice, 0);
+  const totalValue = selectedProducts.reduce((sum, module) => sum + module.basePrice, 0);
 
   const handleSaveAndFinalize = async () => {
     setIsSaving(true);
     try {
+        // NOTE: Hardcoding tenantId and salesAgentId for now. This will come from auth state later.
+        const tenantId = 'tenant-001'; 
+        const salesAgentId = 'abc-123';
+
         const newProposalId = await createProposal({
+            tenantId,
+            salesAgentId,
             selectedTemplate,
             selectedClientId: selectedClient,
             executiveSummary,
-            selectedModules: selectedModules,
+            selectedProducts: selectedProducts,
             totalValue,
-            salesAgentId: 'abc-123', // NOTE: Replace with actual authenticated user ID
         });
         toast({
             title: "Proposal Created!",
@@ -287,7 +292,7 @@ export function ProposalWizard() {
                         <div key={module.id} className="flex items-start space-x-3 rounded-lg border p-4">
                         <Checkbox
                             id={module.id}
-                            checked={selectedModules.some((m) => m.id === module.id)}
+                            checked={selectedProducts.some((m) => m.id === module.id)}
                             onCheckedChange={(checked) => handleModuleToggle(module, !!checked)}
                         />
                         <div className="grid gap-1.5 leading-none">
@@ -303,13 +308,13 @@ export function ProposalWizard() {
                 <div className="p-4 rounded-lg bg-muted/50 h-fit sticky top-4">
                     <h3 className="font-headline text-lg font-semibold">Dynamic Pricing</h3>
                     <ul className="my-4 space-y-2">
-                        {selectedModules.map(module => (
+                        {selectedProducts.map(module => (
                             <li key={module.id} className="flex justify-between items-center text-sm">
                                 <span>{module.name}</span>
                                 <span className="font-mono">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.basePrice)}</span>
                             </li>
                         ))}
-                         {selectedModules.length === 0 && <p className="text-sm text-muted-foreground">Select modules to see pricing.</p>}
+                         {selectedProducts.length === 0 && <p className="text-sm text-muted-foreground">Select modules to see pricing.</p>}
                     </ul>
                     <div className="border-t pt-4 flex justify-between items-center font-bold text-lg">
                         <span>Total Cost</span>
@@ -334,7 +339,7 @@ export function ProposalWizard() {
                     <CardContent className="space-y-2">
                         <p><strong>Template:</strong> {selectedTemplate}</p>
                         <p><strong>Client:</strong> {mockClients.find(c => c.id === selectedClient)?.name}</p>
-                        <p><strong>Modules:</strong> {selectedModules.map(m => m.name).join(', ')}</p>
+                        <p><strong>Modules:</strong> {selectedProducts.map(m => m.name).join(', ')}</p>
                         <p className="font-bold"><strong>Total Value:</strong> {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalValue)}</p>
                     </CardContent>
                 </Card>
