@@ -208,4 +208,7 @@ export async function acceptProposal(tenantId: string, proposalId: string) {
     const proposalRef = doc(db, 'tenants', tenantId, 'proposals', proposalId);
     await updateDoc(proposalRef, {
         status: 'accepted',
-        lastModified: new Date
+        lastModified: new Date().toISOString(),
+    });
+    revalidatePath(`/proposals/${proposalId}`);
+}
