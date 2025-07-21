@@ -81,6 +81,21 @@ export interface Comment {
   createdAt: Date;
 }
 
+export type SuggestedEditStatus = 'pending' | 'accepted' | 'rejected';
+
+export interface SuggestedEdit {
+    id: string;
+    proposalId: string;
+    sectionIndex: number;
+    sectionTitle: string;
+    originalContent: string;
+    suggestedContent: string;
+    status: SuggestedEditStatus;
+    authorId: string;
+    authorName: string;
+    createdAt: Date;
+}
+
 export interface Version {
   number: number;
   date: string;

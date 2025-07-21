@@ -1,9 +1,10 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { doc, updateDoc, increment, addDoc, collection } from 'firebase/firestore';
-import type { Proposal, VenueOSModule } from '@/lib/types';
+import { doc, updateDoc, increment, addDoc, collection, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
+import type { Proposal, VenueOSModule, SuggestedEdit } from '@/lib/types';
 import { mockClients } from '@/lib/mock-data';
+import { revalidatePath } from 'next/cache';
 
 /**
  * Tracks a view for a given proposal.
@@ -87,4 +88,82 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
 
     const docRef = await addDoc(collection(db, 'proposals'), newProposal);
     return docRef.id;
+}
+
+
+// --- Edit Suggestion Actions ---
+
+interface CreateSuggestedEditInput {
+    proposalId: string;
+    sectionIndex: number;
+    suggestedContent: string;
+    authorId: string;
+    authorName: string;
+}
+
+export async function createSuggestedEdit(input: CreateSuggestedEditInput) {
+    const proposalRef = doc(db, 'proposals', input.proposalId);
+    const proposalSnap = await getDoc(proposalRef);
+
+    if (!proposalSnap.exists()) {
+        throw new Error("Proposal not found");
+    }
+
+    const proposalData = proposalSnap.data() as Proposal;
+    const section = proposalData.sections[input.sectionIndex];
+
+    if (!section) {
+        throw new Error("Section not found");
+    }
+
+    const suggestion: Omit<SuggestedEdit, 'id' | 'createdAt'> = {
+        proposalId: input.proposalId,
+        sectionIndex: input.sectionIndex,
+        sectionTitle: section.title,
+        originalContent: section.content,
+        suggestedContent: input.suggestedContent,
+        status: 'pending',
+        authorId: input.authorId,
+        authorName: input.authorName,
+    };
+
+    await addDoc(collection(db, 'proposals', input.proposalId, 'suggested_edits'), {
+        ...suggestion,
+        createdAt: serverTimestamp(),
+    });
+
+    revalidatePath(`/proposals/${input.proposalId}`);
+}
+
+export async function acceptSuggestedEdit(suggestion: SuggestedEdit) {
+    const batch = writeBatch(db);
+
+    const proposalRef = doc(db, 'proposals', suggestion.proposalId);
+    const suggestionRef = doc(db, 'proposals', suggestion.proposalId, 'suggested_edits', suggestion.id);
+
+    // Update the specific section in the proposal's sections array
+    const proposalSnap = await getDoc(proposalRef);
+    if (!proposalSnap.exists()) throw new Error("Proposal not found");
+    const proposalData = proposalSnap.data() as Proposal;
+    
+    const updatedSections = [...proposalData.sections];
+    updatedSections[suggestion.sectionIndex].content = suggestion.suggestedContent;
+
+    batch.update(proposalRef, { 
+        sections: updatedSections,
+        lastModified: new Date().toISOString(),
+        version: increment(1)
+    });
+
+    // Update the suggestion's status
+    batch.update(suggestionRef, { status: 'accepted' });
+
+    await batch.commit();
+    revalidatePath(`/proposals/${suggestion.proposalId}`);
+}
+
+export async function rejectSuggestedEdit(suggestion: SuggestedEdit) {
+    const suggestionRef = doc(db, 'proposals', suggestion.proposalId, 'suggested_edits', suggestion.id);
+    await updateDoc(suggestionRef, { status: 'rejected' });
+    revalidatePath(`/proposals/${suggestion.proposalId}`);
 }

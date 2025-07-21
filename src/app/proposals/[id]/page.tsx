@@ -16,9 +16,14 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar";
 import {
-  mockClients,
-  mockVersions,
-} from "@/lib/mock-data";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
+import { mockClients, mockVersions } from "@/lib/mock-data";
 import { notFound } from "next/navigation";
 import {
   FileText,
@@ -31,18 +36,26 @@ import {
   Send,
   Eye,
   CalendarDays,
+  GitPullRequest,
+  Check,
+  X,
+  Loader2,
+  ThumbsUp,
+  ThumbsDown
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientDate } from "@/components/client-date";
-import type { Proposal, ProposalStatus, Comment } from '@/lib/types';
+import type { Proposal, ProposalStatus, Comment, SuggestedEdit, ProposalSection } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc } from "firebase/firestore";
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { formatDistanceToNow } from 'date-fns';
-import { trackProposalView } from "@/app/proposals/actions";
+import { trackProposalView, createSuggestedEdit, acceptSuggestedEdit, rejectSuggestedEdit } from "@/app/proposals/actions";
+import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
 
 function getStatusBadgeClasses(status: ProposalStatus) {
   const baseClasses = "capitalize text-base font-semibold px-4 py-2 rounded-lg border";
@@ -77,22 +90,28 @@ export default function ProposalDetailPage({
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const client = proposal ? mockClients.find(c => c.id === proposal.clientId) : null;
   const [user, loadingAuth] = useAuthState(auth);
+  const { toast } = useToast();
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [suggestedEdits, setSuggestedEdits] = useState<SuggestedEdit[]>([]);
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [currentSection, setCurrentSection] = useState<{ section: ProposalSection; index: number } | null>(null);
+  const [suggestionText, setSuggestionText] = useState("");
+  const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
+  
   useEffect(() => {
-    if (params.id) {
+    if (params.id && user) {
       trackProposalView(params.id);
     }
-  }, [params.id]);
+  }, [params.id, user]);
 
   useEffect(() => {
     if (!params.id) return;
 
     const docRef = doc(db, 'proposals', params.id);
-    
     const unsubscribeProposal = onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
             setProposal({ id: docSnap.id, ...docSnap.data() } as Proposal);
@@ -102,23 +121,22 @@ export default function ProposalDetailPage({
         setIsLoading(false);
     });
 
-    const commentsQuery = query(
-      collection(db, "proposals", params.id, "comments"),
-      orderBy("createdAt", "asc")
-    );
-
+    const commentsQuery = query(collection(db, "proposals", params.id, "comments"), orderBy("createdAt", "asc"));
     const unsubscribeComments = onSnapshot(commentsQuery, (querySnapshot) => {
-      const commentsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() // Convert Firestore Timestamp to JS Date
-      })) as Comment[];
+      const commentsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() })) as Comment[];
       setComments(commentsData);
+    });
+
+    const editsQuery = query(collection(db, "proposals", params.id, "suggested_edits"), orderBy("createdAt", "desc"));
+    const unsubscribeEdits = onSnapshot(editsQuery, (querySnapshot) => {
+      const editsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() })) as SuggestedEdit[];
+      setSuggestedEdits(editsData);
     });
 
     return () => {
         unsubscribeProposal();
         unsubscribeComments();
+        unsubscribeEdits();
     };
   }, [params.id]);
 
@@ -126,7 +144,6 @@ export default function ProposalDetailPage({
   const handleCommentSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!newComment.trim() || !user) return;
-
       try {
         await addDoc(collection(db, "proposals", params.id, "comments"), {
           text: newComment,
@@ -138,17 +155,68 @@ export default function ProposalDetailPage({
         setNewComment("");
       } catch (error) {
         console.error("Error adding comment: ", error);
+        toast({ title: "Error", description: "Failed to post comment.", variant: "destructive" });
       }
   };
 
-  if (isLoading) {
-      return <MainLayout><div>Loading proposal...</div></MainLayout>
+  const handleSuggestEditClick = (section: ProposalSection, index: number) => {
+      setCurrentSection({ section, index });
+      setSuggestionText(section.content);
+      setIsSheetOpen(true);
+  };
+
+  const handleSuggestionSubmit = async () => {
+    if (!suggestionText.trim() || !user || !currentSection) return;
+    setIsSubmittingSuggestion(true);
+    try {
+        await createSuggestedEdit({
+            proposalId: params.id,
+            sectionIndex: currentSection.index,
+            suggestedContent: suggestionText,
+            authorId: user.uid,
+            authorName: user.displayName || "Anonymous User",
+        });
+        toast({ title: "Suggestion Submitted", description: "The sales agent has been notified of your suggestion." });
+        setIsSheetOpen(false);
+    } catch (error) {
+        console.error("Error submitting suggestion:", error);
+        toast({ title: "Error", description: "Could not submit suggestion. Please try again.", variant: "destructive" });
+    } finally {
+        setIsSubmittingSuggestion(false);
+    }
+  };
+  
+  const handleAcceptSuggestion = async (suggestion: SuggestedEdit) => {
+      try {
+          await acceptSuggestedEdit(suggestion);
+          toast({ title: "Suggestion Accepted", description: "The proposal has been updated." });
+      } catch (error) {
+          console.error("Error accepting suggestion:", error);
+          toast({ title: "Error", description: "Could not accept suggestion.", variant: "destructive" });
+      }
+  };
+
+  const handleRejectSuggestion = async (suggestion: SuggestedEdit) => {
+      try {
+          await rejectSuggestedEdit(suggestion);
+          toast({ title: "Suggestion Rejected", description: "The suggestion has been archived." });
+      } catch (error) {
+          console.error("Error rejecting suggestion:", error);
+          toast({ title: "Error", description: "Could not reject suggestion.", variant: "destructive" });
+      }
+  };
+
+
+  if (isLoading || loadingAuth) {
+      return <MainLayout><div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin"/></div></MainLayout>
   }
 
   if (!proposal || !client) {
-    // notFound will be called inside useEffect if doc doesn't exist
     return <MainLayout><div></div></MainLayout>;
   }
+
+  const isSalesAgent = user?.uid === proposal.salesAgentId;
+  const pendingSuggestions = suggestedEdits.filter(s => s.status === 'pending');
 
   return (
     <MainLayout>
@@ -174,15 +242,45 @@ export default function ProposalDetailPage({
                 </div>
             </div>
 
+            {isSalesAgent && pendingSuggestions.length > 0 && (
+              <Card className="border-impact/50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-impact"><GitPullRequest /> Pending Suggestions</CardTitle>
+                  <CardDescription>The client has suggested the following edits. Accept or reject them below.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {pendingSuggestions.map(edit => (
+                    <div key={edit.id} className="border p-4 rounded-lg bg-muted/20">
+                      <p className="text-sm font-semibold">Section: "{edit.sectionTitle}"</p>
+                      <p className="text-xs text-muted-foreground mb-2">Suggested by {edit.authorName} - {formatDistanceToNow(edit.createdAt, { addSuffix: true })}</p>
+                      <div className="mt-2 p-2 bg-background rounded-md border border-dashed">
+                        <p className="text-sm whitespace-pre-wrap">{edit.suggestedContent}</p>
+                      </div>
+                      <div className="flex gap-2 mt-4 justify-end">
+                        <Button size="sm" variant="destructive" onClick={() => handleRejectSuggestion(edit)}><X className="h-4 w-4 mr-2" /> Reject</Button>
+                        <Button size="sm" variant="success" onClick={() => handleAcceptSuggestion(edit)}><Check className="h-4 w-4 mr-2" /> Accept</Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
           {/* Proposal Content */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl flex items-center gap-2"><FileText className="text-primary"/> {proposal.sections[0].title}</CardTitle>
+              <CardTitle className="text-2xl flex items-center gap-2"><FileText className="text-primary"/> Proposal Sections</CardTitle>
             </CardHeader>
-            <CardContent className="prose dark:prose-invert max-w-none">
+            <CardContent className="prose dark:prose-invert max-w-none space-y-6">
                 {proposal.sections.map((section, index) => (
-                    <div key={index}>
+                    <div key={index} className="relative group">
+                      <h3 className="text-xl font-semibold border-b border-border pb-2 mb-2">{section.title}</h3>
                       <p>{section.content}</p>
+                      {!isSalesAgent && (
+                         <Button size="sm" variant="outline" className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleSuggestEditClick(section, index)}>
+                            <PenSquare className="h-4 w-4 mr-2" /> Suggest Edit
+                         </Button>
+                      )}
                     </div>
                 ))}
             </CardContent>
@@ -219,14 +317,14 @@ export default function ProposalDetailPage({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button className="w-full" variant="secondary">
+              <Button className="w-full" variant="secondary" disabled={isSalesAgent}>
                 <PenSquare className="mr-2 h-4 w-4" /> Accept & E-Sign
               </Button>
                <Button variant="outline" className="w-full">
                 <Download className="mr-2 h-4 w-4" /> Download as PDF
               </Button>
               <Separator className="my-2 bg-border" />
-               <Button variant="accent" className="w-full">
+               <Button variant="accent" className="w-full" disabled={isSalesAgent}>
                 <DollarSign className="mr-2 h-4 w-4" /> Pay Deposit or Full Amount
               </Button>
             </CardContent>
@@ -283,16 +381,16 @@ export default function ProposalDetailPage({
             <CardFooter className="border-t border-border pt-4">
                 <form onSubmit={handleCommentSubmit} className="w-full space-y-2">
                     <Textarea 
-                        placeholder="Add a comment or suggest an edit..." 
+                        placeholder="Add a comment or start a discussion..." 
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
-                        disabled={!user || loadingAuth}
+                        disabled={!user}
                     />
                     <Button 
                         size="sm" 
                         className="w-full" 
                         type="submit" 
-                        disabled={!newComment.trim() || !user || loadingAuth}
+                        disabled={!newComment.trim() || !user}
                     >
                         <Send className="mr-2 h-4 w-4" />
                         Post Comment
@@ -328,6 +426,33 @@ export default function ProposalDetailPage({
           </Card>
         </div>
       </div>
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+          <SheetContent>
+              <SheetHeader>
+                  <SheetTitle>Suggest an Edit</SheetTitle>
+                  <SheetDescription>
+                      Propose a change for the section: <strong>{currentSection?.section.title}</strong>. The sales agent will be notified to review your suggestion.
+                  </SheetDescription>
+              </SheetHeader>
+              <div className="py-4 space-y-4">
+                 <div>
+                    <Label htmlFor="original-content">Original Content</Label>
+                    <Textarea id="original-content" value={currentSection?.section.content} readOnly rows={5} className="bg-muted/50" />
+                 </div>
+                 <div>
+                    <Label htmlFor="suggested-content">Your Suggestion</Label>
+                    <Textarea id="suggested-content" value={suggestionText} onChange={(e) => setSuggestionText(e.target.value)} rows={8} placeholder="Type your suggested changes here..."/>
+                 </div>
+              </div>
+              <SheetFooter>
+                  <Button variant="outline" onClick={() => setIsSheetOpen(false)}>Cancel</Button>
+                  <Button onClick={handleSuggestionSubmit} disabled={isSubmittingSuggestion || !suggestionText.trim()}>
+                      {isSubmittingSuggestion && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Submit Suggestion
+                  </Button>
+              </SheetFooter>
+          </SheetContent>
+      </Sheet>
     </MainLayout>
   );
 }
