@@ -16,10 +16,10 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuthState, useSignOut } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Button } from './ui/button';
 import { useAppData } from './app-data-provider';
-import { HelpGuideDialog } from './help-guide-dialog';
+import { useTour } from '@/hooks/use-tour';
 
 function FlowSalesLogo() {
   return (
@@ -86,10 +86,11 @@ function NavItem({ href, icon: Icon, label, onClick }: typeof navItems[0] & { on
     );
 }
 
+
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
   const [signOut] = useSignOut(auth);
   const { loading: loadingData } = useAppData();
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const { startCurrentTour } = useTour();
 
   if (loadingData) {
       return (
@@ -100,35 +101,32 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <>
-      <div className="flex min-h-screen bg-background text-foreground">
-          <aside className="fixed top-0 left-0 h-full w-64 bg-card border-r border-border flex flex-col">
-              <FlowSalesLogo />
-              <nav className="flex-grow p-4 space-y-2">
-              {navItems.map((item) => (
-                  <NavItem key={item.href} {...item} />
-              ))}
-              </nav>
-              <div className="p-4 border-t border-border space-y-2">
-                  {secondaryNavItems.map((item) => (
-                      <NavItem 
-                        key={item.id} 
-                        {...item} 
-                        onClick={item.id === 'guide' ? () => setIsHelpOpen(true) : undefined} 
-                      />
-                  ))}
-                  <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={async () => await signOut()}>
-                      <LogOut className="h-5 w-5 mr-3"/>
-                      <span>Log Out</span>
-                  </Button>
-              </div>
-          </aside>
-          <main className="ml-64 flex-1">
-              <div className="p-8">{children}</div>
-          </main>
-      </div>
-      <HelpGuideDialog open={isHelpOpen} onOpenChange={setIsHelpOpen} />
-    </>
+    <div className="flex min-h-screen bg-background text-foreground">
+        <aside className="fixed top-0 left-0 h-full w-64 bg-card border-r border-border flex flex-col" data-tour-id="sidebar-nav">
+            <FlowSalesLogo />
+            <nav className="flex-grow p-4 space-y-2">
+            {navItems.map((item) => (
+                <NavItem key={item.href} {...item} />
+            ))}
+            </nav>
+            <div className="p-4 border-t border-border space-y-2">
+                {secondaryNavItems.map((item) => (
+                    <NavItem 
+                      key={item.id} 
+                      {...item} 
+                      onClick={item.id === 'guide' ? () => startCurrentTour() : undefined} 
+                    />
+                ))}
+                <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={async () => await signOut()}>
+                    <LogOut className="h-5 w-5 mr-3"/>
+                    <span>Log Out</span>
+                </Button>
+            </div>
+        </aside>
+        <main className="ml-64 flex-1">
+            <div className="p-8">{children}</div>
+        </main>
+    </div>
   )
 }
 
@@ -156,5 +154,3 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   
   return <MainLayoutContent>{children}</MainLayoutContent>
 }
-
-export { useAppData };

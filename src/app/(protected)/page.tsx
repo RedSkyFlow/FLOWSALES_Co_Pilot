@@ -20,7 +20,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from '@/components/ui/input';
-import { MainLayout } from '@/components/main-layout';
 import type { Proposal, ProposalStatus } from '@/lib/types';
 import { Plus, ListFilter, FileText, Search, Loader2 } from 'lucide-react';
 import { useState, useRef, type MouseEvent, useEffect } from 'react';
@@ -29,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { useTour, TourStep } from '@/hooks/use-tour';
 
 
 function StatusBadge({ status }: { status: ProposalStatus }) {
@@ -87,6 +87,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
       onMouseLeave={onMouseLeave}
       style={{ transformStyle: "preserve-3d" }}
       className="transition-transform duration-300 ease-out"
+      data-tour-id="proposal-card"
     >
         <Card className="bg-card/60 backdrop-blur-lg border border-border hover:border-primary transition-all duration-300 flex flex-col group h-full">
             <CardHeader>
@@ -123,6 +124,34 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
 
 const proposalStatuses: ProposalStatus[] = ['draft', 'sent', 'viewed', 'accepted', 'signed', 'declined', 'changes_requested', 'paid'];
 
+const dashboardTourSteps: TourStep[] = [
+    {
+        selector: '[data-tour-id="dashboard-header"]',
+        title: "Welcome to your Dashboard!",
+        content: "This is your central hub. From here, you can see all your proposals, create new ones, and manage your sales workflow."
+    },
+    {
+        selector: '[data-tour-id="create-proposal-btn"]',
+        title: "Create New Proposals",
+        content: "Click here to start the proposal wizard. Our AI co-pilot will help you generate a tailored proposal in minutes."
+    },
+    {
+        selector: '[data-tour-id="search-input"]',
+        title: "Search & Filter",
+        content: "Quickly find any proposal by searching for its title or client name. Use the filter to view proposals by their current status."
+    },
+    {
+        selector: '[data-tour-id="proposal-card"]',
+        title: "Proposal Cards",
+        content: "Each card gives you an at-a-glance view of a proposal, including its status, client, and total value. Hover for a cool effect and click to see details."
+    },
+    {
+        selector: '[data-tour-id="sidebar-nav"]',
+        title: "Navigation",
+        content: "Use the sidebar to navigate to other key areas like your client list, proposal templates, and settings."
+    }
+];
+
 
 export default function Dashboard() {
   const [user, loadingAuth] = useAuthState(auth);
@@ -130,6 +159,11 @@ export default function Dashboard() {
   const [loadingProposals, setLoadingProposals] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('All');
+  const { startTour } = useTour();
+  
+  useEffect(() => {
+    startTour('dashboard', dashboardTourSteps);
+  }, [startTour]);
 
   useEffect(() => {
     if (loadingAuth || !user) {
@@ -168,9 +202,8 @@ export default function Dashboard() {
 
 
   return (
-    <MainLayout>
       <div className="space-y-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" data-tour-id="dashboard-header">
           <div>
             <h1 className="text-4xl font-bold">Sales Dashboard</h1>
             <p className="text-muted-foreground mt-1">
@@ -180,6 +213,7 @@ export default function Dashboard() {
           <Button
             asChild
             className="font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-primary/90 hover:shadow-glow-primary hover:-translate-y-0.5"
+            data-tour-id="create-proposal-btn"
           >
             <Link href="/proposals/new" className="flex items-center">
               <Plus className="mr-2 h-5 w-5" />
@@ -188,7 +222,7 @@ export default function Dashboard() {
           </Button>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center gap-4" data-tour-id="search-input">
           <div className="relative w-full sm:flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
@@ -238,6 +272,5 @@ export default function Dashboard() {
             </>
         )}
       </div>
-    </MainLayout>
   );
 }
