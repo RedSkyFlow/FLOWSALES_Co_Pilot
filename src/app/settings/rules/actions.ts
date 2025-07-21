@@ -6,13 +6,16 @@ import { addDoc, collection } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { ProductRule } from '@/lib/types';
 
-// The input type will be more complex, but this is a start
-interface AddRuleInput extends Omit<ProductRule, 'id' | 'status'> {
+interface AddRuleInput {
     tenantId: string;
+    primaryProductId: string;
+    relatedProductIds: string[];
+    type: 'dependency' | 'conflict' | 'recommendation';
+    condition: 'requires_one' | 'requires_all' | 'conflicts_with';
 }
 
 export async function addProductRule(data: AddRuleInput) {
-    if (!data.tenantId || !data.primaryProductId || !data.relatedProductIds) {
+    if (!data.tenantId || !data.primaryProductId || !data.relatedProductIds || data.relatedProductIds.length === 0) {
         throw new Error('Tenant ID and product selections are required.');
     }
 
@@ -30,7 +33,6 @@ export async function addProductRule(data: AddRuleInput) {
         await addDoc(rulesCollectionRef, newRule);
 
         revalidatePath('/settings/rules');
-        // Also revalidate proposal wizard if rules affect it
         revalidatePath('/proposals/new'); 
     } catch (error) {
         console.error("Error adding product rule: ", error);

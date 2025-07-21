@@ -5,40 +5,49 @@ import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import type { ProductRule, User } from '@/lib/types';
+import type { ProductRule, User, Product } from '@/lib/types';
 import { MainLayout } from "@/components/main-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle, GitBranch } from "lucide-react";
-// We will create this component in the next step
-// import { AddRuleDialog } from '@/components/add-rule-dialog';
+import { Loader2, PlusCircle, GitBranch, ArrowRight } from "lucide-react";
+import { AddRuleDialog } from '@/components/add-rule-dialog';
 
 export default function RulesPage() {
     const [user, loadingAuth] = useAuthState(auth);
     const [rules, setRules] = useState<ProductRule[]>([]);
-    const [loadingRules, setLoadingRules] = useState(true);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [loadingData, setLoadingData] = useState(true);
     const [isAddRuleOpen, setIsAddRuleOpen] = useState(false);
     const [userData, setUserData] = useState<User | null>(null);
 
     useEffect(() => {
         if (loadingAuth || !user) {
-            if (!loadingAuth) setLoadingRules(false);
+            if (!loadingAuth) setLoadingData(false);
             return;
         }
 
-        setLoadingRules(true);
+        setLoadingData(true);
         // This should be dynamically set based on the logged-in user's tenant
         const tenantId = 'tenant-001';
+        
         const rulesCollectionRef = collection(db, 'tenants', tenantId, 'product_rules');
-        const q = query(rulesCollectionRef);
-
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const rulesQuery = query(rulesCollectionRef);
+        const unsubscribeRules = onSnapshot(rulesQuery, (querySnapshot) => {
             const rulesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductRule));
             setRules(rulesData);
-            setLoadingRules(false);
         }, (error) => {
             console.error("Error fetching product rules: ", error);
-            setLoadingRules(false);
+        });
+
+        const productsCollectionRef = collection(db, 'tenants', tenantId, 'products');
+        const productsQuery = query(productsCollectionRef);
+        const unsubscribeProducts = onSnapshot(productsQuery, (querySnapshot) => {
+            const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+            setProducts(productsData);
+            setLoadingData(false);
+        }, (error) => {
+            console.error("Error fetching products: ", error);
+            setLoadingData(false);
         });
 
         // A real app would fetch user role from a secure source
@@ -50,8 +59,15 @@ export default function RulesPage() {
             tenantId: 'tenant-001',
         })
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribeRules();
+            unsubscribeProducts();
+        };
     }, [user, loadingAuth]);
+
+    const getProductName = (productId: string) => {
+        return products.find(p => p.id === productId)?.name || 'Unknown Product';
+    }
     
     return (
         <MainLayout>
@@ -80,10 +96,29 @@ export default function RulesPage() {
                         <CardDescription>A list of all dependencies for this tenant's products.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {loadingAuth || loadingRules ? (
+                        {loadingData ? (
                             <div className="flex justify-center items-center py-16">
                                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                             </div>
+                        ) : rules.length > 0 ? (
+                           <div className="space-y-4">
+                                {rules.map(rule => (
+                                    <div key={rule.id} className="p-4 border rounded-lg bg-muted/20 flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <GitBranch className="h-8 w-8 text-primary" />
+                                            <div>
+                                                <p className="font-semibold">
+                                                    IF <span className="text-secondary">{getProductName(rule.primaryProductId)}</span> is selected
+                                                </p>
+                                                <p className="text-muted-foreground text-sm">
+                                                   THEN <span className="font-bold">{rule.condition.replace('_', ' ')}</span> <span className="text-secondary">{getProductName(rule.relatedProductIds[0])}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Button variant="ghost" size="sm">Manage</Button>
+                                    </div>
+                                ))}
+                           </div>
                         ) : (
                              <div className="text-center py-16 text-muted-foreground">
                                 <GitBranch className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
@@ -94,7 +129,7 @@ export default function RulesPage() {
                     </CardContent>
                 </Card>
             </div>
-            {/* <AddRuleDialog open={isAddRuleOpen} onOpenChange={setIsAddRuleOpen} /> */}
+            <AddRuleDialog open={isAddRuleOpen} onOpenChange={setIsAddRuleOpen} products={products} />
         </MainLayout>
     );
 }
