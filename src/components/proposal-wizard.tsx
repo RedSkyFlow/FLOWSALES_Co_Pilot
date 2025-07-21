@@ -142,7 +142,7 @@ export function ProposalWizard() {
             selectedTemplate,
             selectedClientId: selectedClient,
             executiveSummary,
-            selectedProducts: selectedModules,
+            selectedModules: selectedModules,
             totalValue,
             salesAgentId: 'abc-123', // NOTE: Replace with actual authenticated user ID
         });
