@@ -87,7 +87,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
                 <span className="text-2xl font-bold text-accent">
                     {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}
                 </span>
-                <Button variant="ghost" asChild>
+                <Button variant="tertiary" asChild>
                 <Link href={`/proposals/${proposal.id}`}>View Details</Link>
                 </Button>
             </CardFooter>
