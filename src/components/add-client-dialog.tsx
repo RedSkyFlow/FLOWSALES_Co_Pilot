@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
@@ -52,6 +52,13 @@ export function AddClientDialog({ open, onOpenChange }: AddClientDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
+    defaultValues: {
+        name: '',
+        industry: '',
+        contactPerson: '',
+        contactEmail: '',
+        notes: '',
+    }
   });
 
   const handleDialogClose = (isOpen: boolean) => {
@@ -108,16 +115,22 @@ export function AddClientDialog({ open, onOpenChange }: AddClientDialogProps) {
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="industry" className="text-right">Industry</Label>
                 <div className="col-span-3">
-                    <Select onValueChange={(value) => control._fields.industry._f.onChange(value)} defaultValue="">
-                        <SelectTrigger id="industry" className={errors.industry ? 'border-destructive' : ''}>
-                            <SelectValue placeholder="Select an industry" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {industries.map(industry => (
-                                <SelectItem key={industry} value={industry}>{industry}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <Controller
+                        name="industry"
+                        control={control}
+                        render={({ field }) => (
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <SelectTrigger id="industry" className={errors.industry ? 'border-destructive' : ''}>
+                                    <SelectValue placeholder="Select an industry" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {industries.map(industry => (
+                                        <SelectItem key={industry} value={industry}>{industry}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
                     {errors.industry && <p className="text-destructive text-xs mt-1">{errors.industry.message}</p>}
                 </div>
             </div>
