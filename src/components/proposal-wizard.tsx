@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, FC } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -22,6 +22,7 @@ import {
   ClipboardCheck,
   Sparkles,
   Lightbulb,
+  LucideProps,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
@@ -43,7 +44,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase";
 import { Skeleton } from "./ui/skeleton";
-import { useAppData } from "./main-layout";
+import { useAppData } from "./app-data-provider";
 
 const steps = [
   { name: "Select Template", icon: <FileText /> },
@@ -52,10 +53,10 @@ const steps = [
   { name: "Review & Finalize", icon: <ClipboardCheck /> },
 ];
 
-const iconMap = {
-    Users: Users,
-    Package: Package,
-    FileText: FileText,
+const iconMap: Record<string, FC<LucideProps>> = {
+    Users,
+    Package,
+    FileText,
 };
 
 export function ProposalWizard() {
@@ -191,8 +192,14 @@ export function ProposalWizard() {
       try {
           const result = await analyzeMeetingTranscript({
               transcript: [{ speaker: "Combined", text: meetingTranscript }],
-              availableModules: products.map(p => p.name)
+              availableModules: products.map(p => p.name),
+              availableTemplates: templates.map(t => t.name),
           });
+
+          if (result.suggestedTemplate) {
+              setSelectedTemplate(result.suggestedTemplate);
+              toast({ title: "AI Suggestion", description: `The "${result.suggestedTemplate}" template was automatically selected.` });
+          }
           
           setPainPoints(result.clientPainPoints.join('\n'));
           setExtraSections([
@@ -206,9 +213,10 @@ export function ProposalWizard() {
           toast({ title: "Analysis Complete", description: "Pain points, products, and draft sections have been populated." });
 
           // Now, generate the executive summary based on the new pain points
-          if (result.clientPainPoints.join('\n') && selectedTemplate) {
+          const currentTemplate = result.suggestedTemplate || selectedTemplate;
+          if (result.clientPainPoints.join('\n') && currentTemplate) {
             setIsSummaryLoading(true);
-            const summaryResult = await generateExecutiveSummary({ clientPainPoints: result.clientPainPoints.join('\n'), proposalType: selectedTemplate });
+            const summaryResult = await generateExecutiveSummary({ clientPainPoints: result.clientPainPoints.join('\n'), proposalType: currentTemplate });
             setExecutiveSummary(summaryResult.executiveSummary);
             toast({ title: "Summary Generated", description: "An executive summary was also created based on the transcript." });
           }
@@ -385,7 +393,7 @@ export function ProposalWizard() {
                         onChange={(e) => setMeetingTranscript(e.target.value)}
                         className="text-xs"
                     />
-                     <Button onClick={handleAnalyzeTranscript} disabled={isAnalysisLoading || !meetingTranscript || !selectedTemplate} className="mt-2 w-full" size="sm">
+                     <Button onClick={handleAnalyzeTranscript} disabled={isAnalysisLoading || !meetingTranscript} className="mt-2 w-full" size="sm">
                         {isAnalysisLoading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4"/>}
                         Analyze Transcript & Generate All Content
                     </Button>

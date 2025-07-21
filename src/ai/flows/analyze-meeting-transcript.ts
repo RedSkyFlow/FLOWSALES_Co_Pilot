@@ -28,6 +28,9 @@ const AnalyzeMeetingTranscriptInputSchema = z.object({
   availableModules: z
     .array(z.string())
     .describe('A list of available module names to select from.'),
+  availableTemplates: z
+    .array(z.string())
+    .describe('A list of available proposal template names to select from.'),
 });
 export type AnalyzeMeetingTranscriptInput = z.infer<
   typeof AnalyzeMeetingTranscriptInputSchema
@@ -35,6 +38,9 @@ export type AnalyzeMeetingTranscriptInput = z.infer<
 
 // Define the structured output we want from the AI
 const DraftProposalSchema = z.object({
+  suggestedTemplate: z
+    .string()
+    .describe('The name of the most suitable template from the provided `availableTemplates` list.'),
   clientPainPoints: z
     .array(z.string())
     .describe('A list of specific pain points or challenges mentioned by the client.'),
@@ -80,10 +86,16 @@ Your task is to analyze the following meeting transcript and generate a structur
 The sales agent is "Agent", and the potential customer is "Client".
 
 **Your Instructions:**
-1.  **Identify Pain Points:** Carefully read the client's statements and list their primary business challenges and pain points.
-2.  **Suggest Modules:** Based on the client's needs, select the most relevant modules from the list of available modules. Do not suggest modules that are not on the list.
-3.  **Extract Key Information:** Listen for any mentions of budget, project timelines, and the names or titles of decision-makers.
-4.  **Draft Content:** Write a concise "Problem Statement" summarizing the client's challenges and a "Proposed Solution" that explains how the suggested modules will solve these problems.
+1.  **Select the Best Template:** Based on the context of the conversation, choose the single most appropriate template from the list of `availableTemplates`.
+2.  **Identify Pain Points:** Carefully read the client's statements and list their primary business challenges and pain points.
+3.  **Suggest Modules:** Based on the client's needs, select the most relevant modules from the list of `availableModules`. Do not suggest modules that are not on the list.
+4.  **Extract Key Information:** Listen for any mentions of budget, project timelines, and the names or titles of decision-makers.
+5.  **Draft Content:** Write a concise "Problem Statement" summarizing the client's challenges and a "Proposed Solution" that explains how the suggested modules will solve these problems.
+
+**Available Templates:**
+{{#each availableTemplates}}
+- {{{this}}}
+{{/each}}
 
 **Available Modules:**
 {{#each availableModules}}
