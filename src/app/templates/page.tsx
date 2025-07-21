@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, onSnapshot, doc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -14,9 +15,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { PlusCircle, Users, Package, FileText, Loader2 } from "lucide-react";
+import { PlusCircle, Users, Package, FileText, Loader2, ArrowRight } from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import type { ProposalTemplate, User } from "@/lib/types";
+import Link from 'next/link';
 
 // A map to dynamically render icons based on the string from mock data
 const iconMap: Record<ProposalTemplate['icon'], React.ForwardRefExoticComponent<Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>> = {
@@ -26,6 +28,7 @@ const iconMap: Record<ProposalTemplate['icon'], React.ForwardRefExoticComponent<
 };
 
 export default function TemplatesPage() {
+    const router = useRouter();
     const [user, loadingAuth] = useAuthState(auth);
     const [userData, setUserData] = useState<User | null>(null);
     const [templates, setTemplates] = useState<ProposalTemplate[]>([]);
@@ -76,10 +79,13 @@ export default function TemplatesPage() {
           </div>
           {userData?.role === 'admin' && (
             <Button
+                asChild
                 className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
             >
-                <PlusCircle className="mr-2 h-5 w-5" />
-                Create New Template
+                <Link href="/templates/new">
+                    <PlusCircle className="mr-2 h-5 w-5" />
+                    Create New Template
+                </Link>
             </Button>
           )}
         </div>
@@ -93,7 +99,7 @@ export default function TemplatesPage() {
                 {templates.map((template) => {
                     const Icon = iconMap[template.icon];
                     return (
-                        <Card key={template.id} className="flex flex-col">
+                        <Card key={template.id} className="flex flex-col group">
                             <CardHeader>
                                 <div className="flex items-start justify-between">
                                     <CardTitle className="flex items-center gap-3 text-lg">
@@ -107,9 +113,11 @@ export default function TemplatesPage() {
                             <CardContent className="flex-grow">
                                 <CardDescription>{template.description}</CardDescription>
                             </CardContent>
-                            <CardHeader>
-                                 <Button variant="secondary" disabled={userData?.role !== 'admin'}>Manage Template</Button>
-                            </CardHeader>
+                            <CardFooter>
+                                 <Button variant="secondary" disabled={userData?.role !== 'admin'} className="w-full">
+                                     Manage Template <ArrowRight className="ml-2 h-4 w-4"/>
+                                 </Button>
+                            </CardFooter>
                         </Card>
                     )
                 })}

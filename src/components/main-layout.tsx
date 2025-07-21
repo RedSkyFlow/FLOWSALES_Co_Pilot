@@ -52,6 +52,11 @@ const navItems = [
   { href: '/templates', icon: Briefcase, label: 'Templates' },
 ];
 
+const secondaryNavItems = [
+    { href: '/guide', icon: BookUser, label: 'Help & Guide' },
+    { href: '/settings', icon: Settings, label: 'Settings' },
+];
+
 function NavItem({ href, icon: Icon, label }: typeof navItems[0]) {
     const pathname = usePathname();
     const isActive = href === '/' ? pathname === href : pathname.startsWith(href);
@@ -104,8 +109,9 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className="p-4 border-t border-border space-y-2">
-            <NavItem href="/guide" icon={BookUser} label="Help & Guide" />
-            <NavItem href="/settings" icon={Settings} label="Settings" />
+            {secondaryNavItems.map((item) => (
+                <NavItem key={item.href} {...item} />
+            ))}
             <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={async () => await signOut()}>
                 <LogOut className="h-5 w-5 mr-3"/>
                 <span>Log Out</span>
