@@ -46,7 +46,7 @@ export const TourStep = () => {
             <PopoverContent
                 side={step.side || 'bottom'}
                 align="center"
-                className="w-80 shadow-2xl"
+                className="w-80 shadow-2xl border-impact border-2"
                 onEscapeKeyDown={stopTour}
             >
                 <div className="space-y-4">
