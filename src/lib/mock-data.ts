@@ -1,5 +1,5 @@
 
-import type { Proposal, Client, Product, User, Version, ProposalTemplate } from './types';
+import type { User, Product, Version, ProposalTemplate } from './types';
 
 export const mockUser: User = {
   uid: 'abc-123',
