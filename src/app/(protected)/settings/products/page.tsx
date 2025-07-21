@@ -17,14 +17,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle } from "lucide-react";
+import { Loader2, PlusCircle, MoreHorizontal } from "lucide-react";
 import { AddProductDialog } from '@/components/add-product-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { deleteProduct } from '@/app/settings/products/actions';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ProductsPage() {
+    const { toast } = useToast();
     const [user, loadingAuth] = useAuthState(auth);
     const [products, setProducts] = useState<Product[]>([]);
     const [loadingProducts, setLoadingProducts] = useState(true);
-    const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [userData, setUserData] = useState<User | null>(null);
 
     useEffect(() => {
@@ -60,6 +66,32 @@ export default function ProductsPage() {
         return () => unsubscribe();
     }, [user, loadingAuth]);
     
+    const handleEditProduct = (product: Product) => {
+        setEditingProduct(product);
+        setIsAddDialogOpen(true);
+    };
+
+    const handleAddNewProduct = () => {
+        setEditingProduct(null);
+        setIsAddDialogOpen(true);
+    }
+    
+    const handleDeleteProduct = async (productId: string) => {
+        try {
+            await deleteProduct('tenant-001', productId);
+            toast({
+                title: 'Product Deleted',
+                description: 'The product has been successfully deleted.',
+            });
+        } catch (error) {
+             toast({
+                title: 'Error',
+                description: 'Failed to delete product. Please try again.',
+                variant: 'destructive',
+            });
+        }
+    }
+
     return (
         <MainLayout>
             <div className="space-y-8">
@@ -73,7 +105,7 @@ export default function ProductsPage() {
                     {userData?.role === 'admin' && (
                         <Button
                             className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
-                            onClick={() => setIsAddProductOpen(true)}
+                            onClick={handleAddNewProduct}
                         >
                             <PlusCircle className="mr-2 h-5 w-5" />
                             Add New Product
@@ -99,6 +131,7 @@ export default function ProductsPage() {
                                         <TableHead>Type</TableHead>
                                         <TableHead>Base Price</TableHead>
                                         <TableHead>Description</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -109,11 +142,42 @@ export default function ProductsPage() {
                                                 <TableCell className="capitalize">{product.type}</TableCell>
                                                 <TableCell>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(product.basePrice)}</TableCell>
                                                 <TableCell>{product.description}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <AlertDialog>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon">
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onClick={() => handleEditProduct(product)}>Edit</DropdownMenuItem>
+                                                                <AlertDialogTrigger asChild>
+                                                                    <DropdownMenuItem className="text-destructive focus:text-destructive">Delete</DropdownMenuItem>
+                                                                </AlertDialogTrigger>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    This action cannot be undone. This will permanently delete the product "{product.name}".
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteProduct(product.id)} className={buttonVariants({ variant: 'destructive'})}>
+                                                                    Continue
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={4} className="h-24 text-center">
+                                            <TableCell colSpan={5} className="h-24 text-center">
                                                 No products found. Add your first product to get started.
                                             </TableCell>
                                         </TableRow>
@@ -124,7 +188,12 @@ export default function ProductsPage() {
                     </CardContent>
                 </Card>
             </div>
-            <AddProductDialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen} />
+            <AddProductDialog 
+                key={editingProduct ? editingProduct.id : 'new'}
+                open={isAddDialogOpen} 
+                onOpenChange={setIsAddDialogOpen}
+                productToEdit={editingProduct} 
+            />
         </MainLayout>
     );
 }

@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import type { ProposalSection } from '@/lib/types';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, doc, deleteDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 interface CreateTemplateInput {
@@ -35,4 +35,17 @@ export async function createTemplate(data: CreateTemplateInput) {
     }
 }
 
-    
+export async function deleteTemplate(tenantId: string, templateId: string) {
+    if (!tenantId || !templateId) {
+        throw new Error('Tenant ID and Template ID are required.');
+    }
+    try {
+        const templateDocRef = doc(db, 'tenants', tenantId, 'proposal_templates', templateId);
+        await deleteDoc(templateDocRef);
+        revalidatePath('/templates');
+        revalidatePath('/proposals/new');
+    } catch (error) {
+        console.error("Error deleting template: ", error);
+        throw new Error('Could not delete the template. Please try again.');
+    }
+}

@@ -7,7 +7,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, onSnapshot, doc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAppData } from '@/components/app-data-provider';
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -16,11 +16,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { PlusCircle, Users, Package, FileText, Loader2, ArrowRight } from "lucide-react";
+import { PlusCircle, Users, Package, FileText, Loader2, MoreHorizontal, Trash2 } from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import type { ProposalTemplate, User } from "@/lib/types";
 import Link from 'next/link';
 import { useTour, TourStep } from '@/hooks/use-tour';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { deleteTemplate } from '@/app/templates/actions';
 
 const iconMap: Record<string, React.FC<LucideProps>> = {
     Users: Users,
@@ -42,12 +46,13 @@ const templatesTourSteps: TourStep[] = [
     {
         selector: '[data-tour-id="template-card"]',
         title: "Template Card",
-        content: "Each card represents a template you can use in the proposal wizard. In the future, you'll be able to manage them from here."
+        content: "Each card represents a template you can use in the proposal wizard. Use the menu to manage them."
     },
 ];
 
 export default function TemplatesPage() {
     const router = useRouter();
+    const { toast } = useToast();
     const [user, loadingAuth] = useAuthState(auth);
     const { templates, loading } = useAppData();
     const [userData, setUserData] = useState<User | null>(null);
@@ -68,6 +73,23 @@ export default function TemplatesPage() {
             });
         }
     }, [user, loadingAuth]);
+    
+    const handleDeleteTemplate = async (templateId: string) => {
+        try {
+            await deleteTemplate('tenant-001', templateId);
+            toast({
+                title: 'Template Deleted',
+                description: 'The template has been successfully deleted.',
+            });
+        } catch (error) {
+             toast({
+                title: 'Error',
+                description: 'Failed to delete template. Please try again.',
+                variant: 'destructive',
+            });
+        }
+    }
+
 
   return (
       <div className="space-y-8">
@@ -110,15 +132,46 @@ export default function TemplatesPage() {
                                         </div>
                                         {template.name}
                                     </CardTitle>
+                                    {userData?.role === 'admin' && (
+                                    <AlertDialog>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem disabled>Edit</DropdownMenuItem>
+                                                <AlertDialogTrigger asChild>
+                                                    <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                    </DropdownMenuItem>
+                                                </AlertDialogTrigger>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                         <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This action cannot be undone. This will permanently delete the template "{template.name}".
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteTemplate(template.id)} className={buttonVariants({ variant: 'destructive'})}>
+                                                    Continue
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                    )}
                                 </div>
                             </CardHeader>
                             <CardContent className="flex-grow">
                                 <CardDescription>{template.description}</CardDescription>
                             </CardContent>
                             <CardFooter>
-                                 <Button variant="secondary" disabled={userData?.role !== 'admin'} className="w-full">
-                                     Manage Template <ArrowRight className="ml-2 h-4 w-4"/>
-                                 </Button>
+                                 <p className="text-xs text-muted-foreground w-full">{template.sections.length} sections</p>
                             </CardFooter>
                         </Card>
                     )

@@ -1,12 +1,13 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { addProduct } from '@/app/settings/products/actions';
+import { addProduct, updateProduct } from '@/app/settings/products/actions';
+import type { Product } from '@/lib/types';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,11 +38,14 @@ type ProductFormData = z.infer<typeof productSchema>;
 interface AddProductDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  productToEdit?: Product | null;
 }
 
-export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) {
+export function AddProductDialog({ open, onOpenChange, productToEdit }: AddProductDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEditMode = !!productToEdit;
+
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -54,33 +58,61 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
     }
   });
 
+  useEffect(() => {
+    if (productToEdit) {
+      reset({
+        name: productToEdit.name,
+        description: productToEdit.description,
+        type: productToEdit.type,
+        pricingModel: productToEdit.pricingModel,
+        basePrice: productToEdit.basePrice,
+        tags: productToEdit.tags.join(', '),
+      });
+    } else {
+      reset({
+        name: '',
+        description: '',
+        type: 'product',
+        pricingModel: 'one-time',
+        basePrice: 0,
+        tags: '',
+      });
+    }
+  }, [productToEdit, reset]);
+
   const handleDialogClose = (isOpen: boolean) => {
     if (!isSubmitting) {
       onOpenChange(isOpen);
-      if (!isOpen) {
-        reset();
-      }
     }
   };
 
   const onSubmit = async (data: ProductFormData) => {
     setIsSubmitting(true);
     try {
-      // Hardcoded tenantId for now
-      const tenantId = 'tenant-001';
+      const tenantId = 'tenant-001'; // Hardcoded tenantId for now
       const tagsArray = data.tags ? data.tags.split(',').map(tag => tag.trim()) : [];
-      await addProduct({ ...data, tenantId, tags: tagsArray });
-      toast({
-        title: "Product Added",
-        description: `${data.name} has been successfully added to your catalog.`,
-      });
+      const productData = { ...data, tags: tagsArray };
+
+      if (isEditMode) {
+        await updateProduct(tenantId, productToEdit.id, productData);
+        toast({
+          title: "Product Updated",
+          description: `${data.name} has been successfully updated.`,
+        });
+      } else {
+        await addProduct({ ...productData, tenantId });
+        toast({
+          title: "Product Added",
+          description: `${data.name} has been successfully added to your catalog.`,
+        });
+      }
       onOpenChange(false);
-      reset();
     } catch (error) {
       console.error(error);
+      const action = isEditMode ? 'update' : 'add';
       toast({
         title: "Error",
-        description: "Failed to add product. Please try again.",
+        description: `Failed to ${action} product. Please try again.`,
         variant: "destructive",
       });
     } finally {
@@ -93,9 +125,9 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Add New Product</DialogTitle>
+            <DialogTitle>{isEditMode ? 'Edit Product' : 'Add New Product'}</DialogTitle>
             <DialogDescription>
-              Fill in the details for your new product or service.
+              {isEditMode ? 'Update the details for this product.' : 'Fill in the details for your new product or service.'}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -116,7 +148,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
                         name="type"
                         control={control}
                         render={({ field }) => (
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                                 <SelectTrigger id="type"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="product">Product</SelectItem>
@@ -133,7 +165,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
                         name="pricingModel"
                         control={control}
                         render={({ field }) => (
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                                 <SelectTrigger id="pricingModel"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="one-time">One-Time</SelectItem>
@@ -160,7 +192,7 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Product
+              {isEditMode ? 'Save Changes' : 'Save Product'}
             </Button>
           </DialogFooter>
         </form>
