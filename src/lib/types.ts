@@ -37,6 +37,20 @@ export interface Product {
   type: 'product' | 'service' | 'license';
 }
 
+export interface ProductRule {
+    id: string;
+    // The product that triggers the rule
+    primaryProductId: string; 
+    // The products affected by the rule
+    relatedProductIds: string[]; 
+    // The type of rule
+    type: 'dependency' | 'conflict' | 'recommendation'; 
+    // The condition of the rule
+    condition: 'requires_one' | 'requires_all' | 'conflicts_with';
+    // The status of the rule, for AI onboarding
+    status: 'active' | 'pending_review' | 'rejected';
+}
+
 export interface BrandAsset {
     id: string;
     logoUrl: string;
@@ -138,5 +152,3 @@ export interface ProposalTemplate {
   icon: 'Users' | 'Package' | 'FileText';
   sections: ProposalSection[];
 }
-
-    
