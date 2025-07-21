@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, increment, addDoc, collection, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
-import type { Proposal, Product, SuggestedEdit, ProposalSection, Client } from '@/lib/types';
+import type { Proposal, Product, SuggestedEdit, ProposalSection, Client, Version } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -24,6 +24,7 @@ export async function trackProposalView(tenantId: string, proposalId: string) {
     await updateDoc(proposalRef, {
       'engagementData.views': increment(1),
       'engagementData.lastViewed': new Date().toISOString(),
+      status: 'viewed'
     });
 
   } catch (error) {
@@ -101,6 +102,7 @@ interface CreateSuggestedEditInput {
     suggestedContent: string;
     authorId: string;
     authorName: string;
+    authorAvatarUrl?: string;
 }
 
 export async function createSuggestedEdit(input: CreateSuggestedEditInput) {
@@ -127,6 +129,7 @@ export async function createSuggestedEdit(input: CreateSuggestedEditInput) {
         status: 'pending',
         authorId: input.authorId,
         authorName: input.authorName,
+        authorAvatarUrl: input.authorAvatarUrl,
     };
     
     const editsCollectionPath = `tenants/${input.tenantId}/proposals/${input.proposalId}/suggested_edits`;
@@ -134,11 +137,26 @@ export async function createSuggestedEdit(input: CreateSuggestedEditInput) {
         ...suggestion,
         createdAt: serverTimestamp(),
     });
+    
+    // Also update the proposal status to reflect that changes have been requested
+    await updateDoc(proposalRef, { status: 'changes_requested' });
+
 
     revalidatePath(`/proposals/${input.proposalId}`);
 }
 
-export async function acceptSuggestedEdit(tenantId: string, suggestion: SuggestedEdit) {
+interface AcceptSuggestedEditInput {
+    tenantId: string;
+    suggestion: SuggestedEdit;
+    actor: {
+        id: string;
+        name: string;
+        avatarUrl?: string;
+    };
+}
+
+
+export async function acceptSuggestedEdit({tenantId, suggestion, actor}: AcceptSuggestedEditInput) {
     const batch = writeBatch(db);
 
     const proposalRef = doc(db, 'tenants', tenantId, 'proposals', suggestion.proposalId);
@@ -150,14 +168,28 @@ export async function acceptSuggestedEdit(tenantId: string, suggestion: Suggeste
     
     const updatedSections = [...proposalData.sections];
     updatedSections[suggestion.sectionIndex].content = suggestion.suggestedContent;
+    const newVersionNumber = proposalData.version + 1;
 
     batch.update(proposalRef, { 
         sections: updatedSections,
         lastModified: new Date().toISOString(),
-        version: increment(1)
+        version: increment(1),
+        status: 'viewed' // Revert status to viewed after change
     });
 
     batch.update(suggestionRef, { status: 'accepted' });
+
+    // Create a new version document
+    const versionRef = doc(collection(db, `tenants/${tenantId}/proposals/${suggestion.proposalId}/versions`));
+    const newVersion: Omit<Version, 'id'|'createdAt'> = {
+        versionNumber: newVersionNumber,
+        authorId: actor.id,
+        authorName: actor.name,
+        authorAvatarUrl: actor.avatarUrl,
+        summary: `Accepted suggestion on "${suggestion.sectionTitle}"`,
+    };
+    batch.set(versionRef, { ...newVersion, createdAt: serverTimestamp() });
+
 
     await batch.commit();
     revalidatePath(`/proposals/${suggestion.proposalId}`);

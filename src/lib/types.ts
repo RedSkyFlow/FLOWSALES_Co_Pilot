@@ -1,4 +1,5 @@
 
+
 export interface Tenant {
   id: string;
   companyName: string;
@@ -134,16 +135,15 @@ export interface SuggestedEdit {
 }
 
 export interface Version {
-  number: number;
-  date: string;
-  author: {
-    uid: string;
-    name: string;
-    avatarUrl: string;
-    initials: string;
-  }
-  summary: string;
+  id: string;
+  versionNumber: number;
+  createdAt: Date;
+  authorId: string;
+  authorName: string;
+  authorAvatarUrl?: string;
+  summary: string; // e.g., "Accepted suggestion on 'Executive Summary'"
 }
+
 
 // Templates are now tenant-specific configurations
 export interface ProposalTemplate {

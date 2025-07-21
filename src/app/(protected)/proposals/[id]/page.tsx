@@ -23,7 +23,6 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { mockVersions } from "@/lib/mock-data";
 import { notFound, useParams } from "next/navigation";
 import {
   FileText,
@@ -45,7 +44,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientDate } from "@/components/client-date";
-import type { Proposal, ProposalStatus, Comment, SuggestedEdit, ProposalSection, Product } from '@/lib/types';
+import type { Proposal, ProposalStatus, Comment, SuggestedEdit, ProposalSection, Product, Version } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useState, useEffect, useRef } from "react";
 import { db, auth } from "@/lib/firebase";
@@ -94,6 +93,8 @@ export default function ProposalDetailPage() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [suggestedEdits, setSuggestedEdits] = useState<SuggestedEdit[]>([]);
+  const [versions, setVersions] = useState<Version[]>([]);
+
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -106,10 +107,10 @@ export default function ProposalDetailPage() {
   useEffect(() => {
     // Hardcoded tenantId for now
     const tenantId = 'tenant-001'; 
-    if (proposalId && user) {
+    if (proposalId && user && proposal?.status === 'sent') {
       trackProposalView(tenantId, proposalId);
     }
-  }, [proposalId, user]);
+  }, [proposalId, user, proposal?.status]);
 
   useEffect(() => {
     if (!proposalId) return;
@@ -139,11 +140,19 @@ export default function ProposalDetailPage() {
       const editsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() })) as SuggestedEdit[];
       setSuggestedEdits(editsData);
     });
+    
+    const versionsQuery = query(collection(db, proposalSubCollectionPath, "versions"), orderBy("createdAt", "desc"));
+    const unsubscribeVersions = onSnapshot(versionsQuery, (querySnapshot) => {
+        const versionsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() })) as Version[];
+        setVersions(versionsData);
+    });
+
 
     return () => {
         unsubscribeProposal();
         unsubscribeComments();
         unsubscribeEdits();
+        unsubscribeVersions();
     };
   }, [proposalId]);
 
@@ -188,6 +197,7 @@ export default function ProposalDetailPage() {
             suggestedContent: suggestionText,
             authorId: user.uid,
             authorName: user.displayName || "Anonymous User",
+            authorAvatarUrl: user.photoURL || undefined,
         });
         toast({ title: "Suggestion Submitted", description: "The sales agent has been notified of your suggestion." });
         setIsSheetOpen(false);
@@ -200,10 +210,14 @@ export default function ProposalDetailPage() {
   };
   
   const handleAcceptSuggestion = async (suggestion: SuggestedEdit) => {
+      if (!user) return;
       try {
-          // Hardcoded tenantId for now
           const tenantId = 'tenant-001';
-          await acceptSuggestedEdit(tenantId, suggestion);
+          await acceptSuggestedEdit({
+              tenantId,
+              suggestion,
+              actor: { id: user.uid, name: user.displayName || 'Sales Agent', avatarUrl: user.photoURL || undefined }
+            });
           toast({ title: "Suggestion Accepted", description: "The proposal has been updated." });
       } catch (error) {
           console.error("Error accepting suggestion:", error);
@@ -304,7 +318,7 @@ export default function ProposalDetailPage() {
 
   const isSalesAgent = user?.uid === proposal.salesAgentId;
   const pendingSuggestions = suggestedEdits.filter(s => s.status === 'pending');
-  const canBeAccepted = proposal.status === 'sent' || proposal.status === 'viewed';
+  const canBeAccepted = proposal.status === 'sent' || proposal.status === 'viewed' || proposal.status === 'changes_requested';
 
   return (
     <MainLayout>
@@ -509,22 +523,26 @@ export default function ProposalDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {mockVersions.map((version) => (
-                <div key={version.number} className="flex items-start gap-4">
+              {versions.length > 0 ? versions.map((version) => (
+                <div key={version.id} className="flex items-start gap-4">
                   <div className="flex flex-col items-center">
                     <Avatar className="w-8 h-8 mb-1">
-                      <AvatarImage src={version.author.avatarUrl} />
-                      <AvatarFallback>{version.author.initials}</AvatarFallback>
+                      <AvatarImage src={version.authorAvatarUrl} />
+                      <AvatarFallback>{getInitials(version.authorName)}</AvatarFallback>
                     </Avatar>
                     <div className="w-px flex-1 bg-border"></div>
                   </div>
                   <div>
-                    <p className="font-semibold">Version {version.number}</p>
+                    <p className="font-semibold">Version {version.versionNumber}</p>
                     <p className="text-sm text-muted-foreground">{version.summary}</p>
-                    <p className="text-xs text-muted-foreground mt-1"><ClientDate dateString={version.date} /></p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        {version.createdAt ? formatDistanceToNow(version.createdAt, { addSuffix: true }) : 'just now'} by {version.authorName}
+                    </p>
                   </div>
                 </div>
-              ))}
+              )) : (
+                 <p className="text-sm text-muted-foreground text-center py-4">No version history yet.</p>
+              )}
             </CardContent>
           </Card>
         </div>
