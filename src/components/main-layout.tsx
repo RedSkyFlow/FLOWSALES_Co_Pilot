@@ -16,7 +16,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuthState, useSignOut } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { Button } from './ui/button';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import type { Client, Product, ProductRule, ProposalTemplate } from '@/lib/types';
@@ -105,44 +105,54 @@ function AppDataProvider({ children }: { children: React.ReactNode }) {
         rules: [],
     });
     const [loadingData, setLoadingData] = useState(true);
+    const initialLoadCounter = useRef(0);
+
 
     useEffect(() => {
+        if (loadingAuth) return;
         if (!user) {
-            if (!loadingAuth) setLoadingData(false);
+            setLoadingData(false);
             return;
         }
 
         setLoadingData(true);
         const tenantId = 'tenant-001'; // This should be dynamic based on the user's tenant
 
-        const collections = {
+        const collectionsToFetch = {
             templates: collection(db, 'tenants', tenantId, 'proposal_templates'),
             clients: collection(db, 'tenants', tenantId, 'clients'),
             products: collection(db, 'tenants', tenantId, 'products'),
             rules: collection(db, 'tenants', tenantId, 'product_rules'),
         };
 
-        const unsubscribers = Object.entries(collections).map(([key, coll]) => 
-            onSnapshot(query(coll), snapshot => {
+        const collectionKeys = Object.keys(collectionsToFetch) as Array<keyof typeof collectionsToFetch>;
+        initialLoadCounter.current = collectionKeys.length;
+
+        const unsubscribers = collectionKeys.map((key) => {
+            let isInitialLoad = true;
+            return onSnapshot(query(collectionsToFetch[key]), snapshot => {
                 setAppData(prev => ({
                     ...prev,
                     [key]: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
                 }));
-            })
-        );
-        
-        // This is a simple way to know when initial data has been loaded.
-        // It's imperfect but avoids complex state management for this use case.
-        // We wait for all onSnapshot listeners to fire at least once.
-        const initialLoadChecker = Promise.all(Object.values(collections).map(coll => 
-            new Promise<void>(resolve => {
-                const unsub = onSnapshot(query(coll), () => {
-                    resolve();
-                    unsub();
-                });
-            })
-        )).then(() => {
-            setLoadingData(false);
+
+                if (isInitialLoad) {
+                    isInitialLoad = false;
+                    initialLoadCounter.current -= 1;
+                    if (initialLoadCounter.current === 0) {
+                        setLoadingData(false);
+                    }
+                }
+            }, (error) => {
+                console.error(`Error fetching ${key}:`, error);
+                if (isInitialLoad) {
+                    isInitialLoad = false;
+                    initialLoadCounter.current -= 1;
+                    if (initialLoadCounter.current === 0) {
+                        setLoadingData(false);
+                    }
+                }
+            });
         });
 
         return () => {
