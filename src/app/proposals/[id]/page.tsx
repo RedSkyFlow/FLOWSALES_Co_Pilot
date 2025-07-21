@@ -83,7 +83,7 @@ function getInitials(name: string) {
 }
 
 export default function ProposalDetailPage({
-  params: { id: proposalId },
+  params,
 }: {
   params: { id: string };
 }) {
@@ -102,14 +102,16 @@ export default function ProposalDetailPage({
   const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
   
   useEffect(() => {
+    const proposalId = params.id;
     // Hardcoded tenantId for now
     const tenantId = 'tenant-001'; 
     if (proposalId && user) {
       trackProposalView(tenantId, proposalId);
     }
-  }, [proposalId, user]);
+  }, [params, user]);
 
   useEffect(() => {
+    const proposalId = params.id;
     if (!proposalId) return;
 
     // Hardcoded tenantId for now
@@ -143,13 +145,14 @@ export default function ProposalDetailPage({
         unsubscribeComments();
         unsubscribeEdits();
     };
-  }, [proposalId]);
+  }, [params]);
 
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!newComment.trim() || !user) return;
       try {
+        const proposalId = params.id;
         // Hardcoded tenantId for now
         const tenantId = 'tenant-001';
         const commentsCollectionPath = `tenants/${tenantId}/proposals/${proposalId}/comments`;
@@ -177,6 +180,7 @@ export default function ProposalDetailPage({
     if (!suggestionText.trim() || !user || !currentSection) return;
     setIsSubmittingSuggestion(true);
     try {
+        const proposalId = params.id;
         // Hardcoded tenantId for now
         const tenantId = 'tenant-001';
         await createSuggestedEdit({
