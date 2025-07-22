@@ -197,15 +197,17 @@ export function ProposalWizard() {
           });
 
           if (result.suggestedTemplate) {
-              setSelectedTemplate(result.suggestedTemplate);
-              toast({ title: "AI Suggestion", description: `The "${result.suggestedTemplate}" template was automatically selected.` });
+              const matchedTemplate = templates.find(t => t.name === result.suggestedTemplate);
+              if (matchedTemplate) {
+                setSelectedTemplate(matchedTemplate.id);
+                toast({ title: "AI Suggestion", description: `The "${result.suggestedTemplate}" template was automatically selected.` });
+              }
           }
           
           setPainPoints(result.clientPainPoints.join('\n'));
-          setExtraSections([
-              { title: "Problem Statement", content: result.problemStatementDraft, type: "ai_generated" },
-              { title: "Proposed Solution", content: result.solutionProposalDraft, type: "ai_generated" }
-          ]);
+          
+          const problemSection: ProposalSection = { title: "Problem Statement", content: result.problemStatementDraft, type: "ai_generated" };
+          const solutionSection: ProposalSection = { title: "Proposed Solution", content: result.solutionProposalDraft, type: "ai_generated" };
           
           const suggestedProducts = products.filter(p => result.suggestedModules.includes(p.name));
           setSelectedProducts(suggestedProducts);
@@ -213,12 +215,17 @@ export function ProposalWizard() {
           toast({ title: "Analysis Complete", description: "Pain points, products, and draft sections have been populated." });
 
           // Now, generate the executive summary based on the new pain points
-          const currentTemplate = result.suggestedTemplate || selectedTemplate;
-          if (result.clientPainPoints.join('\n') && currentTemplate) {
+          const templateName = templates.find(t => t.id === selectedTemplate)?.name || result.suggestedTemplate;
+          if (result.clientPainPoints.join('\n') && templateName) {
             setIsSummaryLoading(true);
-            const summaryResult = await generateExecutiveSummary({ clientPainPoints: result.clientPainPoints.join('\n'), proposalType: currentTemplate });
-            setExecutiveSummary(summaryResult.executiveSummary);
+            const summaryResult = await generateExecutiveSummary({ clientPainPoints: result.clientPainPoints.join('\n'), proposalType: templateName });
+            
+            const summarySection: ProposalSection = { title: "Executive Summary", content: summaryResult.executiveSummary, type: "ai_generated" };
+            setExtraSections([summarySection, problemSection, solutionSection]);
+
             toast({ title: "Summary Generated", description: "An executive summary was also created based on the transcript." });
+          } else {
+            setExtraSections([problemSection, solutionSection]);
           }
 
       } catch (error) {
@@ -253,19 +260,29 @@ export function ProposalWizard() {
         const tenantId = 'tenant-001'; 
         const client = clients.find(c => c.id === selectedClient);
         
-        const template = templates.find(t => t.name === selectedTemplate);
-        const templateSections = template ? template.sections : [];
+        const template = templates.find(t => t.id === selectedTemplate);
+        if (!template) {
+            throw new Error("Selected template could not be found.");
+        }
+
+        const executiveSummarySection: ProposalSection = {
+            title: 'Executive Summary',
+            content: executiveSummary,
+            type: 'ai_generated'
+        };
+
+        const initialSections = [executiveSummarySection, ...extraSections, ...template.sections];
 
         const newProposalId = await createProposal({
             tenantId,
             salesAgentId: user.uid,
-            selectedTemplate,
+            selectedTemplateData: template,
             selectedClientId: selectedClient,
             clientName: client?.name,
-            executiveSummary,
+            painPoints: painPoints,
             selectedProducts,
             totalValue,
-            extraSections: [...extraSections, ...templateSections],
+            initialSections: initialSections,
         });
         toast({
             title: "Proposal Created!",
@@ -334,10 +351,10 @@ export function ProposalWizard() {
                   return (
                     <Card
                         key={template.id}
-                        onClick={() => setSelectedTemplate(template.name)}
+                        onClick={() => setSelectedTemplate(template.id)}
                         className={cn(
                         "cursor-pointer transition-all hover:shadow-lg hover:border-primary",
-                        selectedTemplate === template.name && "border-2 border-primary shadow-lg"
+                        selectedTemplate === template.id && "border-2 border-primary shadow-lg"
                         )}
                     >
                         <CardHeader className="flex flex-col items-center text-center gap-4">
@@ -420,7 +437,12 @@ export function ProposalWizard() {
                     {isSummaryLoading ? (
                         <Skeleton className="h-24 w-full" />
                     ) : (
-                        <Textarea readOnly value={executiveSummary || "AI-generated summary will appear here."} rows={6} className="bg-background"/>
+                        <Textarea 
+                            readOnly 
+                            value={executiveSummary || (extraSections.find(s => s.title === 'Executive Summary')?.content || "AI-generated summary will appear here.")} 
+                            rows={6} 
+                            className="bg-background"
+                        />
                     )}
                 </div>
                  <div>
@@ -431,9 +453,9 @@ export function ProposalWizard() {
                            <Skeleton className="h-10 w-full" />
                         </div>
                     ) : (
-                        extraSections.length > 0 ? (
+                        extraSections.filter(s => s.title !== 'Executive Summary').length > 0 ? (
                             <div className="space-y-2 text-sm p-2 bg-background rounded-md">
-                               {extraSections.map((section, index) => (
+                               {extraSections.filter(s => s.title !== 'Executive Summary').map((section, index) => (
                                    <div key={index} className="border-b border-border last:border-none pb-2 mb-2">
                                        <p className="font-semibold">{section.title}</p>
                                        <p className="text-muted-foreground line-clamp-2">{section.content}</p>
@@ -517,7 +539,7 @@ export function ProposalWizard() {
                         <CardTitle className="font-sans">Proposal Summary</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                        <p><strong>Template:</strong> {selectedTemplate}</p>
+                        <p><strong>Template:</strong> {templates.find(t => t.id === selectedTemplate)?.name}</p>
                         <p><strong>Client:</strong> {clients.find(c => c.id === selectedClient)?.name}</p>
                         <p><strong>Modules:</strong> {selectedProducts.map(m => m.name).join(', ')}</p>
                         <p className="font-bold"><strong>Total Value:</strong> {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalValue)}</p>

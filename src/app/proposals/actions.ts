@@ -3,8 +3,9 @@
 
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, increment, addDoc, collection, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
-import type { Proposal, Product, SuggestedEdit, ProposalSection, Client, Version } from '@/lib/types';
+import type { Proposal, Product, SuggestedEdit, ProposalSection, Client, Version, ProposalTemplate } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
+import { generateFullProposal } from '@/ai/flows/generate-full-proposal';
 
 /**
  * Tracks a view for a given proposal within a tenant.
@@ -34,32 +35,34 @@ export async function trackProposalView(tenantId: string, proposalId: string) {
 
 interface CreateProposalInput {
     tenantId: string;
-    selectedTemplate: string | null;
+    selectedTemplateData: ProposalTemplate;
     selectedClientId: string;
     clientName?: string;
-    executiveSummary: string;
+    painPoints: string;
     selectedProducts: Product[];
     totalValue: number;
     salesAgentId: string;
-    extraSections: ProposalSection[];
+    initialSections: ProposalSection[];
 }
 
 export async function createProposal(data: CreateProposalInput): Promise<string> {
-    if (!data.tenantId) {
-        throw new Error('Tenant ID is required to create a proposal.');
+    if (!data.tenantId || !data.salesAgentId) {
+        throw new Error('Tenant ID and Sales Agent ID are required.');
     }
-    if (!data.selectedTemplate || !data.selectedClientId) {
-        throw new Error('Template and Client are required to create a proposal.');
+    if (!data.selectedTemplateData || !data.selectedClientId) {
+        throw new Error('Template and Client are required.');
     }
-    
-    const executiveSummarySection: ProposalSection = {
-        title: 'Executive Summary',
-        content: data.executiveSummary || 'No summary was generated.',
-        type: data.executiveSummary ? 'ai_generated' : 'manual',
-    };
+
+    const {sections: generatedSections} = await generateFullProposal({
+      clientPainPoints: data.painPoints,
+      selectedProducts: data.selectedProducts.map(p => p.name),
+      templateSections: data.initialSections,
+      proposalType: data.selectedTemplateData.name,
+    });
+
 
     const newProposal: Omit<Proposal, 'id'> = {
-        title: `${data.selectedTemplate} for ${data.clientName || 'Unknown Client'}`,
+        title: `${data.selectedTemplateData.name} for ${data.clientName || 'Unknown Client'}`,
         clientId: data.selectedClientId,
         clientName: data.clientName,
         salesAgentId: data.salesAgentId,
@@ -69,7 +72,7 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
         createdAt: new Date().toISOString(),
         lastModified: new Date().toISOString(),
         selectedProducts: data.selectedProducts,
-        sections: [executiveSummarySection, ...data.extraSections],
+        sections: generatedSections,
         engagementData: {
             views: 0,
             timeOnPage: 0,
@@ -89,6 +92,8 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
     
     const proposalsCollectionRef = collection(db, 'tenants', data.tenantId, 'proposals');
     const docRef = await addDoc(proposalsCollectionRef, newProposal);
+    
+    revalidatePath('/');
     return docRef.id;
 }
 
