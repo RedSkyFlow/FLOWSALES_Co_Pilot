@@ -171,4 +171,5 @@ export interface ProposalTemplate {
   icon: string;
   sections: ProposalSection[];
   createdAt?: string; // ISO 8601 date string
+  createdBy?: string; // User ID
 }

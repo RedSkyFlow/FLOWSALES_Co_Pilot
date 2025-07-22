@@ -74,7 +74,7 @@ export default function NewTemplatePage() {
     try {
       // Hardcoded tenantId for now
       const tenantId = 'tenant-001';
-      await createTemplate({ ...data, tenantId });
+      await createTemplate({ ...data, tenantId, createdBy: user.uid });
       toast({
         title: 'Template Created',
         description: `The "${data.name}" template has been successfully created.`,

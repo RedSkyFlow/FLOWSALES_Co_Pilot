@@ -40,6 +40,7 @@ import {
   X,
   Loader2,
   Briefcase,
+  Pencil,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
@@ -52,7 +53,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc } 
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { formatDistanceToNow } from 'date-fns';
 import { trackProposalView, createSuggestedEdit, acceptSuggestedEdit, rejectSuggestedEdit, acceptProposal } from "@/app/proposals/actions";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from '@/hooks/use-toast';
 import { Label } from "@/components/ui/label";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -372,6 +373,7 @@ export default function ProposalDetailPage() {
   const isSalesAgent = user?.uid === proposal.salesAgentId;
   const pendingSuggestions = suggestedEdits.filter(s => s.status === 'pending');
   const canBeAccepted = proposal.status === 'sent' || proposal.status === 'viewed' || proposal.status === 'changes_requested';
+  const canBeEdited = isSalesAgent && (proposal.status === 'draft' || proposal.status === 'sent' || proposal.status === 'viewed' || proposal.status === 'changes_requested');
 
   const dynamicStyles: React.CSSProperties = {};
   if (brandingSettings?.primaryColor) {
@@ -456,8 +458,16 @@ export default function ProposalDetailPage() {
             </Card>
 
             <Card>
-                <CardHeader>
-                    <CardTitle className="text-2xl flex items-center gap-2"><Briefcase className="text-primary-color"/> Included Products</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div className="space-y-1.5">
+                        <CardTitle className="text-2xl flex items-center gap-2"><Briefcase className="text-primary-color"/> Included Products</CardTitle>
+                        <CardDescription>The products and services included in this proposal.</CardDescription>
+                    </div>
+                     {canBeEdited && (
+                        <Button variant="outline" size="sm">
+                            <Pencil className="h-4 w-4 mr-2" /> Edit Products
+                        </Button>
+                    )}
                 </CardHeader>
                 <CardContent className="space-y-0">
                     <div className="divide-y divide-border">

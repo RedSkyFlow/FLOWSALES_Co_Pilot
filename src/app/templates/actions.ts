@@ -12,9 +12,10 @@ interface CreateTemplateInput {
     description: string;
     icon: 'Users' | 'Package' | 'FileText';
     sections: ProposalSection[];
+    createdBy: string;
 }
 
-type UpdateTemplateInput = Omit<CreateTemplateInput, 'tenantId'>;
+type UpdateTemplateInput = Omit<CreateTemplateInput, 'tenantId' | 'createdBy'>;
 
 export async function createTemplate(data: CreateTemplateInput) {
     if (!data.tenantId || !data.name) {
@@ -29,6 +30,7 @@ export async function createTemplate(data: CreateTemplateInput) {
             icon: data.icon,
             sections: data.sections,
             createdAt: new Date().toISOString(),
+            createdBy: data.createdBy,
         });
         revalidatePath('/templates');
         revalidatePath('/proposals/new'); // Revalidate wizard to pick up new template
