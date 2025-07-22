@@ -72,7 +72,6 @@ export function ProposalWizard() {
   const [selectedClient, setSelectedClient] = useState<string>("");
   const [painPoints, setPainPoints] = useState("");
   const [meetingTranscript, setMeetingTranscript] = useState("");
-  const [executiveSummary, setExecutiveSummary] = useState("");
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -168,10 +167,14 @@ export function ProposalWizard() {
   const handleGenerateSummary = async () => {
     if (!painPoints || !selectedTemplate) return;
     setIsSummaryLoading(true);
-    setExecutiveSummary("");
+    
+    // Remove any existing executive summary from extraSections
+    setExtraSections(prev => prev.filter(s => s.title.toLowerCase() !== 'executive summary'));
+
     try {
-        const result = await generateExecutiveSummary({ clientPainPoints: painPoints, proposalType: selectedTemplate });
-        setExecutiveSummary(result.executiveSummary);
+        const result = await generateExecutiveSummary({ clientPainPoints: painPoints, proposalType: templates.find(t => t.id === selectedTemplate)?.name || '' });
+        const summarySection: ProposalSection = { title: "Executive Summary", content: result.executiveSummary, type: "ai_generated" };
+        setExtraSections(prev => [summarySection, ...prev]);
         toast({ title: "Summary Generated", description: "The executive summary has been populated." });
     } catch (error) {
         console.error("Failed to generate summary:", error);
@@ -185,7 +188,6 @@ export function ProposalWizard() {
       if (!meetingTranscript) return;
       setIsAnalysisLoading(true);
       setPainPoints("");
-      setExecutiveSummary("");
       setExtraSections([]);
       setSelectedProducts([]);
       
@@ -211,6 +213,8 @@ export function ProposalWizard() {
           
           const suggestedProducts = products.filter(p => result.suggestedModules.includes(p.name));
           setSelectedProducts(suggestedProducts);
+          
+          let generatedSections = [problemSection, solutionSection];
 
           toast({ title: "Analysis Complete", description: "Pain points, products, and draft sections have been populated." });
 
@@ -221,12 +225,12 @@ export function ProposalWizard() {
             const summaryResult = await generateExecutiveSummary({ clientPainPoints: result.clientPainPoints.join('\n'), proposalType: templateName });
             
             const summarySection: ProposalSection = { title: "Executive Summary", content: summaryResult.executiveSummary, type: "ai_generated" };
-            setExtraSections([summarySection, problemSection, solutionSection]);
+            generatedSections.unshift(summarySection);
 
             toast({ title: "Summary Generated", description: "An executive summary was also created based on the transcript." });
-          } else {
-            setExtraSections([problemSection, solutionSection]);
           }
+          
+          setExtraSections(generatedSections);
 
       } catch (error) {
           console.error("Failed to analyze transcript:", error);
@@ -265,13 +269,15 @@ export function ProposalWizard() {
             throw new Error("Selected template could not be found.");
         }
 
-        const executiveSummarySection: ProposalSection = {
-            title: 'Executive Summary',
-            content: executiveSummary,
-            type: 'ai_generated'
-        };
+        // Combine AI-generated sections with template sections, avoiding duplicates.
+        const aiSectionTitles = new Set(extraSections.map(s => s.title.toLowerCase()));
+        
+        // Filter out template sections that have an AI-generated equivalent.
+        const filteredTemplateSections = template.sections.filter(s => !aiSectionTitles.has(s.title.toLowerCase()));
 
-        const initialSections = [executiveSummarySection, ...extraSections, ...template.sections];
+        // Combine the unique AI sections and the filtered template sections.
+        const initialSections = [...extraSections, ...filteredTemplateSections];
+
 
         const newProposalId = await createProposal({
             tenantId,
@@ -299,6 +305,11 @@ export function ProposalWizard() {
         setIsSaving(false);
     }
   };
+
+  const executiveSummaryContent = useMemo(() => {
+    return extraSections.find(s => s.title.toLowerCase() === 'executive summary')?.content || "";
+  }, [extraSections]);
+
 
   return (
     <Card className="w-full max-w-4xl mx-auto shadow-2xl">
@@ -434,12 +445,12 @@ export function ProposalWizard() {
                 <h3 className="font-semibold font-headline text-lg flex items-center gap-2"><Sparkles className="text-primary"/> AI Generated Content</h3>
                 <div>
                     <Label>Executive Summary</Label>
-                    {isSummaryLoading ? (
+                    {isSummaryLoading && !executiveSummaryContent ? (
                         <Skeleton className="h-24 w-full" />
                     ) : (
                         <Textarea 
                             readOnly 
-                            value={executiveSummary || (extraSections.find(s => s.title === 'Executive Summary')?.content || "AI-generated summary will appear here.")} 
+                            value={executiveSummaryContent || "AI-generated summary will appear here."} 
                             rows={6} 
                             className="bg-background"
                         />
@@ -453,9 +464,9 @@ export function ProposalWizard() {
                            <Skeleton className="h-10 w-full" />
                         </div>
                     ) : (
-                        extraSections.filter(s => s.title !== 'Executive Summary').length > 0 ? (
+                        extraSections.filter(s => s.title.toLowerCase() !== 'executive summary').length > 0 ? (
                             <div className="space-y-2 text-sm p-2 bg-background rounded-md">
-                               {extraSections.filter(s => s.title !== 'Executive Summary').map((section, index) => (
+                               {extraSections.filter(s => s.title.toLowerCase() !== 'executive summary').map((section, index) => (
                                    <div key={index} className="border-b border-border last:border-none pb-2 mb-2">
                                        <p className="font-semibold">{section.title}</p>
                                        <p className="text-muted-foreground line-clamp-2">{section.content}</p>
