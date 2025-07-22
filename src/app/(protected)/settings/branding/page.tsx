@@ -19,7 +19,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
 import { useTour, TourStep } from '@/hooks/use-tour';
 import { useAppData } from '@/components/app-data-provider';
-import { MainLayout } from '@/components/main-layout';
 
 const brandingSchema = z.object({
     companyName: z.string().min(1, "Company name is required"),
@@ -143,124 +142,119 @@ export default function BrandingPage() {
 
     if (loadingAuth || loadingAppData) {
         return (
-            <MainLayout>
-                <div className="flex justify-center items-center h-full">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-            </MainLayout>
+            <div className="flex justify-center items-center h-full">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
         )
     }
 
     return (
-        <MainLayout>
-            <div className="space-y-8">
-                <div data-tour-id="branding-header">
-                    <h1 className="text-4xl font-bold font-headline">Branding</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Customize the look and feel of your proposals.
-                    </p>
-                </div>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Company Details</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div>
-                                <Label htmlFor="companyName">Company Name</Label>
-                                <Input id="companyName" {...register('companyName')} />
-                                {errors.companyName && <p className="text-destructive text-sm mt-1">{errors.companyName.message}</p>}
-                            </div>
-                            <div>
-                                <Label htmlFor="logoUrl">Logo Upload</Label>
-                                <Input id="logoUpload" type="file" accept="image/*" onChange={handleImageChange} />
+        <div className="space-y-8">
+            <div data-tour-id="branding-header">
+                <h1 className="text-4xl font-bold font-headline">Branding</h1>
+                <p className="text-muted-foreground mt-1">
+                    Customize the look and feel of your proposals.
+                </p>
+            </div>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Company Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div>
+                            <Label htmlFor="companyName">Company Name</Label>
+                            <Input id="companyName" {...register('companyName')} />
+                            {errors.companyName && <p className="text-destructive text-sm mt-1">{errors.companyName.message}</p>}
+                        </div>
+                        <div>
+                            <Label htmlFor="logoUrl">Logo Upload</Label>
+                            <Input id="logoUpload" type="file" accept="image/*" onChange={handleImageChange} />
+                            {imagePreview && (
+                                <div className="mt-4">
+                                    <Label>Logo Preview</Label>
+                                    <div className="w-48 h-24 relative mt-2 rounded-md border bg-muted p-2">
+                                        <Image src={imagePreview} alt="Logo preview" fill className="object-contain" />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card data-tour-id="ai-discovery-card">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Sparkles className="text-primary"/> AI Brand Discovery</CardTitle>
+                        <CardDescription>
+                            Let AI discover your brand colors and voice from your website or a brand image.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Tabs defaultValue="website" className="w-full">
+                            <TabsList>
+                                <TabsTrigger value="website">From Website URL</TabsTrigger>
+                                <TabsTrigger value="image">From Image</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="website" className="pt-4">
+                                <Label htmlFor="websiteUrl">Company Website URL</Label>
+                                <Input id="websiteUrl" {...register('websiteUrl')} placeholder="https://example.com" />
+                                {errors.websiteUrl && <p className="text-destructive text-sm mt-1">{errors.websiteUrl.message}</p>}
+                            </TabsContent>
+                            <TabsContent value="image" className="pt-4">
+                                <Label htmlFor="brandImageUpload">Upload Screenshot or Brand Kit</Label>
+                                <Input id="brandImageUpload" type="file" accept="image/*" onChange={handleImageChange} />
                                 {imagePreview && (
                                     <div className="mt-4">
-                                        <Label>Logo Preview</Label>
-                                        <div className="w-48 h-24 relative mt-2 rounded-md border bg-muted p-2">
-                                            <Image src={imagePreview} alt="Logo preview" fill className="object-contain" />
+                                        <Label>Image Preview</Label>
+                                        <div className="w-48 h-24 relative mt-2 rounded-md border">
+                                            <Image src={imagePreview} alt="Brand preview" fill className="object-cover" />
                                         </div>
                                     </div>
                                 )}
-                            </div>
-                        </CardContent>
-                    </Card>
+                            </TabsContent>
+                        </Tabs>
+                        <Button type="button" onClick={handleAnalyze} disabled={isAnalyzing || (!watch('websiteUrl') && !watch('brandImage'))} className="mt-4">
+                            {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                            Analyze & Populate
+                        </Button>
+                    </CardContent>
+                </Card>
 
-                    <Card data-tour-id="ai-discovery-card">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><Sparkles className="text-primary"/> AI Brand Discovery</CardTitle>
-                            <CardDescription>
-                                Let AI discover your brand colors and voice from your website or a brand image.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <Tabs defaultValue="website" className="w-full">
-                                <TabsList>
-                                    <TabsTrigger value="website">From Website URL</TabsTrigger>
-                                    <TabsTrigger value="image">From Image</TabsTrigger>
-                                </TabsList>
-                                <TabsContent value="website" className="pt-4">
-                                    <Label htmlFor="websiteUrl">Company Website URL</Label>
-                                    <Input id="websiteUrl" {...register('websiteUrl')} placeholder="https://example.com" />
-                                    {errors.websiteUrl && <p className="text-destructive text-sm mt-1">{errors.websiteUrl.message}</p>}
-                                </TabsContent>
-                                <TabsContent value="image" className="pt-4">
-                                    <Label htmlFor="brandImageUpload">Upload Screenshot or Brand Kit</Label>
-                                    <Input id="brandImageUpload" type="file" accept="image/*" onChange={handleImageChange} />
-                                    {imagePreview && (
-                                        <div className="mt-4">
-                                            <Label>Image Preview</Label>
-                                            <div className="w-48 h-24 relative mt-2 rounded-md border">
-                                                <Image src={imagePreview} alt="Brand preview" fill className="object-cover" />
-                                            </div>
-                                        </div>
-                                    )}
-                                </TabsContent>
-                            </Tabs>
-                            <Button type="button" onClick={handleAnalyze} disabled={isAnalyzing || (!watch('websiteUrl') && !watch('brandImage'))} className="mt-4">
-                                {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                                Analyze & Populate
-                            </Button>
-                        </CardContent>
-                    </Card>
-
-                    <Card data-tour-id="manual-config-card">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2"><Palette /> Manual Configuration</CardTitle>
-                            <CardDescription>
-                                Manually set your brand colors and voice. These will override the defaults in globals.css.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid md:grid-cols-2 gap-4">
-                                <div>
-                                    <Label htmlFor="primaryColor">Primary Color (Hex)</Label>
-                                    <Input id="primaryColor" {...register('primaryColor')} placeholder="#007A80" />
-                                    {errors.primaryColor && <p className="text-destructive text-sm mt-1">{errors.primaryColor.message}</p>}
-                                </div>
-                                <div>
-                                    <Label htmlFor="secondaryColor">Secondary Color (Hex)</Label>
-                                    <Input id="secondaryColor" {...register('secondaryColor')} placeholder="#0282F2" />
-                                    {errors.secondaryColor && <p className="text-destructive text-sm mt-1">{errors.secondaryColor.message}</p>}
-                                </div>
+                <Card data-tour-id="manual-config-card">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Palette /> Manual Configuration</CardTitle>
+                        <CardDescription>
+                            Manually set your brand colors and voice. These will override the defaults in globals.css.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="primaryColor">Primary Color (Hex)</Label>
+                                <Input id="primaryColor" {...register('primaryColor')} placeholder="#007A80" />
+                                {errors.primaryColor && <p className="text-destructive text-sm mt-1">{errors.primaryColor.message}</p>}
                             </div>
                             <div>
-                                <Label htmlFor="brandVoice">Brand Voice & Tone</Label>
-                                <Textarea id="brandVoice" {...register('brandVoice')} rows={5} placeholder="e.g., Professional yet approachable. We use clear, concise language and avoid jargon..." />
-                                {errors.brandVoice && <p className="text-destructive text-sm mt-1">{errors.brandVoice.message}</p>}
+                                <Label htmlFor="secondaryColor">Secondary Color (Hex)</Label>
+                                <Input id="secondaryColor" {...register('secondaryColor')} placeholder="#0282F2" />
+                                {errors.secondaryColor && <p className="text-destructive text-sm mt-1">{errors.secondaryColor.message}</p>}
                             </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                        <div>
+                            <Label htmlFor="brandVoice">Brand Voice & Tone</Label>
+                            <Textarea id="brandVoice" {...register('brandVoice')} rows={5} placeholder="e.g., Professional yet approachable. We use clear, concise language and avoid jargon..." />
+                            {errors.brandVoice && <p className="text-destructive text-sm mt-1">{errors.brandVoice.message}</p>}
+                        </div>
+                    </CardContent>
+                </Card>
 
-                    <div className="flex justify-end gap-2" data-tour-id="save-branding-btn">
-                        <Button type="submit" disabled={isSubmitting || loadingAuth}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Save Branding
-                        </Button>
-                    </div>
-                </form>
-            </div>
-        </MainLayout>
+                <div className="flex justify-end gap-2" data-tour-id="save-branding-btn">
+                    <Button type="submit" disabled={isSubmitting || loadingAuth}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Save Branding
+                    </Button>
+                </div>
+            </form>
+        </div>
     );
 }
-

@@ -24,50 +24,13 @@ import { useAppData } from './app-data-provider';
 import { useTour, TourStep } from '@/hooks/use-tour';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 
-function hexToHsl(hex: string): string | null {
-    if (!hex || !/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex)) {
-        return null;
-    }
-    let r, g, b;
-    hex = hex.substring(1);
-    if (hex.length === 3) {
-        r = parseInt(hex[0] + hex[0], 16);
-        g = parseInt(hex[1] + hex[1], 16);
-        b = parseInt(hex[2] + hex[2], 16);
-    } else {
-        r = parseInt(hex.substring(0, 2), 16);
-        g = parseInt(hex.substring(2, 4), 16);
-        b = parseInt(hex.substring(4, 6), 16);
-    }
-
-    r /= 255; g /= 255; b /= 255;
-    const max = Math.max(r, g, b), min = Math.min(r, g, b);
-    let h = 0, s = 0, l = (max + min) / 2;
-
-    if (max !== min) {
-        const d = max - min;
-        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        switch (max) {
-            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-            case g: h = (b - r) / d + 2; break;
-            case b: h = (r - g) / d + 4; break;
-        }
-        h /= 6;
-    }
-    
-    h = Math.round(h * 360);
-    s = Math.round(s * 100);
-    l = Math.round(l * 100);
-
-    return `${h} ${s}% ${l}%`;
-}
-
-
 function FlowSalesLogo({logoUrl, companyName}: {logoUrl?: string; companyName?: string}) {
   return (
     <div className="flex items-center gap-2 p-4 border-b border-border">
       {logoUrl ? (
-          <Image src={logoUrl} alt={`${companyName || 'Company'} Logo`} width={28} height={28} className="object-contain" />
+          <div className="relative w-7 h-7">
+            <Image src={logoUrl} alt={`${companyName || 'Company'} Logo`} fill className="object-contain" />
+          </div>
       ) : (
         <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -169,28 +132,10 @@ function SidebarContent() {
 }
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
-  const { loading: loadingData, brandingSettings } = useAppData();
-
-  const dynamicStyles: React.CSSProperties = {};
-  if (brandingSettings?.primaryColor) {
-      const primaryHsl = hexToHsl(brandingSettings.primaryColor);
-      if (primaryHsl) dynamicStyles['--primary'] = primaryHsl;
-  }
-  if (brandingSettings?.secondaryColor) {
-      const secondaryHsl = hexToHsl(brandingSettings.secondaryColor);
-      if (secondaryHsl) dynamicStyles['--secondary'] = secondaryHsl;
-  }
-
-  if (loadingData) {
-      return (
-          <div className="flex items-center justify-center min-h-screen">
-              <Loader2 className="h-8 w-8 animate-spin text-primary"/>
-          </div>
-      )
-  }
+  const { brandingSettings } = useAppData();
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground" style={dynamicStyles}>
+    <div className="flex min-h-screen bg-background text-foreground">
         <aside className="fixed top-0 left-0 h-full w-64 bg-card border-r border-border flex-col hidden md:flex" data-tour-id="sidebar-nav">
             <SidebarContent />
         </aside>
@@ -266,5 +211,3 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   
   return <MainLayoutContent>{children}</MainLayoutContent>
 }
-
-    
