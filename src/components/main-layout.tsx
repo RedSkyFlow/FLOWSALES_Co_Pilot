@@ -11,15 +11,17 @@ import {
   Settings,
   BookUser,
   LogOut,
-  Loader2
+  Loader2,
+  Menu,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthState, useSignOut } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { useAppData } from './app-data-provider';
 import { useTour, TourStep } from '@/hooks/use-tour';
+import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 
 function FlowSalesLogo() {
   return (
@@ -86,23 +88,12 @@ function NavItem({ href, icon: Icon, label, onClick }: typeof navItems[0] & { on
     );
 }
 
+function SidebarContent() {
+    const [signOut] = useSignOut(auth);
+    const { startCurrentTour } = useTour();
 
-function MainLayoutContent({ children }: { children: React.ReactNode }) {
-  const [signOut] = useSignOut(auth);
-  const { loading: loadingData } = useAppData();
-  const { startCurrentTour } = useTour();
-
-  if (loadingData) {
-      return (
-          <div className="flex items-center justify-center min-h-screen">
-              <Loader2 className="h-8 w-8 animate-spin text-primary"/>
-          </div>
-      )
-  }
-
-  return (
-    <div className="flex min-h-screen bg-background text-foreground">
-        <aside className="fixed top-0 left-0 h-full w-64 bg-card border-r border-border flex flex-col" data-tour-id="sidebar-nav">
+    return (
+        <>
             <FlowSalesLogo />
             <nav className="flex-grow p-4 space-y-2">
             {navItems.map((item) => (
@@ -122,11 +113,65 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                     <span>Log Out</span>
                 </Button>
             </div>
+        </>
+    );
+}
+
+function MainLayoutContent({ children }: { children: React.ReactNode }) {
+  const { loading: loadingData } = useAppData();
+
+  if (loadingData) {
+      return (
+          <div className="flex items-center justify-center min-h-screen">
+              <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+          </div>
+      )
+  }
+
+  return (
+    <div className="flex min-h-screen bg-background text-foreground">
+        <aside className="fixed top-0 left-0 h-full w-64 bg-card border-r border-border flex-col hidden md:flex" data-tour-id="sidebar-nav">
+            <SidebarContent />
         </aside>
-        <main className="ml-64 flex-1">
-            <div className="p-8">{children}</div>
-            <TourStep />
-        </main>
+        
+        <div className="flex flex-col w-full md:ml-64">
+            <header className="md:hidden sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
+                <Sheet>
+                    <SheetTrigger asChild>
+                        <Button variant="outline" size="icon" className="shrink-0">
+                            <Menu className="h-5 w-5" />
+                            <span className="sr-only">Toggle navigation menu</span>
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="flex flex-col p-0 w-64">
+                       <SidebarContent />
+                    </SheetContent>
+                </Sheet>
+                <div className="flex items-center gap-2">
+                     <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-primary"
+                    >
+                        <path d="M12 3L2 7l10 4 10-4-10-4z"></path>
+                        <path d="M2 17l10 4 10-4"></path>
+                        <path d="M2 12l10 4 10-4"></path>
+                    </svg>
+                    <h1 className="text-lg font-bold">FlowSales</h1>
+                </div>
+            </header>
+            <main className="flex-1">
+                <div className="p-4 md:p-8">{children}</div>
+                <TourStep />
+            </main>
+        </div>
     </div>
   )
 }
