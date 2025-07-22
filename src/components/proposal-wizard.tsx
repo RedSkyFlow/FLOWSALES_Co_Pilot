@@ -195,7 +195,7 @@ export function ProposalWizard() {
 
   const handleBack = () => {
     if (currentStep > 0) {
-      setCurrentStep(currentStep + 1);
+      setCurrentStep(currentStep - 1);
     }
   };
 
@@ -227,8 +227,16 @@ export function ProposalWizard() {
       setSelectedProducts([]);
       
       try {
+          const formattedTranscript = meetingTranscript.split('\n').map(line => {
+              const parts = line.split(':');
+              const speaker = parts.length > 1 ? parts[0].trim() : "Participant";
+              const text = parts.length > 1 ? parts.slice(1).join(':').trim() : line;
+              return { speaker, text };
+          });
+
+
           const result = await analyzeMeetingTranscript({
-              transcript: meetingTranscript.split('\n').map(line => ({ speaker: "Combined", text: line })),
+              transcript: formattedTranscript,
               availableModules: products.map(p => p.name),
               availableTemplates: templates.map(t => t.name),
           });
