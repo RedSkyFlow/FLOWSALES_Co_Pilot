@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
   ArrowRight,
+  Check,
   CheckCircle,
   Loader2,
   Building,
@@ -25,6 +26,9 @@ import {
   Upload,
   Sparkles,
   ListChecks,
+  ThumbsUp,
+  ThumbsDown,
+  GitBranch,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
@@ -35,7 +39,9 @@ import { cn } from "@/lib/utils";
 import { generateBrandAnalysis, saveBrandingSettings } from "@/app/settings/branding/actions";
 import { bulkAddProducts } from "@/app/settings/products/actions";
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import type { ProductRule, Product } from "@/lib/types";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 
 const steps = [
   { name: "Welcome", icon: Building },
@@ -68,6 +74,10 @@ export function OnboardingWizard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  const [products, setProducts] = useState<Product[]>([]);
+  const [suggestedRules, setSuggestedRules] = useState<ProductRule[]>([]);
+  const [loadingRules, setLoadingRules] = useState(false);
+
   const brandingForm = useForm<z.infer<typeof brandingSchema>>({
     resolver: zodResolver(brandingSchema),
     defaultValues: { companyName: '' },
@@ -76,6 +86,34 @@ export function OnboardingWizard() {
   const productsForm = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
   });
+
+    useEffect(() => {
+        if (currentStep === 3 && user) {
+            setLoadingRules(true);
+            const tenantId = 'tenant-001'; // Hardcoded for now
+            const productsRef = collection(db, 'tenants', tenantId, 'products');
+            const rulesRef = collection(db, 'tenants', tenantId, 'product_rules');
+            
+            const q = query(rulesRef, where('status', '==', 'awaiting_review'));
+
+            const unsubRules = onSnapshot(q, (snapshot) => {
+                const rules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductRule));
+                setSuggestedRules(rules);
+                setLoadingRules(false);
+            });
+
+            const unsubProducts = onSnapshot(productsRef, (snapshot) => {
+                const prods = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+                setProducts(prods);
+            })
+
+            return () => {
+                unsubRules();
+                unsubProducts();
+            };
+        }
+    }, [currentStep, user]);
+
 
   const progress = ((currentStep + 1) / steps.length) * 100;
   
@@ -123,19 +161,23 @@ export function OnboardingWizard() {
         if (formIsValid && user) {
             setIsProcessing(true);
             try {
-                // Hardcoded tenantId for now
                 const tenantId = 'tenant-001';
                 await saveBrandingSettings(tenantId, brandingForm.getValues());
                 toast({ title: "Branding Saved", description: "Your brand identity has been saved." });
             } catch (e) {
                 toast({ variant: "destructive", title: "Error", description: "Could not save branding settings." });
-                formIsValid = false; // Prevent advancing on error
+                formIsValid = false;
             } finally {
                 setIsProcessing(false);
             }
         }
     }
     
+    if (currentStep === 3 && suggestedRules.length === 0 && !loadingRules) {
+        setCurrentStep(currentStep + 1);
+        return;
+    }
+
     if (formIsValid && currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     }
@@ -147,13 +189,12 @@ export function OnboardingWizard() {
           return;
       }
       setIsProcessing(true);
-      // Hardcoded tenantId for now
       const tenantId = 'tenant-001'; 
       try {
           const count = await bulkAddProducts(tenantId, data.productList);
           toast({
               title: "Catalog Processing",
-              description: `${count} products have been added to your catalog and are being analyzed.`,
+              description: `${count} products have been added. The AI is now analyzing them for dependencies.`,
           });
           handleNext();
       } catch (error) {
@@ -172,6 +213,17 @@ export function OnboardingWizard() {
       setCurrentStep(currentStep - 1);
     }
   };
+
+  const getProductName = (productId: string) => {
+    return products.find(p => p.id === productId)?.name || 'Unknown Product';
+  }
+
+  const handleRuleDecision = async (ruleId: string, decision: 'approve' | 'reject') => {
+    // This part will be implemented once we have the server actions.
+    console.log(`Rule ${ruleId} decision: ${decision}`);
+    // For now, we'll just remove it from the list to simulate the UI.
+    setSuggestedRules(prev => prev.filter(r => r.id !== ruleId));
+  }
 
   return (
     <Card className="w-full shadow-2xl">
@@ -283,22 +335,46 @@ export function OnboardingWizard() {
         )}
         {currentStep === 3 && (
             <div className="text-center space-y-4">
-                 <div className="flex justify-center">
-                    <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                        <Sparkles className="h-16 w-16 text-primary" />
-                    </div>
-                </div>
-                <h2 className="text-2xl font-bold font-headline">Step 3: AI-Powered Verification</h2>
+                 <h2 className="text-2xl font-bold font-headline">Step 3: AI-Powered Verification</h2>
                 <p className="max-w-prose mx-auto text-muted-foreground">
-                    Our AI is now analyzing your product catalog to suggest descriptions and dependency rules. This may take a few moments.
+                   Our AI analyzed your product catalog and has some suggestions for business logic. Please review and approve them below.
                 </p>
-                 <p className="max-w-prose mx-auto text-muted-foreground">
-                    In the next step, you'll be able to review and approve these suggestions in a simple, conversational interface.
-                </p>
-                <div className="flex items-center justify-center pt-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="ml-4">Analyzing...</p>
-                </div>
+                {loadingRules ? (
+                     <div className="flex items-center justify-center pt-4">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="ml-4">Loading suggestions...</p>
+                    </div>
+                ) : suggestedRules.length > 0 ? (
+                    <div className="max-w-md mx-auto space-y-4">
+                       {suggestedRules.map(rule => (
+                           <Card key={rule.id} className="text-left bg-muted/30">
+                               <CardHeader>
+                                   <CardTitle className="text-base flex items-center gap-2"><GitBranch className="text-primary"/> Suggested Rule</CardTitle>
+                                   <CardDescription className="text-sm">Based on product descriptions, we suggest the following rule:</CardDescription>
+                               </CardHeader>
+                               <CardContent className="space-y-2">
+                                    <p>IF <span className="font-semibold text-secondary">{getProductName(rule.primaryProductId)}</span> is selected...</p>
+                                    <p>THEN it <span className="font-semibold">{rule.condition.replace('_', ' ')}</span> <span className="font-semibold text-secondary">{getProductName(rule.relatedProductIds[0])}</span>.</p>
+                                    {rule.explanation && <p className="text-xs text-muted-foreground pt-2 italic">Reasoning: {rule.explanation}</p>}
+                               </g-card-content>
+                               <CardHeader className="flex flex-row gap-2 justify-end">
+                                    <Button size="sm" variant="destructive" onClick={() => handleRuleDecision(rule.id, 'reject')}>
+                                        <ThumbsDown className="mr-2 h-4 w-4"/> Reject
+                                    </Button>
+                                    <Button size="sm" variant="default" onClick={() => handleRuleDecision(rule.id, 'approve')}>
+                                        <ThumbsUp className="mr-2 h-4 w-4"/> Approve
+                                    </Button>
+                               </CardHeader>
+                           </Card>
+                       ))}
+                    </div>
+                ) : (
+                    <div className="py-8">
+                        <CheckCircle className="h-12 w-12 text-success mx-auto mb-4" />
+                        <p className="text-muted-foreground">No rule suggestions from the AI. You're all set!</p>
+                        <p className="text-muted-foreground text-sm">You can add rules manually in the settings later.</p>
+                    </div>
+                )}
             </div>
         )}
         {currentStep === 4 && (
@@ -321,26 +397,19 @@ export function OnboardingWizard() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          {currentStep === 0 && (
-             <Button onClick={handleNext} disabled={isProcessing}>
-                Next
-                <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          )}
-          {currentStep === 1 && (
-             <Button onClick={handleNext} disabled={isProcessing || !brandingForm.formState.isValid}>
+          {currentStep < 3 && (
+             <Button 
+                onClick={handleNext} 
+                disabled={isProcessing || (currentStep === 1 && !brandingForm.formState.isValid)}
+             >
                 {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Next
                 <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           )}
-          {currentStep === 2 && (
-              // The submit button for the form handles the next step
-              <div />
-          )}
           {currentStep === 3 && (
-            <Button onClick={handleNext} disabled={isProcessing}>
-                Next
+              <Button onClick={handleNext} disabled={isProcessing || loadingRules || suggestedRules.length > 0}>
+                {suggestedRules.length > 0 ? "Finish Review" : "Next"}
                 <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           )}
