@@ -7,6 +7,7 @@ import { TourProvider } from "@/hooks/use-tour";
 import type React from "react";
 import { useAppData } from "@/components/app-data-provider";
 import { TourStep } from "@/hooks/use-tour";
+import { AIChatAssistant } from "@/components/ai-chat-assistant";
 
 
 // This layout component wraps all pages that need the main application layout
@@ -22,6 +23,7 @@ export default function AuthenticatedLayout({
           <MainLayout>
             {children}
           </MainLayout>
+          <AIChatAssistant />
       </TourProvider>
     </AppDataProvider>
   );

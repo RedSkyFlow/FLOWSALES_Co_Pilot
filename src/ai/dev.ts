@@ -12,4 +12,5 @@ import '@/ai/flows/parse-product-list.ts';
 import '@/ai/flows/generate-product-description.ts';
 import '@/ai/flows/analyze-product-catalog.ts';
 import '@/ai/flows/suggest-products-for-template.ts';
+import '@/ai/flows/chat-assistant.ts';
 
