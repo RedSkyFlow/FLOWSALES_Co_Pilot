@@ -58,7 +58,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from "@/components/ui/label";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { useAppData } from "@/components/app-data-provider";
+import { useAppContext } from "@/components/app-data-provider";
 import Image from "next/image";
 
 function getStatusBadgeClasses(status: ProposalStatus) {
@@ -133,7 +133,7 @@ export default function ProposalDetailPage() {
   const [user, loadingAuth] = useAuthState(auth);
   const { toast } = useToast();
   const proposalContentRef = useRef<HTMLDivElement>(null);
-  const { brandingSettings, loading: loadingAppData } = useAppData();
+  const { brandingSettings, loading: loadingAppData } = useAppContext();
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");

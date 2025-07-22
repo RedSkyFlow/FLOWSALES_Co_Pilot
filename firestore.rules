@@ -4,29 +4,23 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
   
-    // Get user data from their token claims
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-    
-    // Check if user is a 'super_admin'
+    // Helper functions that read directly from the user's auth token
     function isSuperAdmin() {
-      return getUserData().role == 'super_admin';
+      return request.auth.token.role == 'super_admin';
     }
     
-    // Check if user belongs to the specified tenant
     function isTenantMember(tenantId) {
-      return getUserData().tenantId == tenantId;
+      return request.auth.token.tenantId == tenantId;
     }
     
-    // Check if user has 'admin' role within their tenant
     function isTenantAdmin(tenantId) {
-      return isTenantMember(tenantId) && getUserData().role == 'admin';
+      return isTenantMember(tenantId) && request.auth.token.role == 'admin';
     }
 
     // Users collection: Simple rules for user profile management
     match /users/{userId} {
-      // Users can create their own user doc upon signup
+      // A user document can be created if the user is authenticated, 
+      // which is handled by the inviteUser admin function.
       allow create: if request.auth != null;
       // Users can only read/write their own user document
       allow read, update: if request.auth.uid == userId || isSuperAdmin();
@@ -56,12 +50,12 @@ service cloud.firestore {
         
         // Updates are more complex:
         // - A sales agent can update a proposal they own.
-        // - A client can update (e.g., to accept or suggest changes) if they are the client on the proposal.
         // - A tenant admin can update any proposal in their tenant.
+        // - A client user can also update (e.g. to accept/sign)
         allow update: if isTenantMember(tenantId) && 
                          (resource.data.salesAgentId == request.auth.uid || 
                           isTenantAdmin(tenantId) ||
-                          resource.data.clientId == getUserData().uid); // Assuming client user's UID is used as ID on proposal
+                          request.auth.token.role == 'client');
         
         // Deleting proposals is restricted to tenant admins or the sales agent who owns it.
         allow delete: if isTenantMember(tenantId) &&
@@ -71,7 +65,9 @@ service cloud.firestore {
 
       // Rules for sub-sub-collections like comments, versions etc.
       match /proposals/{proposalId}/{subcollection}/{docId} {
-         allow read, write: if isTenantMember(tenantId);
+         // Anyone who is a member of the tenant OR a client for that tenant can interact here
+         // This is important for the public proposal view
+         allow read, write: if isTenantMember(tenantId) || request.auth.token.role == 'client';
       }
 
       // Rules for product catalog, rules, etc.
@@ -91,9 +87,9 @@ service cloud.firestore {
           allow write: if isTenantAdmin(tenantId);
       }
 
-      // New rule for the usage ledger
+      // Rules for the usage ledger
       match /usage_ledger/{entryId} {
-        // Only the backend can create usage entries
+        // Backend (with admin privileges) can create entries. The check for tenant membership is sufficient.
         allow create: if isTenantMember(tenantId); 
         // Only Super Admins should be able to read/modify the full ledger for auditing
         allow read, update, delete: if isSuperAdmin();

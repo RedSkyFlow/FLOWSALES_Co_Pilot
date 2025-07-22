@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, increment, addDoc, collection, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
-import type { Proposal, Product, SuggestedEdit, ProposalSection, Client, Version, ProposalTemplate, Tenant } from '@/lib/types';
+import type { Proposal, Product, SuggestedEdit, ProposalSection, Client, Version, ProposalTemplate, Tenant, Comment } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import { generateFullProposal } from '@/ai/flows/generate-full-proposal';
 
@@ -304,4 +304,41 @@ export async function sendProposalToClient(data: SendProposalInput) {
 
   revalidatePath(`/proposals/${proposalId}`);
   revalidatePath('/'); // Revalidate root to update proposal lists
+}
+
+
+// --- Commenting Actions ---
+interface AddCommentInput {
+    tenantId: string;
+    proposalId: string;
+    commentText: string;
+    author: {
+        id: string;
+        name: string;
+        avatarUrl?: string;
+    };
+}
+export async function addComment(data: AddCommentInput) {
+    const { tenantId, proposalId, commentText, author } = data;
+
+    if (!tenantId || !proposalId || !commentText || !author.id) {
+        throw new Error("Missing required fields to add comment.");
+    }
+    
+    const comment: Omit<Comment, 'id' | 'createdAt'> = {
+        text: commentText,
+        authorId: author.id,
+        authorName: author.name,
+        authorAvatarUrl: author.avatarUrl || undefined,
+    };
+
+    const commentsCollectionRef = collection(db, `tenants/${tenantId}/proposals/${proposalId}/comments`);
+    
+    await addDoc(commentsCollectionRef, {
+        ...comment,
+        createdAt: serverTimestamp(),
+    });
+
+    // Revalidate the public view page path
+    revalidatePath(`/view/proposal/${proposalId}`);
 }

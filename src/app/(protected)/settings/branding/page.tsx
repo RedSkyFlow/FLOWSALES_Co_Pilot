@@ -6,8 +6,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,8 +15,8 @@ import { Loader2, Palette, Sparkles, Wand2, Building } from 'lucide-react';
 import { generateBrandAnalysis, saveBrandingSettings } from '@/app/settings/branding/actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
-import { useTour, TourStep } from '@/hooks/use-tour';
-import { useAppData } from '@/components/app-data-provider';
+import { useTour } from '@/hooks/use-tour';
+import { useAppContext } from '@/components/app-data-provider';
 
 const brandingSchema = z.object({
     companyName: z.string().min(1, "Company name is required"),
@@ -35,7 +33,7 @@ const brandingSchema = z.object({
 
 type BrandingFormData = z.infer<typeof brandingSchema>;
 
-const brandingTourSteps: TourStep[] = [
+const brandingTourSteps = [
     {
         selector: '[data-tour-id="branding-header"]',
         title: "Brand Configuration",
@@ -60,9 +58,8 @@ const brandingTourSteps: TourStep[] = [
 
 export default function BrandingPage() {
     const { toast } = useToast();
-    const [user, loadingAuth] = useAuthState(auth);
-    const { brandingSettings, loading: loadingAppData } = useAppData();
-
+    const { tenantId, brandingSettings, loading: loadingAppData, userRole } = useAppContext();
+    
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -78,17 +75,7 @@ export default function BrandingPage() {
 
     useEffect(() => {
         if (brandingSettings) {
-            reset({
-                companyName: brandingSettings.companyName,
-                websiteUrl: brandingSettings.websiteUrl,
-                logoUrl: brandingSettings.logoUrl,
-                primaryColor: brandingSettings.primaryColor,
-                secondaryColor: brandingSettings.secondaryColor,
-                brandVoice: brandingSettings.brandVoice,
-                companyAddress: brandingSettings.companyAddress,
-                companyPhone: brandingSettings.companyPhone,
-                companyEmail: brandingSettings.companyEmail,
-            });
+            reset(brandingSettings);
             if (brandingSettings.logoUrl) {
                 setImagePreview(brandingSettings.logoUrl)
             }
@@ -134,11 +121,12 @@ export default function BrandingPage() {
     };
 
     const onSubmit = async (data: BrandingFormData) => {
-        if (!user) return;
+        if (!tenantId) {
+            toast({ title: "Error", description: "Tenant ID is missing.", variant: "destructive" });
+            return;
+        };
         setIsSubmitting(true);
         try {
-            // Hardcoded for now
-            const tenantId = 'tenant-001';
             await saveBrandingSettings(tenantId, data);
             toast({ title: "Branding Saved", description: "Your branding settings have been updated and will now be applied." });
         } catch (error) {
@@ -148,11 +136,21 @@ export default function BrandingPage() {
             setIsSubmitting(false);
         }
     };
+    
+    const canManage = userRole === 'admin' || userRole === 'super_admin';
 
-    if (loadingAuth || loadingAppData) {
+    if (loadingAppData) {
         return (
             <div className="flex justify-center items-center h-full">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        )
+    }
+    
+    if (!canManage) {
+        return (
+            <div className="text-center">
+                <p>You do not have permission to edit branding settings.</p>
             </div>
         )
     }
@@ -276,7 +274,7 @@ export default function BrandingPage() {
                 </Card>
 
                 <div className="flex justify-end gap-2" data-tour-id="save-branding-btn">
-                    <Button type="submit" disabled={isSubmitting || loadingAuth}>
+                    <Button type="submit" disabled={isSubmitting || loadingAppData}>
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Save Branding
                     </Button>
