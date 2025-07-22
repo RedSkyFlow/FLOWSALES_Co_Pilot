@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { MainLayout } from '@/components/main-layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -94,11 +93,10 @@ export default function NewTemplatePage() {
   };
 
   if(loadingAuth) {
-    return <MainLayout><div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div></MainLayout>
+    return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
   
   return (
-    <MainLayout>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         <div>
           <h1 className="text-3xl font-headline font-bold">Create New Template</h1>
@@ -208,6 +206,5 @@ export default function NewTemplatePage() {
             </Button>
         </div>
       </form>
-    </MainLayout>
   );
 }
