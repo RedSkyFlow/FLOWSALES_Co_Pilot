@@ -53,14 +53,14 @@ export interface ProductRule {
     status: 'active' | 'pending_review' | 'rejected';
 }
 
-export interface BrandAsset {
+export interface BrandingSettings {
     id: string;
-    logoUrl: string;
-    primaryColor: string; // hex
-    secondaryColor: string; // hex
-    fontHeadline: string;
-    fontBody: string;
-    brandVoice: string;
+    companyName: string;
+    logoUrl?: string;
+    primaryColor?: string; // hex
+    secondaryColor?: string; // hex
+    brandVoice?: string;
+    websiteUrl?: string;
 }
 
 export interface LegalDocument {

@@ -1,17 +1,18 @@
 
 'use client';
 
-import { createContext, useContext, useEffect, useState, useRef } from 'react';
-import { collection, onSnapshot, query } from 'firebase/firestore';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { collection, onSnapshot, query, doc } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import type { Client, Product, ProductRule, ProposalTemplate } from '@/lib/types';
+import type { Client, Product, ProductRule, ProposalTemplate, BrandingSettings } from '@/lib/types';
 
 interface AppDataContextType {
   templates: ProposalTemplate[];
   clients: Client[];
   products: Product[];
   rules: ProductRule[];
+  brandingSettings: BrandingSettings | null;
   loading: boolean;
 }
 
@@ -20,6 +21,7 @@ const AppDataContext = createContext<AppDataContextType>({
   clients: [],
   products: [],
   rules: [],
+  brandingSettings: null,
   loading: true,
 });
 
@@ -32,12 +34,20 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         clients: [],
         products: [],
         rules: [],
+        brandingSettings: null,
     });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (!user) {
             setLoading(false);
+            setAppData({
+                templates: [],
+                clients: [],
+                products: [],
+                rules: [],
+                brandingSettings: null,
+            });
             return;
         }
 
@@ -49,9 +59,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             products: collection(db, 'tenants', tenantId, 'products'),
             rules: collection(db, 'tenants', tenantId, 'product_rules'),
         };
+        const brandingDocRef = doc(db, 'tenants', tenantId, 'settings', 'branding');
 
         const collectionKeys = Object.keys(collectionsToFetch) as Array<keyof typeof collectionsToFetch>;
-        let initialLoadCounter = collectionKeys.length;
+        let initialLoadCounter = collectionKeys.length + 1; // +1 for the branding doc
 
         const unsubscribers = collectionKeys.map((key) => {
             let isInitialLoad = true;
@@ -64,21 +75,40 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                 if (isInitialLoad) {
                     isInitialLoad = false;
                     initialLoadCounter--;
-                    if (initialLoadCounter === 0) {
-                        setLoading(false);
-                    }
+                    if (initialLoadCounter === 0) setLoading(false);
                 }
             }, (error) => {
                 console.error(`Error fetching ${key}:`, error);
                 if (isInitialLoad) {
                     isInitialLoad = false;
                     initialLoadCounter--;
-                    if (initialLoadCounter === 0) {
-                        setLoading(false);
-                    }
+                    if (initialLoadCounter === 0) setLoading(false);
                 }
             });
         });
+
+        let isBrandingInitialLoad = true;
+        const unsubscribeBranding = onSnapshot(brandingDocRef, (docSnap) => {
+            setAppData(prev => ({
+                ...prev,
+                brandingSettings: docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as BrandingSettings : null,
+            }));
+            if (isBrandingInitialLoad) {
+                isBrandingInitialLoad = false;
+                initialLoadCounter--;
+                if (initialLoadCounter === 0) setLoading(false);
+            }
+        }, (error) => {
+            console.error(`Error fetching branding settings:`, error);
+             if (isBrandingInitialLoad) {
+                isBrandingInitialLoad = false;
+                initialLoadCounter--;
+                if (initialLoadCounter === 0) setLoading(false);
+            }
+        });
+
+        unsubscribers.push(unsubscribeBranding);
+
 
         return () => {
             unsubscribers.forEach(unsub => unsub());

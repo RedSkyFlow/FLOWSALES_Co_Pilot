@@ -2,23 +2,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
-import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Palette, Sparkles, Upload, Wand2 } from 'lucide-react';
-import { generateBrandAnalysis } from '@/app/settings/branding/actions';
+import { Loader2, Palette, Sparkles, Wand2 } from 'lucide-react';
+import { generateBrandAnalysis, saveBrandingSettings } from '@/app/settings/branding/actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
 import { useTour, TourStep } from '@/hooks/use-tour';
+import { useAppData } from '@/components/app-data-provider';
+import { MainLayout } from '@/components/main-layout';
 
 const brandingSchema = z.object({
     companyName: z.string().min(1, "Company name is required"),
@@ -58,6 +59,8 @@ const brandingTourSteps: TourStep[] = [
 export default function BrandingPage() {
     const { toast } = useToast();
     const [user, loadingAuth] = useAuthState(auth);
+    const { brandingSettings, loading: loadingAppData } = useAppData();
+
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -67,9 +70,26 @@ export default function BrandingPage() {
         startTour('branding', brandingTourSteps);
     }, [startTour]);
 
-    const { register, handleSubmit, reset, control, setValue, watch, formState: { errors } } = useForm<BrandingFormData>({
+    const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<BrandingFormData>({
         resolver: zodResolver(brandingSchema),
     });
+
+    useEffect(() => {
+        if (brandingSettings) {
+            reset({
+                companyName: brandingSettings.companyName,
+                websiteUrl: brandingSettings.websiteUrl,
+                logoUrl: brandingSettings.logoUrl,
+                primaryColor: brandingSettings.primaryColor,
+                secondaryColor: brandingSettings.secondaryColor,
+                brandVoice: brandingSettings.brandVoice,
+            });
+            if (brandingSettings.logoUrl) {
+                setImagePreview(brandingSettings.logoUrl)
+            }
+        }
+    }, [brandingSettings, reset]);
+
 
     const websiteUrl = watch('websiteUrl');
 
@@ -79,6 +99,7 @@ export default function BrandingPage() {
             const reader = new FileReader();
             reader.onloadend = () => {
                 setImagePreview(reader.result as string);
+                setValue('logoUrl', reader.result as string); // Save as data URI
                 setValue('brandImage', reader.result as string);
             };
             reader.readAsDataURL(file);
@@ -104,13 +125,31 @@ export default function BrandingPage() {
         }
     };
 
-    const onSubmit = (data: BrandingFormData) => {
+    const onSubmit = async (data: BrandingFormData) => {
+        if (!user) return;
         setIsSubmitting(true);
-        console.log(data);
-        // TODO: Implement saving to Firestore
-        toast({ title: "Branding Saved", description: "Your branding settings have been updated." });
-        setIsSubmitting(false);
+        try {
+            // Hardcoded for now
+            const tenantId = 'tenant-001';
+            await saveBrandingSettings(tenantId, data);
+            toast({ title: "Branding Saved", description: "Your branding settings have been updated and will now be applied." });
+        } catch (error) {
+            console.error(error);
+            toast({ title: "Error", description: "Could not save branding settings.", variant: "destructive" });
+        } finally {
+            setIsSubmitting(false);
+        }
     };
+
+    if (loadingAuth || loadingAppData) {
+        return (
+            <MainLayout>
+                <div className="flex justify-center items-center h-full">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            </MainLayout>
+        )
+    }
 
     return (
         <MainLayout>
@@ -134,7 +173,15 @@ export default function BrandingPage() {
                             </div>
                             <div>
                                 <Label htmlFor="logoUrl">Logo Upload</Label>
-                                <Input id="logoUrl" type="file" accept="image/*" onChange={handleImageChange} />
+                                <Input id="logoUpload" type="file" accept="image/*" onChange={handleImageChange} />
+                                {imagePreview && (
+                                    <div className="mt-4">
+                                        <Label>Logo Preview</Label>
+                                        <div className="w-48 h-24 relative mt-2 rounded-md border bg-muted p-2">
+                                            <Image src={imagePreview} alt="Logo preview" fill className="object-contain" />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -158,9 +205,16 @@ export default function BrandingPage() {
                                     {errors.websiteUrl && <p className="text-destructive text-sm mt-1">{errors.websiteUrl.message}</p>}
                                 </TabsContent>
                                 <TabsContent value="image" className="pt-4">
-                                    <Label htmlFor="brandImage">Upload Screenshot or Brand Kit</Label>
-                                    <Input id="brandImage" type="file" accept="image/*" onChange={handleImageChange} />
-                                    {imagePreview && <Image src={imagePreview} alt="Brand preview" width={200} height={100} className="mt-2 rounded-md border" />}
+                                    <Label htmlFor="brandImageUpload">Upload Screenshot or Brand Kit</Label>
+                                    <Input id="brandImageUpload" type="file" accept="image/*" onChange={handleImageChange} />
+                                    {imagePreview && (
+                                        <div className="mt-4">
+                                            <Label>Image Preview</Label>
+                                            <div className="w-48 h-24 relative mt-2 rounded-md border">
+                                                <Image src={imagePreview} alt="Brand preview" fill className="object-cover" />
+                                            </div>
+                                        </div>
+                                    )}
                                 </TabsContent>
                             </Tabs>
                             <Button type="button" onClick={handleAnalyze} disabled={isAnalyzing || (!watch('websiteUrl') && !watch('brandImage'))} className="mt-4">
@@ -174,19 +228,19 @@ export default function BrandingPage() {
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2"><Palette /> Manual Configuration</CardTitle>
                             <CardDescription>
-                                Manually set your brand colors and voice.
+                                Manually set your brand colors and voice. These will override the defaults in globals.css.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid md:grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor="primaryColor">Primary Color (Hex)</Label>
-                                    <Input id="primaryColor" {...register('primaryColor')} placeholder="#345995" />
+                                    <Input id="primaryColor" {...register('primaryColor')} placeholder="#007A80" />
                                     {errors.primaryColor && <p className="text-destructive text-sm mt-1">{errors.primaryColor.message}</p>}
                                 </div>
                                 <div>
                                     <Label htmlFor="secondaryColor">Secondary Color (Hex)</Label>
-                                    <Input id="secondaryColor" {...register('secondaryColor')} placeholder="#D45500" />
+                                    <Input id="secondaryColor" {...register('secondaryColor')} placeholder="#0282F2" />
                                     {errors.secondaryColor && <p className="text-destructive text-sm mt-1">{errors.secondaryColor.message}</p>}
                                 </div>
                             </div>
@@ -210,4 +264,3 @@ export default function BrandingPage() {
     );
 }
 
-    

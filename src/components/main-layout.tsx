@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   LayoutDashboard,
   FileText,
@@ -20,31 +21,80 @@ import { auth } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { useAppData } from './app-data-provider';
-import { useTour, TourStep } from '@/hooks/use-tour';
+import { useTour } from '@/hooks/use-tour';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 
-function FlowSalesLogo() {
+function hexToHsl(hex: string): string | null {
+    if (!hex || !/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex)) {
+        return null;
+    }
+    let r, g, b;
+    hex = hex.substring(1);
+    if (hex.length === 3) {
+        r = parseInt(hex[0] + hex[0], 16);
+        g = parseInt(hex[1] + hex[1], 16);
+        b = parseInt(hex[2] + hex[2], 16);
+    } else {
+        r = parseInt(hex.substring(0, 2), 16);
+        g = parseInt(hex.substring(2, 4), 16);
+        b = parseInt(hex.substring(4, 6), 16);
+    }
+
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+
+    if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+    
+    h = Math.round(h * 360);
+    s = Math.round(s * 100);
+    l = Math.round(l * 100);
+
+    return `${h} ${s}% ${l}%`;
+}
+
+
+function FlowSalesLogo({logoUrl, companyName}: {logoUrl?: string; companyName?: string}) {
   return (
     <div className="flex items-center gap-2 p-4 border-b border-border">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="28"
-        height="28"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="text-primary"
-      >
-        <path d="M12 3L2 7l10 4 10-4-10-4z"></path>
-        <path d="M2 17l10 4 10-4"></path>
-        <path d="M2 12l10 4 10-4"></path>
-      </svg>
+      {logoUrl ? (
+          <Image src={logoUrl} alt={`${companyName || 'Company'} Logo`} width={28} height={28} className="object-contain" />
+      ) : (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-primary"
+        >
+            <path d="M12 3L2 7l10 4 10-4-10-4z"></path>
+            <path d="M2 17l10 4 10-4"></path>
+            <path d="M2 12l10 4 10-4"></path>
+        </svg>
+      )}
       <h1 className="text-xl font-bold">
-        <span className="text-primary">Flow</span>
-        <span>Sales</span>
+        {companyName ? (
+            <span>{companyName}</span>
+        ) : (
+            <>
+                <span className="text-primary">Flow</span>
+                <span>Sales</span>
+            </>
+        )}
       </h1>
     </div>
   );
@@ -91,10 +141,11 @@ function NavItem({ href, icon: Icon, label, onClick }: typeof navItems[0] & { on
 function SidebarContent() {
     const [signOut] = useSignOut(auth);
     const { startCurrentTour } = useTour();
+    const { brandingSettings } = useAppData();
 
     return (
         <>
-            <FlowSalesLogo />
+            <FlowSalesLogo logoUrl={brandingSettings?.logoUrl} companyName={brandingSettings?.companyName} />
             <nav className="flex-grow p-4 space-y-2">
             {navItems.map((item) => (
                 <NavItem key={item.href} {...item} />
@@ -118,7 +169,15 @@ function SidebarContent() {
 }
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
-  const { loading: loadingData } = useAppData();
+  const { loading: loadingData, brandingSettings } = useAppData();
+
+  const dynamicStyles: React.CSSProperties = {};
+  if (brandingSettings?.primaryColor) {
+      dynamicStyles['--primary'] = hexToHsl(brandingSettings.primaryColor) as string;
+  }
+  if (brandingSettings?.secondaryColor) {
+      dynamicStyles['--secondary'] = hexToHsl(brandingSettings.secondaryColor) as string;
+  }
 
   if (loadingData) {
       return (
@@ -129,7 +188,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex min-h-screen bg-background text-foreground" style={dynamicStyles}>
         <aside className="fixed top-0 left-0 h-full w-64 bg-card border-r border-border flex-col hidden md:flex" data-tour-id="sidebar-nav">
             <SidebarContent />
         </aside>
@@ -167,7 +226,9 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                         <path d="M2 17l10 4 10-4"></path>
                         <path d="M2 12l10 4 10-4"></path>
                     </svg>
-                    <h1 className="text-lg font-bold">FlowSales</h1>
+                    <h1 className="text-lg font-bold">
+                         {brandingSettings?.companyName || 'FlowSales'}
+                    </h1>
                 </div>
             </header>
             <main className="flex-1">
