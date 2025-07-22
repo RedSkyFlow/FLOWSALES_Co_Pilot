@@ -89,7 +89,7 @@ export default function UserManagementPage() {
                 </div>
                 {canManage && (
                     <Button
-                        className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
+                        className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5 w-full sm:w-auto"
                         onClick={() => setIsInviteDialogOpen(true)}
                     >
                         <PlusCircle className="mr-2 h-5 w-5" />
@@ -109,64 +109,66 @@ export default function UserManagementPage() {
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                     ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>User</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Role</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {team.length > 0 ? (
-                                    team.map((member) => (
-                                        <TableRow key={member.uid}>
-                                            <TableCell className="font-medium flex items-center gap-3">
-                                                 <Avatar>
-                                                    <AvatarImage src={member.photoURL || undefined} />
-                                                    <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
-                                                </Avatar>
-                                                {member.displayName || 'Unnamed User'}
-                                            </TableCell>
-                                            <TableCell>{member.email}</TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className="capitalize">{member.role.replace('_', ' ')}</Badge>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                {canManage && member.uid !== currentUserData?.uid ? (
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon">
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem disabled>
-                                                                <ShieldCheck className="mr-2 h-4 w-4" /> Change Role
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem disabled>
-                                                                <KeyRound className="mr-2 h-4 w-4" /> Reset Password
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                             <DropdownMenuItem disabled className="text-destructive focus:text-destructive">
-                                                                <Trash2 className="mr-2 h-4 w-4" /> Remove User
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                ) : null}
+                        <div className="w-full overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>User</TableHead>
+                                        <TableHead>Email</TableHead>
+                                        <TableHead>Role</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {team.length > 0 ? (
+                                        team.map((member) => (
+                                            <TableRow key={member.uid}>
+                                                <TableCell className="font-medium flex items-center gap-3 whitespace-nowrap">
+                                                    <Avatar>
+                                                        <AvatarImage src={member.photoURL || undefined} />
+                                                        <AvatarFallback>{getInitials(member.displayName)}</AvatarFallback>
+                                                    </Avatar>
+                                                    {member.displayName || 'Unnamed User'}
+                                                </TableCell>
+                                                <TableCell>{member.email}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className="capitalize whitespace-nowrap">{member.role.replace('_', ' ')}</Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {canManage && member.uid !== currentUserData?.uid ? (
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon">
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem disabled>
+                                                                    <ShieldCheck className="mr-2 h-4 w-4" /> Change Role
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem disabled>
+                                                                    <KeyRound className="mr-2 h-4 w-4" /> Reset Password
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem disabled className="text-destructive focus:text-destructive">
+                                                                    <Trash2 className="mr-2 h-4 w-4" /> Remove User
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    ) : null}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="h-24 text-center">
+                                                No team members found.
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">
-                                            No team members found.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                     )}
                 </CardContent>
             </Card>

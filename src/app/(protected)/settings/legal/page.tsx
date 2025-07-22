@@ -75,7 +75,7 @@ export default function LegalPage() {
                 </div>
                 {userData?.role === 'admin' && (
                     <Button
-                        className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
+                        className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5 w-full sm:w-auto"
                         onClick={handleAddNewDoc}
                     >
                         <PlusCircle className="mr-2 h-5 w-5" />
@@ -97,10 +97,10 @@ export default function LegalPage() {
                     ) : legalDocuments.length > 0 ? (
                        <div className="space-y-4">
                             {legalDocuments.map(doc => (
-                                <div key={doc.id} className="p-4 border rounded-lg bg-muted/20 flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <FileText className="h-6 w-6 text-primary" />
-                                        <div>
+                                <div key={doc.id} className="p-4 border rounded-lg bg-muted/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div className="flex items-start sm:items-center gap-4">
+                                        <FileText className="h-6 w-6 text-primary mt-1 sm:mt-0 shrink-0" />
+                                        <div className="flex-grow">
                                             <p className="font-semibold">{doc.title}</p>
                                             <p className="text-muted-foreground text-sm line-clamp-1">{doc.content}</p>
                                         </div>
@@ -109,7 +109,7 @@ export default function LegalPage() {
                                     <AlertDialog>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon">
+                                                <Button variant="ghost" size="icon" className="shrink-0">
                                                     <MoreHorizontal className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>

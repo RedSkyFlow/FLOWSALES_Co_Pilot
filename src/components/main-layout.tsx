@@ -24,9 +24,9 @@ import { useAppData } from './app-data-provider';
 import { useTour, TourStep } from '@/hooks/use-tour';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 
-function FlowSalesLogo({logoUrl, companyName}: {logoUrl?: string; companyName?: string}) {
+function FlowSalesLogo({logoUrl, companyName, isMobile = false}: {logoUrl?: string; companyName?: string; isMobile?: boolean}) {
   return (
-    <div className="flex items-center gap-2 p-4 border-b border-border">
+    <div className={cn("flex items-center gap-2", !isMobile && "p-4 border-b border-border")}>
       {logoUrl ? (
           <div className="relative w-7 h-7">
             <Image src={logoUrl} alt={`${companyName || 'Company'} Logo`} fill className="object-contain" />
@@ -156,27 +156,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                        <SidebarContent />
                     </SheetContent>
                 </Sheet>
-                <div className="flex items-center gap-2">
-                     <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="text-primary"
-                    >
-                        <path d="M12 3L2 7l10 4 10-4-10-4z"></path>
-                        <path d="M2 17l10 4 10-4"></path>
-                        <path d="M2 12l10 4 10-4"></path>
-                    </svg>
-                    <h1 className="text-lg font-bold">
-                         {brandingSettings?.companyName || 'FlowSales'}
-                    </h1>
-                </div>
+                <FlowSalesLogo logoUrl={brandingSettings?.logoUrl} companyName={brandingSettings?.companyName} isMobile={true} />
             </header>
             <main className="flex-1">
                 <div className="p-4 md:p-8">{children}</div>
