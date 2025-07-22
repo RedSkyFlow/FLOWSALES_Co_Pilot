@@ -18,6 +18,13 @@ interface Message {
   content: string;
 }
 
+function getInitials(name?: string | null) {
+    if (!name) return 'U';
+    const names = name.split(' ');
+    if (names.length === 1) return names[0][0].toUpperCase();
+    return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+}
+
 export function AIChatAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -68,14 +75,6 @@ export function AIChatAssistant() {
       setIsLoading(false);
     }
   };
-
-  const getInitials = (name: string | null | undefined) => {
-    if (!name) return 'U';
-    const names = name.split(' ');
-    if (names.length === 1) return names[0][0].toUpperCase();
-    return (names[0][0] + names[names.length - 1][0]).toUpperCase();
-  };
-
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
