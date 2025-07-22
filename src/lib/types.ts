@@ -1,9 +1,22 @@
 
+export type SubscriptionTier = 'bronze' | 'silver' | 'gold';
+export type SubscriptionStatus = 'active' | 'trial' | 'lapsed' | 'deactivated';
 
 export interface Tenant {
   id: string;
   companyName: string;
-  subscriptionStatus: 'active' | 'trial' | 'lapsed';
+  subscriptionStatus: SubscriptionStatus;
+  subscriptionTier: SubscriptionTier;
+  monthlyAiBudget: number; // e.g., 20.00 for $20
+  currentAiUsage: number;
+}
+
+export interface UsageLedgerEntry {
+    id: string;
+    flowName: string; // e.g., 'generateFullProposal'
+    triggeredBy: string; // User UID
+    timestamp: string; // ISO 8601
+    costIncurred: number; // Estimated cost for this action
 }
 
 export interface User {
@@ -12,7 +25,7 @@ export interface User {
   displayName: string | null;
   photoURL?: string | null;
   // Role is now within the context of a tenant
-  role: 'admin' | 'sales_agent' | 'client';
+  role: 'admin' | 'sales_agent' | 'client' | 'super_admin'; // Added super_admin
   tenantId: string; // The tenant this user belongs to
 }
 

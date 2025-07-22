@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, increment, addDoc, collection, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
-import type { Proposal, Product, SuggestedEdit, ProposalSection, Client, Version, ProposalTemplate } from '@/lib/types';
+import type { Proposal, Product, SuggestedEdit, ProposalSection, Client, Version, ProposalTemplate, Tenant } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import { generateFullProposal } from '@/ai/flows/generate-full-proposal';
 
@@ -53,12 +53,37 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
         throw new Error('Template and Client are required.');
     }
 
+    // AI BUDGET CHECK (EXAMPLE IMPLEMENTATION)
+    const tenantRef = doc(db, 'tenants', data.tenantId);
+    const tenantSnap = await getDoc(tenantRef);
+    if (!tenantSnap.exists()) {
+        throw new Error("Tenant not found.");
+    }
+    const tenantData = tenantSnap.data() as Tenant;
+
+    const estimatedCost = 0.05; // Example cost for this flow
+    if (tenantData.currentAiUsage + estimatedCost > tenantData.monthlyAiBudget) {
+        throw new Error("You have reached your monthly AI usage limit. Please contact your administrator to upgrade.");
+    }
+    // End AI Budget Check
+
     const {sections: generatedSections} = await generateFullProposal({
       clientPainPoints: data.painPoints,
       selectedProducts: data.selectedProducts.map(p => p.name),
       templateSections: data.initialSections,
       proposalType: data.selectedTemplateData.name,
     });
+    
+    // Log AI Usage
+    const usageLedgerRef = collection(db, `tenants/${data.tenantId}/usage_ledger`);
+    await addDoc(usageLedgerRef, {
+        flowName: 'generateFullProposal',
+        triggeredBy: data.salesAgentId,
+        timestamp: new Date().toISOString(),
+        costIncurred: estimatedCost,
+    });
+    // This should ideally be a batched update or triggered by a function
+    await updateDoc(tenantRef, { currentAiUsage: increment(estimatedCost) });
 
 
     const newProposal: Omit<Proposal, 'id'> = {
