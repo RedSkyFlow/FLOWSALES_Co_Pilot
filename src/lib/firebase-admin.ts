@@ -5,13 +5,16 @@ import * as admin from 'firebase-admin';
 // It uses a service account to gain admin privileges to Firebase services.
 
 if (!admin.apps.length) {
-    const serviceAccount = JSON.parse(
-        process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string
-    );
+    const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
     
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-    });
+    if (serviceAccountKey) {
+        const serviceAccount = JSON.parse(serviceAccountKey);
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+        });
+    } else {
+        console.warn("FIREBASE_SERVICE_ACCOUNT_KEY is not set. Firebase Admin SDK not initialized.");
+    }
 }
 
 const adminAuth = admin.auth();
