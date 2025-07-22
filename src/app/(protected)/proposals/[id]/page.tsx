@@ -41,6 +41,7 @@ import {
   Loader2,
   Briefcase,
   Pencil,
+  Share2,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
@@ -361,6 +362,14 @@ export default function ProposalDetailPage() {
     }
   };
 
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast({
+        title: "Link Copied!",
+        description: "The collaboration link has been copied to your clipboard.",
+    });
+  };
+
 
   if (isLoading || loadingAuth || loadingAppData) {
       return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin"/></div>
@@ -517,6 +526,9 @@ export default function ProposalDetailPage() {
                <Button variant="outline" className="w-full" onClick={handleDownloadPdf} disabled={isDownloading}>
                 {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                 Download as PDF
+              </Button>
+              <Button variant="outline" className="w-full" onClick={handleShare}>
+                <Share2 className="mr-2 h-4 w-4" /> Share Link
               </Button>
               <Separator className="my-2 bg-border" />
                <Button variant="default" className="w-full" disabled>
