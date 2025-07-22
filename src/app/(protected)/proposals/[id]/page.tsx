@@ -362,12 +362,32 @@ export default function ProposalDetailPage() {
     }
   };
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast({
-        title: "Link Copied!",
-        description: "The collaboration link has been copied to your clipboard.",
-    });
+  const handleShare = async () => {
+    const shareData = {
+      title: proposal?.title || 'FlowSales Proposal',
+      text: `Here is the proposal: ${proposal?.title || ''}`,
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        toast({
+          title: 'Proposal Shared',
+          description: 'The proposal was shared successfully.',
+        });
+      } catch (error) {
+        // This can happen if the user cancels the share dialog
+        console.log('Share was cancelled or failed', error);
+      }
+    } else {
+      // Fallback for browsers that don't support the Web Share API
+      navigator.clipboard.writeText(window.location.href);
+      toast({
+          title: "Link Copied!",
+          description: "The collaboration link has been copied to your clipboard.",
+      });
+    }
   };
 
 
@@ -457,7 +477,7 @@ export default function ProposalDetailPage() {
                         <div className="flex justify-between items-start">
                              <h3 className="text-xl font-semibold border-b border-transparent pb-2 mb-2">{section.title}</h3>
                             {!isSalesAgent && (
-                                <Button size="sm" variant="ghost" className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-secondary" onClick={() => handleSuggestEditClick(section, index)}>
+                                <Button size="sm" variant="ghost" className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-secondary hover:bg-secondary/10" onClick={() => handleSuggestEditClick(section, index)}>
                                     <PenSquare className="h-4 w-4" /> Suggest Edit
                                 </Button>
                             )}
@@ -528,7 +548,7 @@ export default function ProposalDetailPage() {
                 Download as PDF
               </Button>
               <Button variant="outline" className="w-full" onClick={handleShare}>
-                <Share2 className="mr-2 h-4 w-4" /> Share Link
+                <Share2 className="mr-2 h-4 w-4" /> Share
               </Button>
               <Separator className="my-2 bg-border" />
                <Button variant="default" className="w-full" disabled>
