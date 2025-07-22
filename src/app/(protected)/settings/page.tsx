@@ -8,10 +8,10 @@ import Link from "next/link";
 const settingsPanels = [
     {
         title: "Organization Profile",
-        description: "Manage your company name and details.",
+        description: "Manage your company name, logo, and details.",
         icon: <Building className="h-6 w-6 text-primary" />,
-        href: "#",
-        disabled: true,
+        href: "/settings/branding",
+        disabled: false,
     },
     {
         title: "User Management",
