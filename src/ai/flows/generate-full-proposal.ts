@@ -19,6 +19,7 @@ const ProposalSectionSchema = z.object({
 });
 
 const GenerateFullProposalInputSchema = z.object({
+  clientName: z.string().describe("The name of the client or company."),
   clientPainPoints: z.string().describe('Key pain points and challenges the client is facing.'),
   selectedProducts: z.array(z.string()).describe('A list of product/module names selected for the proposal.'),
   proposalType: z.string().describe('The type of proposal (e.g., Stadium OS Proposal, Shopping Mall Pilot Proposal).'),
@@ -43,9 +44,10 @@ const prompt = ai.definePrompt({
   output: { schema: GenerateFullProposalOutputSchema },
   prompt: `You are an expert sales copywriter tasked with creating a persuasive and highly-tailored sales proposal.
   
-Your goal is to transform a generic proposal template into a compelling document that speaks directly to the client's needs.
+Your goal is to transform a generic proposal template into a complete, polished, and professional document that speaks directly to the client's needs.
 
 **Client Context:**
+- **Client Name:** {{{clientName}}}
 - **Proposal Type:** {{{proposalType}}}
 - **Client's Key Pain Points:** {{{clientPainPoints}}}
 - **Proposed Products/Solutions:** 
@@ -54,14 +56,12 @@ Your goal is to transform a generic proposal template into a compelling document
   {{/each}}
 
 **Your Task:**
-Review the following template sections. For each section, rewrite the content to:
-1.  Directly address the client's pain points.
-2.  Subtly weave in the benefits of the proposed products.
-3.  Maintain a professional, confident, and persuasive tone.
-4.  Keep the original section titles.
-5.  If a section is an "Executive Summary", generate a new one from scratch based on the client context. For all other sections, use the provided content as a base for your rewrite.
+1.  **Start with a Salutation:** Begin the entire proposal with a professional and personalized salutation. Create a new "Introduction" or "Cover Letter" section for this. For example: "Dear {{{clientName}}}," followed by a brief opening paragraph.
+2.  **Rewrite and Tailor:** Review the original template sections. Rewrite the content of each section to directly address the client's pain points and weave in the benefits of the proposed products. Maintain the original section titles.
+3.  **Ensure Logical Flow:** Arrange the final sections in a logical order that tells a compelling story (e.g., Introduction, Executive Summary, Our Understanding of Your Needs, Proposed Solution, Pricing, About Us, Next Steps).
+4.  **Mark Your Work:** Mark the 'type' of each rewritten or newly generated section as 'ai_generated'.
 
-**Original Template Sections:**
+**Original Template Sections to Work From:**
 {{#each templateSections}}
 ---
 **Title:** {{title}}
@@ -70,7 +70,7 @@ Review the following template sections. For each section, rewrite the content to
 ---
 {{/each}}
 
-Now, provide the final, rewritten list of proposal sections in the required output format. Ensure every original section is included in your output, but with rewritten, tailored content. Mark the 'type' of each rewritten section as 'ai_generated'.
+Now, provide the final, rewritten and fully structured list of proposal sections in the required output format.
 `,
 });
 

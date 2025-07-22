@@ -68,6 +68,7 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
     // End AI Budget Check
 
     const {sections: generatedSections} = await generateFullProposal({
+      clientName: data.clientName || 'Valued Client',
       clientPainPoints: data.painPoints,
       selectedProducts: data.selectedProducts.map(p => p.name),
       templateSections: data.initialSections,
