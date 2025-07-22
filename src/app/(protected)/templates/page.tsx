@@ -141,20 +141,18 @@ export default function TemplatesPage() {
                     const Icon = iconMap[template.icon] || FileText;
                     return (
                         <Card key={template.id} className="flex flex-col group" data-tour-id={index === 0 ? "template-card" : undefined}>
-                            <CardHeader className="flex flex-row items-start justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-3 rounded-md bg-primary/10 border border-primary/20 text-primary">
-                                        <Icon className="h-6 w-6" />
-                                    </div>
-                                    <CardTitle className="text-lg">
-                                        {template.name}
-                                    </CardTitle>
+                            <CardHeader className="flex flex-row items-start justify-between gap-3">
+                                <div className="p-3 rounded-md bg-primary/10 border border-primary/20 text-primary">
+                                    <Icon className="h-6 w-6" />
                                 </div>
+                                <CardTitle className="text-lg flex-grow">
+                                    {template.name}
+                                </CardTitle>
                                 {userData?.role === 'admin' && (
                                 <AlertDialog>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="tertiary" size="sm" className="w-9">
+                                            <Button variant="tertiary" size="sm" className="w-9 shrink-0">
                                                 <MoreHorizontal className="h-4 w-4" />
                                             </Button>
                                         </DropdownMenuTrigger>
