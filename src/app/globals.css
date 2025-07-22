@@ -92,7 +92,7 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   .proposal-brand-scope {
-    --primary: var(--primary-proposal, 180 100% 25%);
+    --primary-proposal: var(--primary-color, hsl(var(--primary)));
   }
 }
 
@@ -180,5 +180,5 @@
 }
 
 .pdf-export-light .text-primary-proposal {
-    color: hsl(var(--primary-proposal)) !important;
+    color: var(--primary-color, hsl(var(--primary))) !important;
 }

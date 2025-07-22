@@ -384,7 +384,7 @@ export default function ProposalDetailPage() {
     <>
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-            <div ref={proposalContentRef} className="space-y-8 bg-background p-8 rounded-lg proposal-brand-scope" style={dynamicStyles}>
+            <div ref={proposalContentRef} className="space-y-8 bg-card p-8 rounded-lg proposal-brand-scope" style={dynamicStyles}>
                 {/* Header */}
                 <div className="pb-6 border-b border-border">
                     <div className="flex justify-between items-start gap-4">
