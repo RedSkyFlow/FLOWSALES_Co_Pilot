@@ -6,17 +6,23 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { ProductRule, User, Product } from '@/lib/types';
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle, GitBranch } from "lucide-react";
+import { Loader2, PlusCircle, GitBranch, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { AddRuleDialog } from '@/components/add-rule-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { deleteProductRule } from '@/app/settings/rules/actions';
+import { useToast } from '@/hooks/use-toast';
 
 export default function RulesPage() {
+    const { toast } = useToast();
     const [user, loadingAuth] = useAuthState(auth);
     const [rules, setRules] = useState<ProductRule[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [loadingData, setLoadingData] = useState(true);
     const [isAddRuleOpen, setIsAddRuleOpen] = useState(false);
+    const [editingRule, setEditingRule] = useState<ProductRule | null>(null);
     const [userData, setUserData] = useState<User | null>(null);
 
     useEffect(() => {
@@ -25,15 +31,13 @@ export default function RulesPage() {
             return;
         }
 
-        // This should be dynamically set based on the logged-in user's tenant
         const tenantId = 'tenant-001';
         
-        // A real app would fetch user role from a secure source
         setUserData({
             uid: user.uid,
             email: user.email,
             displayName: user.displayName,
-            role: 'admin', // MOCK: Assume admin for settings pages
+            role: 'admin', 
             tenantId: tenantId,
         });
 
@@ -72,6 +76,33 @@ export default function RulesPage() {
     const getProductName = (productId: string) => {
         return products.find(p => p.id === productId)?.name || 'Unknown Product';
     }
+
+    const handleEditRule = (rule: ProductRule) => {
+        setEditingRule(rule);
+        setIsAddRuleOpen(true);
+    }
+    
+    const handleAddNewRule = () => {
+        setEditingRule(null);
+        setIsAddRuleOpen(true);
+    }
+
+    const handleDeleteRule = async (ruleId: string) => {
+        if (!userData?.tenantId) return;
+        try {
+            await deleteProductRule(userData.tenantId, ruleId);
+            toast({
+                title: 'Rule Deleted',
+                description: 'The product rule has been successfully deleted.',
+            });
+        } catch (error) {
+             toast({
+                title: 'Error',
+                description: 'Failed to delete rule. Please try again.',
+                variant: 'destructive',
+            });
+        }
+    }
     
     return (
             <div className="space-y-8">
@@ -85,7 +116,7 @@ export default function RulesPage() {
                     {userData?.role === 'admin' && (
                         <Button
                             className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
-                            onClick={() => setIsAddRuleOpen(true)}
+                            onClick={handleAddNewRule}
                         >
                             <PlusCircle className="mr-2 h-5 w-5" />
                             Add New Rule
@@ -118,7 +149,39 @@ export default function RulesPage() {
                                                 </p>
                                             </div>
                                         </div>
-                                        <Button variant="ghost" size="sm">Manage</Button>
+                                         <AlertDialog>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => handleEditRule(rule)}>
+                                                        <Pencil className="mr-2 h-4 w-4" /> Edit
+                                                    </DropdownMenuItem>
+                                                    <AlertDialogTrigger asChild>
+                                                        <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                                             <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                        </DropdownMenuItem>
+                                                    </AlertDialogTrigger>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        This action cannot be undone. This will permanently delete this product rule.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDeleteRule(rule.id)} className={buttonVariants({ variant: 'destructive'})}>
+                                                        Continue
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     </div>
                                 ))}
                            </div>
@@ -131,11 +194,13 @@ export default function RulesPage() {
                         )}
                     </CardContent>
                 </Card>
-                <AddRuleDialog 
+                <AddRuleDialog
+                    key={editingRule ? editingRule.id : 'new'}
                     open={isAddRuleOpen} 
                     onOpenChange={setIsAddRuleOpen} 
                     products={products} 
-                    tenantId={userData?.tenantId} 
+                    tenantId={userData?.tenantId}
+                    ruleToEdit={editingRule}
                 />
             </div>
     );

@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { addProductRule } from '@/app/settings/rules/actions';
+import { addProductRule, updateProductRule } from '@/app/settings/rules/actions';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +20,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import type { Product } from '@/lib/types';
+import type { Product, ProductRule } from '@/lib/types';
 
 const ruleSchema = z.object({
   primaryProductId: z.string().min(1, "Please select a primary product."),
@@ -39,11 +39,14 @@ interface AddRuleDialogProps {
   onOpenChange: (open: boolean) => void;
   products: Product[];
   tenantId?: string | null;
+  ruleToEdit?: ProductRule | null;
 }
 
-export function AddRuleDialog({ open, onOpenChange, products, tenantId }: AddRuleDialogProps) {
+export function AddRuleDialog({ open, onOpenChange, products, tenantId, ruleToEdit }: AddRuleDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEditMode = !!ruleToEdit;
+  
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<RuleFormData>({
     resolver: zodResolver(ruleSchema),
     defaultValues: {
@@ -54,12 +57,28 @@ export function AddRuleDialog({ open, onOpenChange, products, tenantId }: AddRul
     }
   });
 
+  useEffect(() => {
+    if (ruleToEdit) {
+      reset({
+        primaryProductId: ruleToEdit.primaryProductId,
+        relatedProductId: ruleToEdit.relatedProductIds[0] || '', // Assuming one for now
+        type: ruleToEdit.type,
+        condition: ruleToEdit.condition,
+      });
+    } else {
+      reset({
+        primaryProductId: '',
+        relatedProductId: '',
+        type: 'dependency',
+        condition: 'requires_one',
+      });
+    }
+  }, [ruleToEdit, reset]);
+
+
   const handleDialogClose = (isOpen: boolean) => {
     if (!isSubmitting) {
       onOpenChange(isOpen);
-      if (!isOpen) {
-        reset();
-      }
     }
   };
 
@@ -69,23 +88,27 @@ export function AddRuleDialog({ open, onOpenChange, products, tenantId }: AddRul
         return;
     }
     setIsSubmitting(true);
+    
+    const submissionData = {
+        ...data,
+        relatedProductIds: [data.relatedProductId] // Convert single product to array
+    };
+    
     try {
-      await addProductRule({ 
-          ...data, 
-          tenantId,
-          relatedProductIds: [data.relatedProductId] // Convert single product to array
-      });
-      toast({
-        title: "Rule Added",
-        description: `A new product rule has been created.`,
-      });
+      if (isEditMode) {
+          await updateProductRule(tenantId, ruleToEdit.id, submissionData);
+          toast({ title: "Rule Updated", description: "The product rule has been successfully updated." });
+      } else {
+          await addProductRule({ ...submissionData, tenantId });
+          toast({ title: "Rule Added", description: `A new product rule has been created.` });
+      }
       onOpenChange(false);
-      reset();
     } catch (error) {
       console.error(error);
+      const action = isEditMode ? 'update' : 'add';
       toast({
         title: "Error",
-        description: "Failed to add rule. Please try again.",
+        description: `Failed to ${action} rule. Please try again.`,
         variant: "destructive",
       });
     } finally {
@@ -98,7 +121,7 @@ export function AddRuleDialog({ open, onOpenChange, products, tenantId }: AddRul
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Add New Product Rule</DialogTitle>
+            <DialogTitle>{isEditMode ? 'Edit Product Rule' : 'Add New Product Rule'}</DialogTitle>
             <DialogDescription>
               Define a relationship between two products.
             </DialogDescription>
@@ -110,7 +133,7 @@ export function AddRuleDialog({ open, onOpenChange, products, tenantId }: AddRul
                   name="type"
                   control={control}
                   render={({ field }) => (
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger id="type"><SelectValue /></SelectTrigger>
                           <SelectContent>
                               <SelectItem value="dependency">Dependency</SelectItem>
@@ -127,7 +150,7 @@ export function AddRuleDialog({ open, onOpenChange, products, tenantId }: AddRul
                   name="primaryProductId"
                   control={control}
                   render={({ field }) => (
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger className={errors.primaryProductId ? 'border-destructive' : ''}><SelectValue placeholder="Select a product..." /></SelectTrigger>
                           <SelectContent>
                               {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
@@ -143,7 +166,7 @@ export function AddRuleDialog({ open, onOpenChange, products, tenantId }: AddRul
                   name="condition"
                   control={control}
                   render={({ field }) => (
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger id="condition"><SelectValue /></SelectTrigger>
                           <SelectContent>
                               <SelectItem value="requires_one">It Requires</SelectItem>
@@ -159,7 +182,7 @@ export function AddRuleDialog({ open, onOpenChange, products, tenantId }: AddRul
                   name="relatedProductId"
                   control={control}
                   render={({ field }) => (
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger className={errors.relatedProductId ? 'border-destructive' : ''}><SelectValue placeholder="Select a product..."/></SelectTrigger>
                           <SelectContent>
                               {products.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
@@ -174,7 +197,7 @@ export function AddRuleDialog({ open, onOpenChange, products, tenantId }: AddRul
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Rule
+              {isEditMode ? 'Save Changes' : 'Save Rule'}
             </Button>
           </DialogFooter>
         </form>
