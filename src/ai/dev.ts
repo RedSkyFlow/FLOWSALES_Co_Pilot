@@ -14,4 +14,4 @@ import '@/ai/flows/analyze-product-catalog.ts';
 import '@/ai/flows/suggest-products-for-template.ts';
 import '@/ai/flows/chat-assistant.ts';
 import '@/ai/flows/ingest-document-for-template.ts';
-
+import '@/ai/flows/generate-cost-analysis.ts';
