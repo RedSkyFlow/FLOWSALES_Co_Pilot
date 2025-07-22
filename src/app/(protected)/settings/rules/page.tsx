@@ -6,10 +6,9 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { ProductRule, User, Product } from '@/lib/types';
-import { MainLayout } from "@/components/main-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle, GitBranch, ArrowRight } from "lucide-react";
+import { Loader2, PlusCircle, GitBranch } from "lucide-react";
 import { AddRuleDialog } from '@/components/add-rule-dialog';
 
 export default function RulesPage() {
@@ -26,10 +25,24 @@ export default function RulesPage() {
             return;
         }
 
-        setLoadingData(true);
         // This should be dynamically set based on the logged-in user's tenant
         const tenantId = 'tenant-001';
         
+        // A real app would fetch user role from a secure source
+        setUserData({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            role: 'admin', // MOCK: Assume admin for settings pages
+            tenantId: tenantId,
+        });
+
+        if (!tenantId) {
+            setLoadingData(false);
+            return;
+        }
+
+        setLoadingData(true);
         const rulesCollectionRef = collection(db, 'tenants', tenantId, 'product_rules');
         const rulesQuery = query(rulesCollectionRef);
         const unsubscribeRules = onSnapshot(rulesQuery, (querySnapshot) => {
@@ -50,15 +63,6 @@ export default function RulesPage() {
             setLoadingData(false);
         });
 
-        // A real app would fetch user role from a secure source
-        setUserData({
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            role: 'admin', // MOCK: Assume admin for settings pages
-            tenantId: 'tenant-001',
-        })
-
         return () => {
             unsubscribeRules();
             unsubscribeProducts();
@@ -70,7 +74,6 @@ export default function RulesPage() {
     }
     
     return (
-        <MainLayout>
             <div className="space-y-8">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
@@ -129,7 +132,11 @@ export default function RulesPage() {
                     </CardContent>
                 </Card>
             </div>
-            <AddRuleDialog open={isAddRuleOpen} onOpenChange={setIsAddRuleOpen} products={products} />
-        </MainLayout>
+            <AddRuleDialog 
+                open={isAddRuleOpen} 
+                onOpenChange={setIsAddRuleOpen} 
+                products={products} 
+                tenantId={userData?.tenantId} 
+            />
     );
 }

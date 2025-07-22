@@ -30,9 +30,10 @@ type BulkAddFormData = z.infer<typeof bulkAddSchema>;
 interface BulkAddProductsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  tenantId?: string | null;
 }
 
-export function BulkAddProductsDialog({ open, onOpenChange }: BulkAddProductsDialogProps) {
+export function BulkAddProductsDialog({ open, onOpenChange, tenantId }: BulkAddProductsDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit, reset, formState: { errors } } = useForm<BulkAddFormData>({
@@ -49,10 +50,12 @@ export function BulkAddProductsDialog({ open, onOpenChange }: BulkAddProductsDia
   };
 
   const onSubmit = async (data: BulkAddFormData) => {
+    if (!tenantId) {
+        toast({ title: "Error", description: "Tenant not identified. Cannot save products.", variant: "destructive" });
+        return;
+    }
     setIsSubmitting(true);
     try {
-      // Hardcoded tenantId for now
-      const tenantId = 'tenant-001';
       const count = await bulkAddProducts(tenantId, data.productList);
       toast({
         title: "Products Added",

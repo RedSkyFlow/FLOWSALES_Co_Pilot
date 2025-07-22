@@ -38,9 +38,10 @@ interface AddRuleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   products: Product[];
+  tenantId?: string | null;
 }
 
-export function AddRuleDialog({ open, onOpenChange, products }: AddRuleDialogProps) {
+export function AddRuleDialog({ open, onOpenChange, products, tenantId }: AddRuleDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<RuleFormData>({
@@ -63,10 +64,12 @@ export function AddRuleDialog({ open, onOpenChange, products }: AddRuleDialogPro
   };
 
   const onSubmit = async (data: RuleFormData) => {
+    if (!tenantId) {
+        toast({ title: "Error", description: "Tenant not identified. Cannot save rule.", variant: "destructive" });
+        return;
+    }
     setIsSubmitting(true);
     try {
-      // Hardcoded tenantId for now
-      const tenantId = 'tenant-001';
       await addProductRule({ 
           ...data, 
           tenantId,
@@ -179,4 +182,3 @@ export function AddRuleDialog({ open, onOpenChange, products }: AddRuleDialogPro
     </Dialog>
   );
 }
-

@@ -1,5 +1,4 @@
 
-
 export interface Tenant {
   id: string;
   companyName: string;
@@ -14,7 +13,6 @@ export interface User {
   // Role is now within the context of a tenant
   role: 'admin' | 'sales_agent' | 'client';
   tenantId: string; // The tenant this user belongs to
-  companyWebsite?: string;
 }
 
 // Client of our Tenant
@@ -35,8 +33,8 @@ export interface Product {
   pricingModel: 'subscription' | 'one-time' | 'per_item';
   basePrice: number;
   tags: string[];
-  dependencies?: string[]; // IDs of other products
   type: 'product' | 'service' | 'license';
+  status?: 'verified' | 'unverified'; // For onboarding flow
 }
 
 export interface ProductRule {
@@ -50,7 +48,7 @@ export interface ProductRule {
     // The condition of the rule
     condition: 'requires_one' | 'requires_all' | 'conflicts_with';
     // The status of the rule, for AI onboarding
-    status: 'active' | 'pending_review' | 'rejected';
+    status: 'active' | 'awaiting_review' | 'rejected';
 }
 
 export interface BrandingSettings {
@@ -59,8 +57,9 @@ export interface BrandingSettings {
     logoUrl?: string;
     primaryColor?: string; // hex
     secondaryColor?: string; // hex
+    fontHeadline?: string;
+    fontBody?: string;
     brandVoice?: string;
-    websiteUrl?: string;
 }
 
 export interface LegalDocument {
@@ -107,7 +106,6 @@ export interface Proposal {
     paymentLink: string | null;
     paidAt: string | null; // ISO 8601 date string
   };
-  meetingTranscript?: string;
 }
 
 export interface Comment {

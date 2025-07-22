@@ -39,9 +39,10 @@ interface AddProductDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   productToEdit?: Product | null;
+  tenantId?: string | null;
 }
 
-export function AddProductDialog({ open, onOpenChange, productToEdit }: AddProductDialogProps) {
+export function AddProductDialog({ open, onOpenChange, productToEdit, tenantId }: AddProductDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -109,9 +110,12 @@ export function AddProductDialog({ open, onOpenChange, productToEdit }: AddProdu
   }
 
   const onSubmit = async (data: ProductFormData) => {
+    if (!tenantId) {
+        toast({ title: "Error", description: "Tenant not identified. Cannot save product.", variant: "destructive" });
+        return;
+    }
     setIsSubmitting(true);
     try {
-      const tenantId = 'tenant-001'; // Hardcoded tenantId for now
       const tagsArray = data.tags ? data.tags.split(',').map(tag => tag.trim()) : [];
       const productData = { ...data, tags: tagsArray };
 

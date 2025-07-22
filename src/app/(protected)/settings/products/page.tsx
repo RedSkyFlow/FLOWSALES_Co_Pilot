@@ -6,7 +6,6 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { Product, User } from '@/lib/types';
-import { MainLayout } from "@/components/main-layout";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Table,
@@ -41,9 +40,23 @@ export default function ProductsPage() {
             return;
         }
 
+        // A real app would fetch user role from a secure source
+        // For now, we assume the user object will have tenantId and role
+        const tenantId = 'tenant-001'; // TODO: Replace with dynamic user.tenantId
+        setUserData({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            role: 'admin', // MOCK: Assume admin for settings pages
+            tenantId: tenantId,
+        })
+
+        if (!tenantId) {
+            setLoadingProducts(false);
+            return;
+        }
+
         setLoadingProducts(true);
-        // NOTE: This uses a hardcoded tenant ID for now.
-        const tenantId = 'tenant-001';
         const productsCollectionRef = collection(db, 'tenants', tenantId, 'products');
         const q = query(productsCollectionRef);
 
@@ -56,14 +69,6 @@ export default function ProductsPage() {
             setLoadingProducts(false);
         });
 
-        // A real app would fetch user role from a secure source
-        setUserData({
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            role: 'admin', // MOCK: Assume admin for settings pages
-            tenantId: 'tenant-001',
-        })
 
         return () => unsubscribe();
     }, [user, loadingAuth]);
@@ -79,8 +84,9 @@ export default function ProductsPage() {
     }
     
     const handleDeleteProduct = async (productId: string) => {
+        if (!userData?.tenantId) return;
         try {
-            await deleteProduct('tenant-001', productId);
+            await deleteProduct(userData.tenantId, productId);
             toast({
                 title: 'Product Deleted',
                 description: 'The product has been successfully deleted.',
@@ -95,14 +101,15 @@ export default function ProductsPage() {
     }
     
     const handleDuplicateProduct = async (productId: string) => {
+        if (!userData?.tenantId) return;
         try {
-            const newProductId = await duplicateProduct('tenant-001', productId);
+            const newProductId = await duplicateProduct(userData.tenantId, productId);
             const newProduct = products.find(p => p.id === productId);
              toast({
                 title: 'Product Duplicated',
                 description: `A copy of "${newProduct?.name}" has been created.`,
             });
-             const duplicatedProductWithId = { ...newProduct, id: newProductId, name: `${newProduct.name} (Copy)` } as Product;
+             const duplicatedProductWithId = { ...newProduct, id: newProductId, name: `${newProduct?.name} (Copy)` } as Product;
              handleEditProduct(duplicatedProductWithId);
         } catch (error) {
             toast({
@@ -115,7 +122,6 @@ export default function ProductsPage() {
 
 
     return (
-        <MainLayout>
             <div className="space-y-8">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
@@ -232,12 +238,13 @@ export default function ProductsPage() {
                 key={editingProduct ? editingProduct.id : 'new'}
                 open={isAddDialogOpen} 
                 onOpenChange={setIsAddDialogOpen}
-                productToEdit={editingProduct} 
+                productToEdit={editingProduct}
+                tenantId={userData?.tenantId} 
             />
             <BulkAddProductsDialog
                 open={isBulkAddDialogOpen}
                 onOpenChange={setIsBulkAddDialogOpen}
+                tenantId={userData?.tenantId}
             />
-        </MainLayout>
     );
 }

@@ -53,7 +53,6 @@ const settingsPanels = [
 
 export default function SettingsPage() {
   return (
-    <MainLayout>
       <div className="space-y-8">
         <div>
           <h1 className="text-4xl font-bold">Settings</h1>
@@ -78,6 +77,5 @@ export default function SettingsPage() {
             ))}
         </div>
       </div>
-    </MainLayout>
   );
 }

@@ -18,7 +18,7 @@ export async function generateBrandAnalysis(input: GenerateBrandAnalysisInput) {
 }
 
 
-export async function saveBrandingSettings(tenantId: string, data: Omit<BrandingSettings, 'id'>) {
+export async function saveBrandingSettings(tenantId: string, data: Partial<BrandingSettings>) {
     if (!tenantId) {
         throw new Error("Tenant ID is required.");
     }
@@ -26,7 +26,7 @@ export async function saveBrandingSettings(tenantId: string, data: Omit<Branding
     try {
         await setDoc(settingsRef, data, { merge: true });
         revalidatePath('/settings/branding');
-        revalidatePath('/'); // Revalidate all protected pages to apply new theme
+        revalidatePath('/', 'layout'); // Revalidate all pages to apply new theme
     } catch (error) {
         console.error("Error saving branding settings:", error);
         throw new Error("Could not save branding settings.");
