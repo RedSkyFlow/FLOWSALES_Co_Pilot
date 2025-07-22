@@ -152,7 +152,7 @@ export default function TemplatesPage() {
                                 <AlertDialog>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <Button variant="tertiary" size="sm" className="w-9 shrink-0">
+                                            <Button variant="tertiary" size="icon" className="shrink-0">
                                                 <MoreHorizontal className="h-4 w-4" />
                                             </Button>
                                         </DropdownMenuTrigger>
