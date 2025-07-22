@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo, FC } from "react";
+import { useState, useEffect, useMemo, FC, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -39,6 +39,7 @@ import type { Product, ProposalSection, Client, ProposalTemplate, ProductRule } 
 import { cn } from "@/lib/utils";
 import { generateExecutiveSummary } from "@/ai/flows/generate-executive-summary";
 import { analyzeMeetingTranscript } from "@/ai/flows/analyze-meeting-transcript";
+import { suggestProductsForTemplate } from "@/ai/flows/suggest-products-for-template";
 import { createProposal } from "@/app/proposals/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -149,6 +150,40 @@ export function ProposalWizard() {
 
   }, [selectedProducts, rules, productMap, toast]);
 
+  const handleTemplateSelection = useCallback(async (templateId: string) => {
+    setSelectedTemplate(templateId);
+    
+    const template = templates.find(t => t.id === templateId);
+    if (!template || products.length === 0) return;
+
+    // Reset products when template changes
+    setSelectedProducts([]);
+
+    try {
+        const { suggestedProductIds } = await suggestProductsForTemplate({
+            templateName: template.name,
+            templateDescription: template.description,
+            availableProducts: products.map(p => ({ id: p.id, name: p.name, description: p.description })),
+        });
+
+        if (suggestedProductIds.length > 0) {
+            const suggestedProducts = products.filter(p => suggestedProductIds.includes(p.id));
+            setSelectedProducts(suggestedProducts);
+            toast({
+                title: "AI Product Suggestions",
+                description: `${suggestedProducts.length} products were pre-selected for the "${template.name}" template.`,
+            });
+        }
+    } catch (error) {
+        console.error("Error suggesting products for template:", error);
+        toast({
+            variant: "destructive",
+            title: "Suggestion Error",
+            description: "Could not get AI product suggestions for this template."
+        });
+    }
+  }, [templates, products, toast]);
+
 
   const progress = ((currentStep + 1) / steps.length) * 100;
 
@@ -201,7 +236,7 @@ export function ProposalWizard() {
           if (result.suggestedTemplate) {
               const matchedTemplate = templates.find(t => t.name === result.suggestedTemplate);
               if (matchedTemplate) {
-                setSelectedTemplate(matchedTemplate.id);
+                handleTemplateSelection(matchedTemplate.id);
                 toast({ title: "AI Suggestion", description: `The "${result.suggestedTemplate}" template was automatically selected.` });
               }
           }
@@ -362,7 +397,7 @@ export function ProposalWizard() {
                   return (
                     <Card
                         key={template.id}
-                        onClick={() => setSelectedTemplate(template.id)}
+                        onClick={() => handleTemplateSelection(template.id)}
                         className={cn(
                         "cursor-pointer transition-all hover:shadow-lg hover:border-primary",
                         selectedTemplate === template.id && "border-2 border-primary shadow-lg"
