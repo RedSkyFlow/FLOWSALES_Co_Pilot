@@ -13,7 +13,9 @@
     
     /* Supporting Colors */
     --card: 15 14 8;                /* #0F0E08 - Background Dark Secondary */
+    --popover: 15 14 8;             /* Use card color for solid popovers */
     --border: 45 44 39;             /* #2D2C27 - Subtle Details/Border */
+    --input: 45 44 39;              /* Input background */
     --muted: 45 44 39;              /* #2D2C27 - Muted elements */
     --muted-foreground: 226 253 255 / 0.7; /* Muted text */
     
@@ -22,6 +24,7 @@
     --secondary-foreground: 226 253 255;   /* Text on secondary backgrounds */
     --accent-foreground: 10 9 3;           /* Text on accent backgrounds */
     --card-foreground: 226 253 255;        /* Text on card backgrounds */
+    --popover-foreground: 226 253 255;     /* Text on popover backgrounds */
     
     /* Glow Effect Variables */
     --glow-primary: 0 0 20px hsla(var(--primary) / 0.3);

@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import type { ProposalSection } from '@/lib/types';
+import type { ProposalSection, ProposalTemplate } from '@/lib/types';
 import { addDoc, collection, doc, deleteDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
@@ -26,6 +26,7 @@ export async function createTemplate(data: CreateTemplateInput) {
             description: data.description,
             icon: data.icon,
             sections: data.sections,
+            createdAt: new Date().toISOString(),
         });
         revalidatePath('/templates');
         revalidatePath('/proposals/new'); // Revalidate wizard to pick up new template
@@ -47,5 +48,28 @@ export async function deleteTemplate(tenantId: string, templateId: string) {
     } catch (error) {
         console.error("Error deleting template: ", error);
         throw new Error('Could not delete the template. Please try again.');
+    }
+}
+
+export async function duplicateTemplate(tenantId: string, template: ProposalTemplate) {
+    if (!tenantId || !template) {
+        throw new Error('Tenant ID and template data are required.');
+    }
+    try {
+        const newTemplateData = {
+            ...template,
+            name: `${template.name} (Copy)`,
+            createdAt: new Date().toISOString(),
+        };
+        delete (newTemplateData as any).id; // Remove ID before adding new doc
+
+        const templatesCollectionRef = collection(db, 'tenants', tenantId, 'proposal_templates');
+        await addDoc(templatesCollectionRef, newTemplateData);
+
+        revalidatePath('/templates');
+        revalidatePath('/proposals/new');
+    } catch (error) {
+        console.error("Error duplicating template: ", error);
+        throw new Error('Could not duplicate template. Please try again.');
     }
 }

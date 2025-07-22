@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, query, onSnapshot, doc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAppData } from '@/components/app-data-provider';
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -16,15 +15,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { PlusCircle, Users, Package, FileText, Loader2, MoreHorizontal, Trash2 } from "lucide-react";
+import { PlusCircle, Users, Package, FileText, Loader2, MoreHorizontal, Trash2, Pencil, Copy } from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import type { ProposalTemplate, User } from "@/lib/types";
 import Link from 'next/link';
 import { useTour, TourStep } from '@/hooks/use-tour';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { deleteTemplate } from '@/app/templates/actions';
+import { deleteTemplate, duplicateTemplate } from '@/app/templates/actions';
+import { ClientDate } from '@/components/client-date';
+
 
 const iconMap: Record<string, React.FC<LucideProps>> = {
     Users: Users,
@@ -89,6 +90,22 @@ export default function TemplatesPage() {
             });
         }
     }
+    
+    const handleDuplicateTemplate = async (template: ProposalTemplate) => {
+        try {
+            await duplicateTemplate('tenant-001', template);
+            toast({
+                title: 'Template Duplicated',
+                description: `A copy of "${template.name}" has been created.`,
+            });
+        } catch (error) {
+             toast({
+                title: 'Error',
+                description: 'Failed to duplicate template. Please try again.',
+                variant: 'destructive',
+            });
+        }
+    };
 
 
   return (
@@ -124,54 +141,65 @@ export default function TemplatesPage() {
                     const Icon = iconMap[template.icon] || FileText;
                     return (
                         <Card key={template.id} className="flex flex-col group" data-tour-id={index === 0 ? "template-card" : undefined}>
-                            <CardHeader>
-                                <div className="flex items-start justify-between">
-                                    <CardTitle className="flex items-center gap-3 text-lg">
-                                        <div className="p-3 rounded-md bg-primary/10 border border-primary/20 text-primary">
-                                            <Icon className="h-6 w-6" />
-                                        </div>
+                            <CardHeader className="flex flex-row items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-3 rounded-md bg-primary/10 border border-primary/20 text-primary">
+                                        <Icon className="h-6 w-6" />
+                                    </div>
+                                    <CardTitle className="text-lg">
                                         {template.name}
                                     </CardTitle>
-                                    {userData?.role === 'admin' && (
-                                    <AlertDialog>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem disabled>Edit</DropdownMenuItem>
-                                                <AlertDialogTrigger asChild>
-                                                    <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                    </DropdownMenuItem>
-                                                </AlertDialogTrigger>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                         <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    This action cannot be undone. This will permanently delete the template "{template.name}".
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteTemplate(template.id)} className={buttonVariants({ variant: 'destructive'})}>
-                                                    Continue
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                    )}
                                 </div>
+                                {userData?.role === 'admin' && (
+                                <AlertDialog>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="tertiary" size="sm" className="w-9">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem disabled>
+                                                <Pencil className="mr-2 h-4 w-4" /> Edit
+                                            </DropdownMenuItem>
+                                             <DropdownMenuItem onClick={() => handleDuplicateTemplate(template)}>
+                                                <Copy className="mr-2 h-4 w-4" /> Duplicate
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <AlertDialogTrigger asChild>
+                                                <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                </DropdownMenuItem>
+                                            </AlertDialogTrigger>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                        <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This action cannot be undone. This will permanently delete the template "{template.name}".
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDeleteTemplate(template.id)} className={buttonVariants({ variant: 'destructive'})}>
+                                                Continue
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                                )}
                             </CardHeader>
                             <CardContent className="flex-grow">
                                 <CardDescription>{template.description}</CardDescription>
                             </CardContent>
-                            <CardFooter>
-                                 <p className="text-xs text-muted-foreground w-full">{template.sections.length} sections</p>
+                            <CardFooter className="flex justify-between items-center text-xs text-muted-foreground">
+                                 <p>{template.sections.length} sections</p>
+                                 {template.createdAt && (
+                                     <p>
+                                         <ClientDate dateString={template.createdAt} />
+                                     </p>
+                                 )}
                             </CardFooter>
                         </Card>
                     )

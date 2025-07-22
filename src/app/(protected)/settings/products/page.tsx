@@ -7,7 +7,7 @@ import { collection, query, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { Product, User } from '@/lib/types';
 import { MainLayout } from "@/components/main-layout";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -17,11 +17,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle, MoreHorizontal } from "lucide-react";
+import { Loader2, PlusCircle, MoreHorizontal, Copy, Trash2, Pencil } from "lucide-react";
 import { AddProductDialog } from '@/components/add-product-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { deleteProduct } from '@/app/settings/products/actions';
+import { deleteProduct, duplicateProduct } from '@/app/settings/products/actions';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ProductsPage() {
@@ -91,6 +91,26 @@ export default function ProductsPage() {
             });
         }
     }
+    
+    const handleDuplicateProduct = async (productId: string) => {
+        try {
+            const newProductId = await duplicateProduct('tenant-001', productId);
+            const newProduct = products.find(p => p.id === productId);
+             toast({
+                title: 'Product Duplicated',
+                description: `A copy of "${newProduct?.name}" has been created.`,
+            });
+             const duplicatedProductWithId = { ...newProduct, id: newProductId, name: `${newProduct.name} (Copy)` } as Product;
+             handleEditProduct(duplicatedProductWithId);
+        } catch (error) {
+            toast({
+                title: 'Error',
+                description: 'Failed to duplicate product. Please try again.',
+                variant: 'destructive',
+            });
+        }
+    };
+
 
     return (
         <MainLayout>
@@ -146,14 +166,22 @@ export default function ProductsPage() {
                                                     <AlertDialog>
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon">
+                                                                <Button variant="tertiary" size="icon">
                                                                     <MoreHorizontal className="h-4 w-4" />
                                                                 </Button>
                                                             </DropdownMenuTrigger>
                                                             <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem onClick={() => handleEditProduct(product)}>Edit</DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleEditProduct(product)}>
+                                                                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleDuplicateProduct(product.id)}>
+                                                                    <Copy className="mr-2 h-4 w-4" /> Duplicate
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
                                                                 <AlertDialogTrigger asChild>
-                                                                    <DropdownMenuItem className="text-destructive focus:text-destructive">Delete</DropdownMenuItem>
+                                                                    <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                                                         <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                                    </DropdownMenuItem>
                                                                 </AlertDialogTrigger>
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>

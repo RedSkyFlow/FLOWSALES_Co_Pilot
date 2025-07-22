@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { addDoc, collection, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Product } from '@/lib/types';
 
@@ -76,5 +76,33 @@ export async function deleteProduct(tenantId: string, productId: string) {
     } catch (error) {
         console.error("Error deleting product: ", error);
         throw new Error('Could not delete the product. Please try again.');
+    }
+}
+
+export async function duplicateProduct(tenantId: string, productId: string): Promise<string> {
+    if (!tenantId || !productId) {
+        throw new Error('Tenant ID and Product ID are required.');
+    }
+    try {
+        const productDocRef = doc(db, 'tenants', tenantId, 'products', productId);
+        const productSnap = await getDoc(productDocRef);
+
+        if (!productSnap.exists()) {
+            throw new Error('Product not found.');
+        }
+
+        const productData = productSnap.data();
+        const newProductData = {
+            ...productData,
+            name: `${productData.name} (Copy)`,
+        };
+
+        const newDocRef = await addDoc(collection(db, 'tenants', tenantId, 'products'), newProductData);
+        revalidatePath('/settings/products');
+        revalidatePath('/proposals/new');
+        return newDocRef.id;
+    } catch (error) {
+        console.error("Error duplicating product: ", error);
+        throw new Error('Could not duplicate the product. Please try again.');
     }
 }

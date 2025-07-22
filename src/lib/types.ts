@@ -153,4 +153,5 @@ export interface ProposalTemplate {
   description: string;
   icon: string;
   sections: ProposalSection[];
+  createdAt?: string; // ISO 8601 date string
 }
