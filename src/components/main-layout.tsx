@@ -21,7 +21,7 @@ import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { useAppData } from './app-data-provider';
 import { useTour, TourStep } from '@/hooks/use-tour';
-import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 
 function FlowSalesLogo() {
   return (
@@ -144,6 +144,9 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="left" className="flex flex-col p-0 w-64">
+                       <SheetHeader className="sr-only">
+                            <SheetTitle>Navigation Menu</SheetTitle>
+                       </SheetHeader>
                        <SidebarContent />
                     </SheetContent>
                 </Sheet>
