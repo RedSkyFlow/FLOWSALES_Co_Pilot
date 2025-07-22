@@ -3,9 +3,10 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -33,6 +34,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { generateBrandAnalysis, saveBrandingSettings } from "@/app/settings/branding/actions";
 import { bulkAddProducts } from "@/app/settings/products/actions";
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '@/lib/firebase';
 
 const steps = [
   { name: "Welcome", icon: Building },
@@ -58,14 +61,16 @@ const productSchema = z.object({
 
 
 export function OnboardingWizard() {
+  const router = useRouter();
   const { toast } = useToast();
+  const [user] = useAuthState(auth);
   const [currentStep, setCurrentStep] = useState(0);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isParsing, setIsParsing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const brandingForm = useForm<z.infer<typeof brandingSchema>>({
     resolver: zodResolver(brandingSchema),
+    defaultValues: { companyName: '' },
   });
   
   const productsForm = useForm<z.infer<typeof productSchema>>({
@@ -89,7 +94,7 @@ export function OnboardingWizard() {
   };
   
   const handleAnalyze = async () => {
-    setIsAnalyzing(true);
+    setIsProcessing(true);
     try {
         const { websiteUrl, brandImage } = brandingForm.getValues();
         if (!websiteUrl && !brandImage) {
@@ -106,7 +111,7 @@ export function OnboardingWizard() {
     } catch (error) {
         toast({ variant: "destructive", title: "Analysis Failed", description: "Could not analyze the provided source." });
     } finally {
-        setIsAnalyzing(false);
+        setIsProcessing(false);
     }
   };
 
@@ -115,8 +120,19 @@ export function OnboardingWizard() {
     let formIsValid = true;
     if (currentStep === 1) {
         formIsValid = await brandingForm.trigger();
-        if (formIsValid) {
-          // TODO: Save branding settings to Firestore
+        if (formIsValid && user) {
+            setIsProcessing(true);
+            try {
+                // Hardcoded tenantId for now
+                const tenantId = 'tenant-001';
+                await saveBrandingSettings(tenantId, brandingForm.getValues());
+                toast({ title: "Branding Saved", description: "Your brand identity has been saved." });
+            } catch (e) {
+                toast({ variant: "destructive", title: "Error", description: "Could not save branding settings." });
+                formIsValid = false; // Prevent advancing on error
+            } finally {
+                setIsProcessing(false);
+            }
         }
     }
     
@@ -126,8 +142,12 @@ export function OnboardingWizard() {
   };
   
   const handleBulkAdd = async (data: z.infer<typeof productSchema>) => {
-      setIsParsing(true);
-      // TODO: Get tenantId from user session
+      if (!user) {
+          toast({ variant: "destructive", title: "Not Authenticated", description: "You must be logged in to proceed." });
+          return;
+      }
+      setIsProcessing(true);
+      // Hardcoded tenantId for now
       const tenantId = 'tenant-001'; 
       try {
           const count = await bulkAddProducts(tenantId, data.productList);
@@ -143,7 +163,7 @@ export function OnboardingWizard() {
               variant: "destructive",
           });
       } finally {
-        setIsParsing(false);
+        setIsProcessing(false);
       }
   }
 
@@ -225,8 +245,8 @@ export function OnboardingWizard() {
                             <Input id="websiteUrl" {...brandingForm.register('websiteUrl')} placeholder="https://example.com" />
                             {brandingForm.formState.errors.websiteUrl && <p className="text-destructive text-sm mt-1">{brandingForm.formState.errors.websiteUrl.message}</p>}
                         </div>
-                        <Button type="button" onClick={handleAnalyze} disabled={isAnalyzing || (!brandingForm.watch('websiteUrl') && !brandingForm.watch('brandImage'))} className="w-full">
-                            {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        <Button type="button" onClick={handleAnalyze} disabled={isProcessing || (!brandingForm.watch('websiteUrl') && !brandingForm.watch('brandImage'))} className="w-full">
+                            {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                             Analyze & Populate Branding
                         </Button>
                     </div>
@@ -254,9 +274,9 @@ export function OnboardingWizard() {
                   {productsForm.formState.errors.productList && <p className="text-destructive text-sm mt-1">{productsForm.formState.errors.productList.message}</p>}
                 </div>
                  <div className="flex justify-center">
-                    <Button type="submit" size="lg" disabled={isParsing}>
-                        {isParsing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                        {isParsing ? 'Parsing...' : 'Parse & Upload Catalog'}
+                    <Button type="submit" size="lg" disabled={isProcessing}>
+                        {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                        {isProcessing ? 'Parsing...' : 'Parse & Upload Catalog'}
                     </Button>
                 </div>
              </form>
@@ -297,20 +317,35 @@ export function OnboardingWizard() {
       </CardContent>
       <CardHeader className="border-t">
         <div className="flex justify-between items-center">
-          <Button variant="outline" onClick={handleBack} disabled={currentStep === 0}>
+          <Button variant="outline" onClick={handleBack} disabled={currentStep === 0 || isProcessing}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          {currentStep < 2 ? (
-            <Button onClick={handleNext}>
-              Next
-              <ArrowRight className="ml-2 h-4 w-4" />
+          {currentStep === 0 && (
+             <Button onClick={handleNext} disabled={isProcessing}>
+                Next
+                <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-          ) : currentStep === 2 ? (
+          )}
+          {currentStep === 1 && (
+             <Button onClick={handleNext} disabled={isProcessing || !brandingForm.formState.isValid}>
+                {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Next
+                <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          )}
+          {currentStep === 2 && (
               // The submit button for the form handles the next step
               <div />
-          ) : (
-            <Button>
+          )}
+          {currentStep === 3 && (
+            <Button onClick={handleNext} disabled={isProcessing}>
+                Next
+                <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          )}
+          {currentStep === 4 && (
+            <Button onClick={() => router.push('/')}>
               Go to Dashboard
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
