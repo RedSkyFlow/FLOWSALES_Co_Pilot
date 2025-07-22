@@ -22,13 +22,13 @@ import {
 import { Input } from '@/components/ui/input';
 import type { Proposal, ProposalStatus } from '@/lib/types';
 import { Plus, ListFilter, FileText, Search, Loader2 } from 'lucide-react';
-import { useState, useRef, type MouseEvent, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ClientDate } from '@/components/client-date';
 import { cn } from '@/lib/utils';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useTour, TourStep } from '@/hooks/use-tour';
+import { useAppContext } from '@/components/app-data-provider';
 
 
 function StatusBadge({ status }: { status: ProposalStatus }) {
@@ -60,14 +60,15 @@ function StatusBadge({ status }: { status: ProposalStatus }) {
   );
 }
 
-function ProposalCard({ proposal }: { proposal: Proposal }) {
+function ProposalCard({ proposal, tenantId }: { proposal: Proposal; tenantId: string }) {
+  const proposalLink = `/proposals/${proposal.id}?tenantId=${tenantId}`;
   return (
     <div data-tour-id="proposal-card">
         <Card className="glass-card flex flex-col group h-full">
             <CardHeader>
                 <div className="flex justify-between items-start">
                     <CardTitle className="text-lg font-bold group-hover:text-primary transition-colors">
-                        <Link href={`/proposals/${proposal.id}`}>
+                        <Link href={proposalLink}>
                         {proposal.title}
                         </Link>
                     </CardTitle>
@@ -88,7 +89,7 @@ function ProposalCard({ proposal }: { proposal: Proposal }) {
                     {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(proposal.totalPrice)}
                 </span>
                 <Button variant="link" asChild>
-                <Link href={`/proposals/${proposal.id}`}>View Details</Link>
+                <Link href={proposalLink}>View Details</Link>
                 </Button>
             </CardFooter>
         </Card>
@@ -128,7 +129,7 @@ const dashboardTourSteps: TourStep[] = [
 
 
 export default function Dashboard() {
-  const [user, loadingAuth] = useAuthState(auth);
+  const { user, userData, loading: loadingAppContext } = useAppContext();
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [loadingProposals, setLoadingProposals] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -140,14 +141,13 @@ export default function Dashboard() {
   }, [startTour]);
 
   useEffect(() => {
-    if (loadingAuth || !user) {
-      if (!loadingAuth) setLoadingProposals(false);
+    if (loadingAppContext || !user || !userData?.tenantId) {
+      if (!loadingAppContext) setLoadingProposals(false);
       return;
     }
 
     setLoadingProposals(true);
-    // NOTE: This uses a hardcoded tenant ID for now.
-    const tenantId = 'tenant-001';
+    const tenantId = userData.tenantId;
     const proposalsCollectionRef = collection(db, 'tenants', tenantId, 'proposals');
     
     const q = query(proposalsCollectionRef, where('salesAgentId', '==', user.uid));
@@ -162,7 +162,7 @@ export default function Dashboard() {
     });
 
     return () => unsubscribe();
-  }, [user, loadingAuth]);
+  }, [user, userData, loadingAppContext]);
 
 
   const filteredProposals = proposals.filter(proposal => {
@@ -228,7 +228,7 @@ export default function Dashboard() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        {loadingAuth || loadingProposals ? (
+        {loadingAppContext || loadingProposals ? (
             <div className="flex justify-center items-center py-16 col-span-full">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
@@ -236,7 +236,7 @@ export default function Dashboard() {
             <>
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredProposals.map((proposal) => {
-                    return <ProposalCard key={proposal.id} proposal={proposal} />
+                    return <ProposalCard key={proposal.id} proposal={proposal} tenantId={userData!.tenantId} />
                 })}
                 </div>
                 {filteredProposals.length === 0 && !loadingProposals && (

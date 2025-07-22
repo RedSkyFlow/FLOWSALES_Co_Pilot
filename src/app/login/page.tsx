@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useSignInWithEmailAndPassword, useCreateUserWithEmailAndPassword } from 'react-firebase-hooks/auth';
+import { useSignInWithEmailAndPassword } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
 import { Loader2 } from "lucide-react";
@@ -50,7 +50,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [signInWithEmailAndPassword, user, loading, error] = useSignInWithEmailAndPassword(auth);
-  const [createUserWithEmailAndPassword, newUser, creating, createError] = useCreateUserWithEmailAndPassword(auth);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -58,26 +57,18 @@ export default function LoginPage() {
     e.preventDefault();
     signInWithEmailAndPassword(email, password);
   };
-  
-  const handleSignUp = (e: React.FormEvent) => {
-      e.preventDefault();
-      createUserWithEmailAndPassword(email, password);
-  };
 
   useEffect(() => {
-    if (user || newUser) {
+    if (user) {
       router.push('/');
     }
-  }, [user, newUser, router]);
+  }, [user, router]);
 
   useEffect(() => {
     if (error) {
         toast({ title: "Login Failed", description: error.message, variant: "destructive"});
     }
-    if (createError) {
-        toast({ title: "Sign Up Failed", description: createError.message, variant: "destructive"});
-    }
-  }, [error, createError, toast]);
+  }, [error, toast]);
 
 
   return (
@@ -90,8 +81,7 @@ export default function LoginPage() {
           <div className="text-center">
             <CardTitle className="text-2xl font-headline">Welcome</CardTitle>
             <CardDescription>
-              Enter your credentials to access your sales dashboard.
-              Use agent@flowsales.com / password to sign in.
+              This system is invite-only. Please enter your credentials to log in.
             </CardDescription>
           </div>
         </CardHeader>
@@ -126,16 +116,13 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading || creating}>
-                {(loading || creating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" className="w-full" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Log in
             </Button>
           </form>
-           <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Button variant="link" onClick={handleSignUp} className="underline p-0 h-auto" disabled={loading || creating}>
-              Sign up
-            </Button>
+           <div className="mt-4 text-center text-sm text-muted-foreground">
+             Contact your administrator if you need an account.
           </div>
         </CardContent>
       </Card>

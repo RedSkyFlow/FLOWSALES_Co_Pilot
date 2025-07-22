@@ -4,6 +4,7 @@
 import { MainLayout } from "@/components/main-layout";
 import type React from "react";
 import { AIChatAssistant } from "@/components/ai-chat-assistant";
+import { AppDataProvider } from "@/components/app-data-provider";
 
 
 // This layout component wraps all pages that need the main application layout
@@ -14,9 +15,11 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <MainLayout>
-      {children}
-      <AIChatAssistant />
-    </MainLayout>
+    <AppDataProvider>
+        <MainLayout>
+        {children}
+        <AIChatAssistant />
+        </MainLayout>
+    </AppDataProvider>
   );
 }

@@ -2,9 +2,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import type { User } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +24,7 @@ import { Loader2, PlusCircle, MoreHorizontal, ShieldCheck, Trash2, KeyRound } fr
 import { Badge } from '@/components/ui/badge';
 import { InviteUserDialog } from '@/components/invite-user-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useAppContext } from '@/components/app-data-provider';
 
 function getInitials(name: string | null) {
     if (!name) return 'U';
@@ -35,34 +35,20 @@ function getInitials(name: string | null) {
 
 
 export default function UserManagementPage() {
-    const [user, loadingAuth] = useAuthState(auth);
+    const { user, userData, loading: loadingAppContext } = useAppContext();
     const [team, setTeam] = useState<User[]>([]);
     const [loadingTeam, setLoadingTeam] = useState(true);
     const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
-    const [currentUserData, setCurrentUserData] = useState<User | null>(null);
 
     useEffect(() => {
-        if (loadingAuth || !user) {
-            if (!loadingAuth) setLoadingTeam(false);
+        if (loadingAppContext || !user || !userData?.tenantId) {
+            if (!loadingAppContext) setLoadingTeam(false);
             return;
         }
 
-        // In a real app, the user's tenantId would be part of their auth token claims.
-        // For now, we'll use a hardcoded tenant ID.
-        const tenantId = 'tenant-001';
-        
-        setCurrentUserData({
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName,
-            role: 'admin', // MOCK: Assume admin for settings pages
-            tenantId: tenantId,
-        });
-
-
         setLoadingTeam(true);
         const usersCollectionRef = collection(db, 'users');
-        const q = query(usersCollectionRef, where("tenantId", "==", tenantId));
+        const q = query(usersCollectionRef, where("tenantId", "==", userData.tenantId));
 
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
             const teamData = querySnapshot.docs.map(doc => doc.data() as User);
@@ -74,9 +60,9 @@ export default function UserManagementPage() {
         });
 
         return () => unsubscribe();
-    }, [user, loadingAuth]);
+    }, [user, userData, loadingAppContext]);
 
-    const canManage = currentUserData?.role === 'admin';
+    const canManage = userData?.role === 'admin' || userData?.role === 'super_admin';
 
     return (
         <div className="space-y-8">
@@ -104,7 +90,7 @@ export default function UserManagementPage() {
                     <CardDescription>A list of all users in your organization.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {loadingAuth || loadingTeam ? (
+                    {loadingAppContext || loadingTeam ? (
                         <div className="flex justify-center items-center py-16">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
@@ -135,7 +121,7 @@ export default function UserManagementPage() {
                                                     <Badge variant="outline" className="capitalize whitespace-nowrap">{member.role.replace('_', ' ')}</Badge>
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    {canManage && member.uid !== currentUserData?.uid ? (
+                                                    {canManage && member.uid !== userData?.uid ? (
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>
                                                                 <Button variant="ghost" size="icon">
@@ -176,7 +162,7 @@ export default function UserManagementPage() {
             <InviteUserDialog 
                 open={isInviteDialogOpen} 
                 onOpenChange={setIsInviteDialogOpen} 
-                tenantId={currentUserData?.tenantId} 
+                tenantId={userData?.tenantId} 
             />
         </div>
     );

@@ -1,128 +1,98 @@
 
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
-import { collection, onSnapshot, query, doc } from 'firebase/firestore';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import type { Client, Product, ProductRule, ProposalTemplate, BrandingSettings, LegalDocument } from '@/lib/types';
+import { doc, onSnapshot, collection, query, limit } from 'firebase/firestore';
+import type { User as AuthUser } from 'firebase/auth';
+import type { User as FirestoreUser, BrandingSettings } from '@/lib/types';
 
 interface AppDataContextType {
-  templates: ProposalTemplate[];
-  clients: Client[];
-  products: Product[];
-  rules: ProductRule[];
-  legalDocuments: LegalDocument[];
-  brandingSettings: BrandingSettings | null;
+  user: AuthUser | null | undefined;
+  userData: FirestoreUser | null | undefined;
+  brandingSettings: BrandingSettings | null | undefined;
   loading: boolean;
 }
 
-const AppDataContext = createContext<AppDataContextType>({
-  templates: [],
-  clients: [],
-  products: [],
-  rules: [],
-  legalDocuments: [],
-  brandingSettings: null,
-  loading: true,
-});
+const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
-export const useAppData = () => useContext(AppDataContext);
+export function AppDataProvider({ children }: { children: ReactNode }) {
+  const [user, loadingAuth] = useAuthState(auth);
+  const [userData, setUserData] = useState<FirestoreUser | null>(null);
+  const [brandingSettings, setBrandingSettings] = useState<BrandingSettings | null>(null);
+  const [loadingData, setLoadingData] = useState(true);
 
-export function AppDataProvider({ children }: { children: React.ReactNode }) {
-    const [user] = useAuthState(auth);
-    const [appData, setAppData] = useState<Omit<AppDataContextType, 'loading'>>({
-        templates: [],
-        clients: [],
-        products: [],
-        rules: [],
-        legalDocuments: [],
-        brandingSettings: null,
-    });
-    const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (loadingAuth) {
+      setLoadingData(true);
+      return;
+    }
+    
+    if (!user) {
+      setUserData(null);
+      setBrandingSettings(null);
+      setLoadingData(false);
+      return;
+    }
 
-    useEffect(() => {
-        if (!user) {
-            setLoading(false);
-            setAppData({
-                templates: [],
-                clients: [],
-                products: [],
-                rules: [],
-                legalDocuments: [],
-                brandingSettings: null,
-            });
-            return;
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribeUser = onSnapshot(userDocRef, (doc) => {
+      if (doc.exists()) {
+        const firestoreUser = doc.data() as FirestoreUser;
+        setUserData(firestoreUser);
+        
+        // Now fetch branding settings based on the user's tenantId
+        if (firestoreUser.tenantId) {
+          const settingsRef = collection(db, 'tenants', firestoreUser.tenantId, 'settings');
+          const q = query(settingsRef, where('id', '==', 'branding'), limit(1));
+          const unsubscribeSettings = onSnapshot(q, (snapshot) => {
+            if (!snapshot.empty) {
+              setBrandingSettings(snapshot.docs[0].data() as BrandingSettings);
+            } else {
+              setBrandingSettings(null);
+            }
+             setLoadingData(false);
+          }, (error) => {
+              console.error("Error fetching branding settings:", error);
+              setBrandingSettings(null);
+              setLoadingData(false);
+          });
+          return () => unsubscribeSettings();
         }
 
-        const tenantId = 'tenant-001'; // This should be dynamic based on the user's tenant
+      } else {
+        setUserData(null);
+        setBrandingSettings(null);
+        setLoadingData(false);
+      }
+    }, (error) => {
+      console.error("Error fetching user data:", error);
+      setUserData(null);
+      setLoadingData(false);
+    });
 
-        const collectionsToFetch = {
-            templates: collection(db, 'tenants', tenantId, 'proposal_templates'),
-            clients: collection(db, 'tenants', tenantId, 'clients'),
-            products: collection(db, 'tenants', tenantId, 'products'),
-            rules: collection(db, 'tenants', tenantId, 'product_rules'),
-            legalDocuments: collection(db, 'tenants', tenantId, 'legal_documents'),
-        };
-        const brandingDocRef = doc(db, 'tenants', tenantId, 'settings', 'branding');
+    return () => unsubscribeUser();
+  }, [user, loadingAuth]);
 
-        const collectionKeys = Object.keys(collectionsToFetch) as Array<keyof typeof collectionsToFetch>;
-        let initialLoadCounter = collectionKeys.length + 1; // +1 for the branding doc
+  const value = {
+    user,
+    userData,
+    brandingSettings,
+    loading: loadingAuth || loadingData,
+  };
 
-        const unsubscribers = collectionKeys.map((key) => {
-            let isInitialLoad = true;
-            return onSnapshot(query(collectionsToFetch[key]), snapshot => {
-                setAppData(prev => ({
-                    ...prev,
-                    [key]: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
-                }));
+  return (
+    <AppDataContext.Provider value={value}>
+      {children}
+    </AppDataContext.Provider>
+  );
+}
 
-                if (isInitialLoad) {
-                    isInitialLoad = false;
-                    initialLoadCounter--;
-                    if (initialLoadCounter === 0) setLoading(false);
-                }
-            }, (error) => {
-                console.error(`Error fetching ${key}:`, error);
-                if (isInitialLoad) {
-                    isInitialLoad = false;
-                    initialLoadCounter--;
-                    if (initialLoadCounter === 0) setLoading(false);
-                }
-            });
-        });
-
-        let isBrandingInitialLoad = true;
-        const unsubscribeBranding = onSnapshot(brandingDocRef, (docSnap) => {
-            setAppData(prev => ({
-                ...prev,
-                brandingSettings: docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as BrandingSettings : null,
-            }));
-            if (isBrandingInitialLoad) {
-                isBrandingInitialLoad = false;
-                initialLoadCounter--;
-                if (initialLoadCounter === 0) setLoading(false);
-            }
-        }, (error) => {
-            console.error(`Error fetching branding settings:`, error);
-             if (isBrandingInitialLoad) {
-                isBrandingInitialLoad = false;
-                initialLoadCounter--;
-                if (initialLoadCounter === 0) setLoading(false);
-            }
-        });
-
-        unsubscribers.push(unsubscribeBranding);
-
-
-        return () => {
-            unsubscribers.forEach(unsub => unsub());
-        };
-    }, [user]);
-
-    return (
-        <AppDataContext.Provider value={{ ...appData, loading }}>
-            {children}
-        </AppDataContext.Provider>
-    );
+export function useAppContext() {
+  const context = useContext(AppDataContext);
+  if (context === undefined) {
+    throw new Error('useAppContext must be used within an AppDataProvider');
+  }
+  return context;
 }

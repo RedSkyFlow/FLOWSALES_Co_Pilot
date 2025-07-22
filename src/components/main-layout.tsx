@@ -22,7 +22,7 @@ import { useAuthState, useSignOut } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
-import { useAppData } from './app-data-provider';
+import { useAppContext } from './app-data-provider';
 import { useTour, TourStep } from '@/hooks/use-tour';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 
@@ -106,7 +106,7 @@ function NavItem({ href, icon: Icon, label, onClick }: typeof navItems[0] & { on
 function SidebarContent() {
     const [signOut] = useSignOut(auth);
     const { startCurrentTour } = useTour();
-    const { brandingSettings } = useAppData();
+    const { brandingSettings } = useAppContext();
 
     return (
         <>
@@ -134,7 +134,7 @@ function SidebarContent() {
 }
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
-  const { brandingSettings } = useAppData();
+  const { brandingSettings } = useAppContext();
   const { startCurrentTour } = useTour();
 
   return (
@@ -177,7 +177,7 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
 }
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
-  const [user, loading] = useAuthState(auth);
+  const { user, loading } = useAppContext();
   const router = useRouter();
 
   useEffect(() => {

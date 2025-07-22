@@ -243,3 +243,65 @@ export async function acceptProposal(tenantId: string, proposalId: string) {
     });
     revalidatePath(`/proposals/${proposalId}`);
 }
+
+interface SendProposalInput {
+  tenantId: string;
+  proposalId: string;
+  client: Client;
+  proposalLink: string;
+  salesAgentName: string;
+}
+
+/**
+ * Marks a proposal as 'sent' and (placeholder) triggers an email to the client.
+ * NOTE: The actual email sending logic is a placeholder. A real implementation
+ * would use a service like Resend, SendGrid, or a Firebase Extension.
+ */
+export async function sendProposalToClient(data: SendProposalInput) {
+  const { tenantId, proposalId, client, proposalLink, salesAgentName } = data;
+
+  if (!tenantId || !proposalId || !client.email) {
+    throw new Error('Tenant ID, Proposal ID, and Client Email are required.');
+  }
+
+  const proposalRef = doc(db, 'tenants', tenantId, 'proposals', proposalId);
+
+  // 1. Update the proposal status in Firestore
+  await updateDoc(proposalRef, {
+    status: 'sent',
+    lastModified: new Date().toISOString(),
+  });
+
+  // 2. Placeholder for sending the email
+  console.log('--- SENDING EMAIL (PLACEHOLDER) ---');
+  console.log(`To: ${client.email}`);
+  console.log(`From: ${salesAgentName} <no-reply@venueos.app>`);
+  console.log(`Subject: Your Proposal from ${salesAgentName}`);
+  console.log(`Body: 
+    Hi ${client.name},
+
+    Please find your proposal at the link below:
+    ${proposalLink}
+
+    Best,
+    ${salesAgentName}
+  `);
+  console.log('------------------------------------');
+  
+  // In a real application, you would replace the console.logs above with a call
+  // to a service like Resend, likely using an API key from your .env file.
+  /*
+  import { Resend } from 'resend';
+  const resend = new Resend(process.env.RESEND_API_KEY);
+
+  await resend.emails.send({
+    from: `${salesAgentName} <no-reply@venueos.app>`,
+    to: client.email,
+    subject: `Your Proposal from ${salesAgentName}`,
+    html: `<p>Hi ${client.name}, here is your proposal: <a href="${proposalLink}">View Proposal</a></p>`,
+  });
+  */
+
+  revalidatePath(`/proposals/${proposalId}`);
+  revalidatePath('/'); // Revalidate root to update proposal lists
+}
