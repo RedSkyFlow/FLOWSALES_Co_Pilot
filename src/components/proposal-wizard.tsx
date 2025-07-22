@@ -23,6 +23,8 @@ import {
   Sparkles,
   Lightbulb,
   LucideProps,
+  MessageSquare,
+  Mic,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
@@ -34,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { Product, ProposalSection, Client, ProposalTemplate, ProductRule } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -46,6 +49,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "@/lib/firebase";
 import { Skeleton } from "./ui/skeleton";
 import { useAppData } from "./app-data-provider";
+import { LiveTranscription } from "./live-transcription";
 
 const steps = [
   { name: "Select Template", icon: <FileText /> },
@@ -218,16 +222,21 @@ export function ProposalWizard() {
         setIsSummaryLoading(false);
     }
   };
+  
+  const handleTranscriptFinalized = (finalTranscript: string) => {
+    setMeetingTranscript(finalTranscript);
+    handleAnalyzeTranscript(finalTranscript);
+  }
 
-  const handleAnalyzeTranscript = async () => {
-      if (!meetingTranscript) return;
+  const handleAnalyzeTranscript = async (transcriptToAnalyze: string) => {
+      if (!transcriptToAnalyze) return;
       setIsAnalysisLoading(true);
       setPainPoints("");
       setExtraSections([]);
       setSelectedProducts([]);
       
       try {
-          const formattedTranscript = meetingTranscript.split('\n').map(line => {
+          const formattedTranscript = transcriptToAnalyze.split('\n').map(line => {
               const parts = line.split(':');
               const speaker = parts.length > 1 ? parts[0].trim() : "Participant";
               const text = parts.length > 1 ? parts.slice(1).join(':').trim() : line;
@@ -436,7 +445,7 @@ export function ProposalWizard() {
         {currentStep === 1 && (
           <div className="grid md:grid-cols-2 gap-8">
             <div className="space-y-4">
-                <h2 className="text-2xl font-headline font-semibold">Client & AI Content</h2>
+                <h2 className="text-2xl font-headline font-semibold">Client & Content Generation</h2>
                 <div>
                     <Label htmlFor="client">Select Client</Label>
                     {loadingData ? <Skeleton className="h-10 w-full" /> : (
@@ -454,22 +463,38 @@ export function ProposalWizard() {
                         </Select>
                     )}
                 </div>
-                <div>
-                    <Label htmlFor="meeting-transcript">Meeting Transcript (Optional)</Label>
-                    <Textarea
-                        id="meeting-transcript"
-                        placeholder="Paste the full meeting transcript here..."
-                        rows={8}
-                        value={meetingTranscript}
-                        onChange={(e) => setMeetingTranscript(e.target.value)}
-                        className="text-xs"
-                    />
-                     <Button onClick={handleAnalyzeTranscript} disabled={isAnalysisLoading || !meetingTranscript} className="mt-2 w-full" size="sm">
-                        {isAnalysisLoading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4"/>}
-                        Analyze Transcript & Generate All Content
-                    </Button>
-                </div>
-                <div>
+                
+                <Tabs defaultValue="paste">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="paste"><MessageSquare className="mr-2 h-4 w-4" />Paste Transcript</TabsTrigger>
+                        <TabsTrigger value="live"><Mic className="mr-2 h-4 w-4"/>Live Meeting</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="paste" className="mt-4 space-y-2">
+                         <div>
+                            <Label htmlFor="meeting-transcript">Meeting Transcript</Label>
+                            <Textarea
+                                id="meeting-transcript"
+                                placeholder="Paste the full meeting transcript here..."
+                                rows={8}
+                                value={meetingTranscript}
+                                onChange={(e) => setMeetingTranscript(e.target.value)}
+                                className="text-xs"
+                            />
+                             <Button onClick={() => handleAnalyzeTranscript(meetingTranscript)} disabled={isAnalysisLoading || !meetingTranscript} className="mt-2 w-full" size="sm">
+                                {isAnalysisLoading ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4"/>}
+                                Analyze Pasted Transcript
+                            </Button>
+                        </div>
+                    </TabsContent>
+                    <TabsContent value="live" className="mt-4">
+                        <LiveTranscription 
+                            onTranscriptFinalized={handleTranscriptFinalized} 
+                            isAnalysisLoading={isAnalysisLoading} 
+                        />
+                    </TabsContent>
+                </Tabs>
+                
+                 <div>
                     <Label htmlFor="pain-points">Client Pain Points / Meeting Notes</Label>
                     <Textarea
                     id="pain-points"
@@ -483,6 +508,7 @@ export function ProposalWizard() {
                         Generate Executive Summary
                     </Button>
                 </div>
+
             </div>
              <div className="space-y-4 rounded-lg bg-muted/20 p-4 border border-border">
                 <h3 className="font-semibold font-headline text-lg flex items-center gap-2"><Sparkles className="text-primary"/> AI Generated Content</h3>
