@@ -42,17 +42,20 @@ export const TourProvider = ({ children }: { children: ReactNode }) => {
     const getTourKey = (id: string) => `tour_${id}_completed`;
 
     const startTour = useCallback((id: string, tourSteps: TourStep[]) => {
-        const tourCompleted = localStorage.getItem(getTourKey(id));
-        if (tourCompleted) {
-            setSteps(tourSteps);
+        // Ensure this only runs on the client where localStorage is available
+        if (typeof window !== 'undefined') {
+            const tourCompleted = localStorage.getItem(getTourKey(id));
+            if (tourCompleted) {
+                setSteps(tourSteps);
+                setTourId(id);
+                return;
+            }
+            
             setTourId(id);
-            return;
+            setSteps(tourSteps);
+            setCurrentStep(0);
+            setIsOpen(true);
         }
-        
-        setTourId(id);
-        setSteps(tourSteps);
-        setCurrentStep(0);
-        setIsOpen(true);
     }, []);
     
     const startCurrentTour = useCallback(() => {
@@ -63,7 +66,7 @@ export const TourProvider = ({ children }: { children: ReactNode }) => {
     }, [steps]);
 
     const stopTour = useCallback(() => {
-        if (tourId) {
+        if (tourId && typeof window !== 'undefined') {
             localStorage.setItem(getTourKey(tourId), 'true');
         }
         setIsOpen(false);
