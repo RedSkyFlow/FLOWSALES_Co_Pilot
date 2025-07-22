@@ -173,10 +173,12 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
 
   const dynamicStyles: React.CSSProperties = {};
   if (brandingSettings?.primaryColor) {
-      dynamicStyles['--primary'] = hexToHsl(brandingSettings.primaryColor) as string;
+      const primaryHsl = hexToHsl(brandingSettings.primaryColor);
+      if (primaryHsl) dynamicStyles['--primary'] = primaryHsl;
   }
   if (brandingSettings?.secondaryColor) {
-      dynamicStyles['--secondary'] = hexToHsl(brandingSettings.secondaryColor) as string;
+      const secondaryHsl = hexToHsl(brandingSettings.secondaryColor);
+      if (secondaryHsl) dynamicStyles['--secondary'] = secondaryHsl;
   }
 
   if (loadingData) {
@@ -264,3 +266,5 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   
   return <MainLayoutContent>{children}</MainLayoutContent>
 }
+
+    
