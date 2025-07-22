@@ -21,7 +21,7 @@ import { auth } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { useAppData } from './app-data-provider';
-import { useTour } from '@/hooks/use-tour';
+import { useTour, TourStep } from '@/hooks/use-tour';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
 
 function hexToHsl(hex: string): string | null {
