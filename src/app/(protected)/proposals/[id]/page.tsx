@@ -444,14 +444,16 @@ export default function ProposalDetailPage() {
                 </CardHeader>
                 <CardContent className="prose dark:prose-invert max-w-none space-y-6">
                     {proposal.sections.map((section, index) => (
-                        <div key={index} className="relative group">
-                        <h3 className="text-xl font-semibold border-b border-border pb-2 mb-2">{section.title}</h3>
+                        <div key={index} className="relative group p-2 -m-2 rounded-lg hover:bg-muted/30 transition-colors duration-200">
+                        <div className="flex justify-between items-start">
+                             <h3 className="text-xl font-semibold border-b border-transparent pb-2 mb-2">{section.title}</h3>
+                            {!isSalesAgent && (
+                                <Button size="sm" variant="ghost" className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-secondary" onClick={() => handleSuggestEditClick(section, index)}>
+                                    <PenSquare className="h-4 w-4" /> Suggest Edit
+                                </Button>
+                            )}
+                        </div>
                         <p className="whitespace-pre-wrap">{section.content}</p>
-                        {!isSalesAgent && (
-                            <Button size="sm" variant="outline" className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleSuggestEditClick(section, index)}>
-                                <PenSquare className="h-4 w-4 mr-2" /> Suggest Edit
-                            </Button>
-                        )}
                         </div>
                     ))}
                 </CardContent>
