@@ -6,7 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { inviteUser } from '@/app/settings/users/actions';
+import { inviteUser } from '@/app/(protected)/settings/users/actions';
 
 import { Button } from "@/components/ui/button";
 import {
