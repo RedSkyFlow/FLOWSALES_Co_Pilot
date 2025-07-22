@@ -29,7 +29,7 @@ export async function generateProductDescription(
   return generateProductDescriptionFlow(input);
 }
 
-const prompt = ai.definePrompt({
+const generationPrompt = ai.definePrompt({
   name: 'generateProductDescriptionPrompt',
   input: { schema: GenerateProductDescriptionInputSchema },
   output: { schema: GenerateProductDescriptionOutputSchema },
@@ -44,6 +44,22 @@ Generate the description now.
 `,
 });
 
+const proofreadingPrompt = ai.definePrompt({
+    name: 'proofreadProductDescriptionPrompt',
+    input: { schema: GenerateProductDescriptionOutputSchema },
+    output: { schema: GenerateProductDescriptionOutputSchema },
+    prompt: `You are an expert proofreader. Your task is to correct any spelling or grammar mistakes in the following product description.
+    
+Do not change the meaning or style. Only correct errors. If there are no errors, return the original text.
+
+Original Text:
+"{{{description}}}"
+
+Return only the corrected description in the required format.
+`,
+});
+
+
 const generateProductDescriptionFlow = ai.defineFlow(
   {
     name: 'generateProductDescriptionFlow',
@@ -51,10 +67,19 @@ const generateProductDescriptionFlow = ai.defineFlow(
     outputSchema: GenerateProductDescriptionOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    if (!output) {
-      throw new Error('Failed to generate product description.');
+    // Step 1: Generate the initial creative description
+    const generationResult = await generationPrompt(input);
+    if (!generationResult.output) {
+      throw new Error('Failed to generate initial product description.');
     }
-    return output;
+
+    // Step 2: Proofread the generated description for quality control
+    const proofreadingResult = await proofreadingPrompt(generationResult.output);
+    if (!proofreadingResult.output) {
+      // If proofreading fails, fall back to the original to avoid complete failure
+      return generationResult.output;
+    }
+    
+    return proofreadingResult.output;
   }
 );
