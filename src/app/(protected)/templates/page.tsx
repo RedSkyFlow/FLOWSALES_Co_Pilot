@@ -140,7 +140,7 @@ export default function TemplatesPage() {
                 {templates.map((template, index) => {
                     const Icon = iconMap[template.icon] || FileText;
                     return (
-                        <Card key={template.id} className="flex flex-col group h-full" data-tour-id={index === 0 ? "template-card" : undefined}>
+                        <Card key={template.id} className="flex flex-col h-full group" data-tour-id={index === 0 ? "template-card" : undefined}>
                             <CardHeader className="flex flex-row items-start justify-between gap-3">
                                 <div className="p-3 rounded-md bg-primary/10 border border-primary/20 text-primary">
                                     <Icon className="h-6 w-6" />
