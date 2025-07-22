@@ -157,7 +157,7 @@ export default function TemplatesPage() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem disabled>
+                                            <DropdownMenuItem onClick={() => router.push(`/templates/${template.id}/edit`)}>
                                                 <Pencil className="mr-2 h-4 w-4" /> Edit
                                             </DropdownMenuItem>
                                              <DropdownMenuItem onClick={() => handleDuplicateTemplate(template)}>

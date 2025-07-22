@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import type { ProposalSection, ProposalTemplate } from '@/lib/types';
-import { addDoc, collection, doc, deleteDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 interface CreateTemplateInput {
@@ -13,6 +13,8 @@ interface CreateTemplateInput {
     icon: 'Users' | 'Package' | 'FileText';
     sections: ProposalSection[];
 }
+
+type UpdateTemplateInput = Omit<CreateTemplateInput, 'tenantId'>;
 
 export async function createTemplate(data: CreateTemplateInput) {
     if (!data.tenantId || !data.name) {
@@ -35,6 +37,23 @@ export async function createTemplate(data: CreateTemplateInput) {
         throw new Error('Could not create the template. Please try again.');
     }
 }
+
+export async function updateTemplate(tenantId: string, templateId: string, data: UpdateTemplateInput) {
+    if (!tenantId || !templateId) {
+        throw new Error('Tenant ID and Template ID are required.');
+    }
+    try {
+        const templateDocRef = doc(db, 'tenants', tenantId, 'proposal_templates', templateId);
+        await updateDoc(templateDocRef, data);
+        revalidatePath('/templates');
+        revalidatePath(`/templates/${templateId}/edit`);
+        revalidatePath('/proposals/new');
+    } catch (error) {
+        console.error("Error updating template: ", error);
+        throw new Error('Could not update the template. Please try again.');
+    }
+}
+
 
 export async function deleteTemplate(tenantId: string, templateId: string) {
     if (!tenantId || !templateId) {
