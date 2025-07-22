@@ -13,6 +13,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +43,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import type { ProductRule, Product } from "@/lib/types";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { approveSuggestedRule, rejectSuggestedRule } from "@/app/settings/rules/actions";
 
 const steps = [
   { name: "Welcome", icon: Building },
@@ -219,10 +221,22 @@ export function OnboardingWizard() {
   }
 
   const handleRuleDecision = async (ruleId: string, decision: 'approve' | 'reject') => {
-    // This part will be implemented once we have the server actions.
-    console.log(`Rule ${ruleId} decision: ${decision}`);
-    // For now, we'll just remove it from the list to simulate the UI.
-    setSuggestedRules(prev => prev.filter(r => r.id !== ruleId));
+      if (!user) return;
+      const tenantId = 'tenant-001';
+      
+      try {
+        if (decision === 'approve') {
+            await approveSuggestedRule(tenantId, ruleId);
+            toast({ title: 'Rule Approved', variant: 'default' });
+        } else {
+            await rejectSuggestedRule(tenantId, ruleId);
+            toast({ title: 'Rule Rejected', variant: 'default' });
+        }
+        // The onSnapshot listener will automatically remove the rule from the UI
+      } catch (error) {
+          console.error(`Error handling rule ${ruleId}:`, error);
+          toast({ title: 'Error', description: 'Could not process rule decision.', variant: 'destructive' });
+      }
   }
 
   return (
@@ -345,7 +359,7 @@ export function OnboardingWizard() {
                         <p className="ml-4">Loading suggestions...</p>
                     </div>
                 ) : suggestedRules.length > 0 ? (
-                    <div className="max-w-md mx-auto space-y-4">
+                    <div className="max-w-2xl mx-auto space-y-4">
                        {suggestedRules.map(rule => (
                            <Card key={rule.id} className="text-left bg-muted/30">
                                <CardHeader>
@@ -354,17 +368,17 @@ export function OnboardingWizard() {
                                </CardHeader>
                                <CardContent className="space-y-2">
                                     <p>IF <span className="font-semibold text-secondary">{getProductName(rule.primaryProductId)}</span> is selected...</p>
-                                    <p>THEN it <span className="font-semibold">{rule.condition.replace('_', ' ')}</span> <span className="font-semibold text-secondary">{getProductName(rule.relatedProductIds[0])}</span>.</p>
+                                    <p>THEN it <span className="font-bold">{rule.condition.replace('_', ' ')}</span> <span className="font-semibold text-secondary">{getProductName(rule.relatedProductIds[0])}</span>.</p>
                                     {rule.explanation && <p className="text-xs text-muted-foreground pt-2 italic">Reasoning: {rule.explanation}</p>}
-                               </g-card-content>
-                               <CardHeader className="flex flex-row gap-2 justify-end">
-                                    <Button size="sm" variant="destructive" onClick={() => handleRuleDecision(rule.id, 'reject')}>
+                               </g-content>
+                               <CardFooter className="flex flex-row gap-2 justify-end">
+                                    <Button size="sm" variant="outline" onClick={() => handleRuleDecision(rule.id, 'reject')}>
                                         <ThumbsDown className="mr-2 h-4 w-4"/> Reject
                                     </Button>
                                     <Button size="sm" variant="default" onClick={() => handleRuleDecision(rule.id, 'approve')}>
                                         <ThumbsUp className="mr-2 h-4 w-4"/> Approve
                                     </Button>
-                               </CardHeader>
+                               </CardFooter>
                            </Card>
                        ))}
                     </div>
@@ -391,8 +405,8 @@ export function OnboardingWizard() {
             </div>
         )}
       </CardContent>
-      <CardHeader className="border-t">
-        <div className="flex justify-between items-center">
+      <CardFooter className="border-t pt-6">
+        <div className="flex justify-between items-center w-full">
           <Button variant="outline" onClick={handleBack} disabled={currentStep === 0 || isProcessing}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
@@ -420,7 +434,7 @@ export function OnboardingWizard() {
             </Button>
           )}
         </div>
-      </CardHeader>
+      </CardFooter>
     </Card>
   );
 }

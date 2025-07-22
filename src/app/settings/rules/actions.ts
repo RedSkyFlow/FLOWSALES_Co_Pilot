@@ -77,3 +77,22 @@ export async function deleteProductRule(tenantId: string, ruleId: string) {
         throw new Error('Could not delete the product rule. Please try again.');
     }
 }
+
+
+export async function approveSuggestedRule(tenantId: string, ruleId: string) {
+    if (!tenantId || !ruleId) {
+        throw new Error('Tenant ID and Rule ID are required.');
+    }
+    const ruleRef = doc(db, 'tenants', tenantId, 'product_rules', ruleId);
+    await updateDoc(ruleRef, { status: 'active' });
+    revalidatePath('/onboarding');
+}
+
+export async function rejectSuggestedRule(tenantId: string, ruleId: string) {
+    if (!tenantId || !ruleId) {
+        throw new Error('Tenant ID and Rule ID are required.');
+    }
+    const ruleRef = doc(db, 'tenants', tenantId, 'product_rules', ruleId);
+    await updateDoc(ruleRef, { status: 'rejected' });
+    revalidatePath('/onboarding');
+}
