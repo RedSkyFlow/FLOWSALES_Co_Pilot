@@ -84,6 +84,7 @@ function getInitials(name: string) {
     return (names[0][0] + names[names.length - 1][0]).toUpperCase();
 }
 
+// Helper function now inside the component that uses it
 function hexToHsl(hex: string): string | null {
     if (!hex || !/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex)) {
         return null;
@@ -376,7 +377,7 @@ export default function ProposalDetailPage() {
   if (brandingSettings?.primaryColor) {
       const primaryHsl = hexToHsl(brandingSettings.primaryColor);
       if (primaryHsl) {
-        dynamicStyles['--primary-proposal'] = primaryHsl;
+        dynamicStyles['--primary-color'] = primaryHsl;
       }
   }
 
@@ -437,7 +438,7 @@ export default function ProposalDetailPage() {
             {/* Proposal Content */}
             <Card>
                 <CardHeader>
-                <CardTitle className="text-2xl flex items-center gap-2"><FileText className="text-primary-proposal"/> Proposal Sections</CardTitle>
+                <CardTitle className="text-2xl flex items-center gap-2"><FileText className="text-primary-color"/> Proposal Sections</CardTitle>
                 </CardHeader>
                 <CardContent className="prose dark:prose-invert max-w-none space-y-6">
                     {proposal.sections.map((section, index) => (
@@ -456,7 +457,7 @@ export default function ProposalDetailPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-2xl flex items-center gap-2"><Briefcase className="text-primary-proposal"/> Included Products</CardTitle>
+                    <CardTitle className="text-2xl flex items-center gap-2"><Briefcase className="text-primary-color"/> Included Products</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-0">
                     <div className="divide-y divide-border">
@@ -476,7 +477,7 @@ export default function ProposalDetailPage() {
                 <CardFooter className="bg-card-foreground/5 p-4 rounded-b-lg flex justify-end">
                     <div className="text-right">
                         <p className="text-muted-foreground">Total Value</p>
-                        <p className="text-2xl font-bold text-primary-proposal">{new Intl.NumberFormat('en-US', { style: 'currency', 'currency': 'USD' }).format(proposal.totalPrice)}</p>
+                        <p className="text-2xl font-bold text-primary-color">{new Intl.NumberFormat('en-US', { style: 'currency', 'currency': 'USD' }).format(proposal.totalPrice)}</p>
                     </div>
                 </CardFooter>
             </Card>
