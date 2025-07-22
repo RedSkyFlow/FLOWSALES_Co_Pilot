@@ -1,6 +1,6 @@
 
 'use client';
-import { MainLayout } from "@/components/main-layout";
+
 import {
   Card,
   CardContent,
@@ -84,7 +84,7 @@ function getInitials(name: string) {
     return (names[0][0] + names[names.length - 1][0]).toUpperCase();
 }
 
-// Helper function now inside the component that uses it
+// Helper function to convert hex color to HSL string
 function hexToHsl(hex: string): string | null {
     if (!hex || !/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex)) {
         return null;
