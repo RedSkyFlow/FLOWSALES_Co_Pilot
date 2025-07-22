@@ -4,7 +4,6 @@
 import { db } from '@/lib/firebase';
 import { addDoc, collection, doc, updateDoc, deleteDoc, getDoc, writeBatch } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
-import type { Product } from '@/lib/types';
 import { parseProductList } from '@/ai/flows/parse-product-list';
 import { generateProductDescription as generateProductDescriptionFlow, type GenerateProductDescriptionInput } from '@/ai/flows/generate-product-description';
 

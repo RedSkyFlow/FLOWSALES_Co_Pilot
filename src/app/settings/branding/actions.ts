@@ -26,7 +26,7 @@ export async function saveBrandingSettings(tenantId: string, data: Partial<Brand
     try {
         await setDoc(settingsRef, data, { merge: true });
         revalidatePath('/settings/branding');
-        revalidatePath('/', 'layout'); // Revalidate all pages to apply new theme
+        revalidatePath('/proposals/[id]', 'page');
     } catch (error) {
         console.error("Error saving branding settings:", error);
         throw new Error("Could not save branding settings.");

@@ -1,7 +1,6 @@
 
 'use client';
 
-import { MainLayout } from "@/components/main-layout";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Briefcase, Building, Palette, ShieldCheck, Users, GitBranch } from "lucide-react";
 import Link from "next/link";

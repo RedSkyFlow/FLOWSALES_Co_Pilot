@@ -233,7 +233,6 @@ export default function ProductsPage() {
                     )}
                 </CardContent>
             </Card>
-
             <AddProductDialog 
                 key={editingProduct ? editingProduct.id : 'new'}
                 open={isAddDialogOpen} 
