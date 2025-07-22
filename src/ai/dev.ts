@@ -10,3 +10,4 @@ import '@/ai/flows/generate-brand-analysis.ts';
 import '@/ai/flows/generate-full-proposal.ts';
 import '@/ai/flows/parse-product-list.ts';
 import '@/ai/flows/generate-product-description.ts';
+import '@/ai/flows/analyze-product-catalog.ts';

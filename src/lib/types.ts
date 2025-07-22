@@ -63,11 +63,13 @@ export interface ProductRule {
     condition: 'requires_one' | 'requires_all' | 'conflicts_with';
     // The status of the rule, for AI onboarding
     status: 'active' | 'awaiting_review' | 'rejected';
+    explanation?: string;
 }
 
 export interface BrandingSettings {
     id: string;
     companyName: string;
+    websiteUrl?: string;
     logoUrl?: string;
     primaryColor?: string; // hex
     secondaryColor?: string; // hex

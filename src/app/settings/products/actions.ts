@@ -6,6 +6,8 @@ import { addDoc, collection, doc, updateDoc, deleteDoc, getDoc, writeBatch } fro
 import { revalidatePath } from 'next/cache';
 import { parseProductList } from '@/ai/flows/parse-product-list';
 import { generateProductDescription as generateProductDescriptionFlow, type GenerateProductDescriptionInput } from '@/ai/flows/generate-product-description';
+import { analyzeProductCatalog } from '@/ai/flows/analyze-product-catalog';
+import type { Product, ProductRule } from '@/lib/types';
 
 
 interface AddProductInput {
@@ -32,6 +34,7 @@ export async function addProduct(data: AddProductInput) {
             pricingModel: data.pricingModel,
             basePrice: data.basePrice,
             tags: data.tags,
+            status: 'verified', // Manually added products are considered verified
         });
         revalidatePath('/settings/products');
         revalidatePath('/proposals/new'); // To refresh products in wizard
@@ -116,31 +119,54 @@ export async function bulkAddProducts(tenantId: string, productList: string): Pr
     }
 
     try {
-        const { products } = await parseProductList(productList);
-        if (!products || products.length === 0) {
+        const { products: parsedProducts } = await parseProductList(productList);
+        if (!parsedProducts || parsedProducts.length === 0) {
             return 0;
         }
         
         const productsCollectionRef = collection(db, 'tenants', tenantId, 'products');
         const batch = writeBatch(db);
+        const productsWithIds: Product[] = [];
 
-        products.forEach(product => {
+        parsedProducts.forEach(product => {
             const docRef = doc(productsCollectionRef); // Create a new doc with a new ID
-            batch.set(docRef, {
+            const newProduct: Product = {
+                id: docRef.id,
                 ...product,
-                // Set default values for fields not provided by AI
                 type: product.type || 'product',
                 pricingModel: product.pricingModel || 'one-time',
                 tags: product.tags || [],
-            });
+                status: 'unverified'
+            };
+            batch.set(docRef, newProduct);
+            productsWithIds.push(newProduct);
         });
 
         await batch.commit();
 
+        // Now, trigger the AI analysis flow
+        const { suggestedRules } = await analyzeProductCatalog({ products: productsWithIds });
+
+        // Save the suggested rules
+        if (suggestedRules && suggestedRules.length > 0) {
+            const rulesCollectionRef = collection(db, 'tenants', tenantId, 'product_rules');
+            const rulesBatch = writeBatch(db);
+            suggestedRules.forEach(rule => {
+                const ruleDocRef = doc(rulesCollectionRef);
+                const newRule: Omit<ProductRule, 'id'> = {
+                    ...rule,
+                    status: 'awaiting_review',
+                };
+                rulesBatch.set(ruleDocRef, newRule);
+            });
+            await rulesBatch.commit();
+        }
+
         revalidatePath('/settings/products');
+        revalidatePath('/settings/rules');
         revalidatePath('/proposals/new');
         
-        return products.length;
+        return parsedProducts.length;
     } catch (error) {
         console.error("Error bulk adding products: ", error);
         throw new Error("Could not add products. Please check the format or try again.");
