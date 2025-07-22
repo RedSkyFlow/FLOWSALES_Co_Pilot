@@ -82,7 +82,29 @@ Follow these steps to set up and run the project on your local machine.
 
 ---
 
-## 3. Cloud Services Configuration
+## 3. Deployment (CI/CD with Firebase App Hosting)
+
+This project is configured for continuous integration and deployment (CI/CD) using **Firebase App Hosting**. This automates the process of building and deploying the application, ensuring a stable and efficient workflow.
+
+The deployment process is tied directly to our Git repository on GitHub.
+
+### How It Works
+
+1.  **Feature Branches:** All new work should be done on a dedicated feature branch (e.g., `feature/new-dashboard`).
+
+2.  **Committing Code:** Commit your changes regularly with clear, descriptive messages.
+
+3.  **Opening a Pull Request (PR):** When a feature is complete, open a Pull Request to merge your feature branch into the `master` branch.
+
+4.  **Automated Preview Channels:** When you open a PR, Firebase App Hosting automatically builds your changes and deploys them to a unique, shareable **preview URL**. This allows the team to review and test the changes in a live environment before they go into production.
+
+5.  **Merging to Production:** Once the Pull Request is reviewed and approved, merging it into the `master` branch will trigger the production deployment. Firebase App Hosting automatically builds the `master` branch and deploys it to the **live channel**, making the changes available to all users.
+
+This workflow ensures that the `master` branch always represents the stable, production-ready version of the application, while all new development is safely tested in preview environments.
+
+---
+
+## 4. Cloud Services Configuration
 
 For the application to function fully, you must enable the following APIs and services in your Firebase and Google Cloud consoles.
 
@@ -130,7 +152,7 @@ The application's backend uses the Firebase Admin SDK for tasks like inviting us
 
 ---
 
-## 4. Backend Guide
+## 5. Backend Guide
 
 ### Firestore Database
 
@@ -160,7 +182,7 @@ We use Genkit to interact with Google's Gemini models for AI-powered features.
 
 ---
 
-## 5. Frontend Guide
+## 6. Frontend Guide
 
 ### Project Structure (Next.js App Router)
 
