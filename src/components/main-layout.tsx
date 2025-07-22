@@ -14,6 +14,8 @@ import {
   LogOut,
   Loader2,
   Menu,
+  Sparkles,
+  HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthState, useSignOut } from 'react-firebase-hooks/auth';
@@ -133,6 +135,7 @@ function SidebarContent() {
 
 function MainLayoutContent({ children }: { children: React.ReactNode }) {
   const { brandingSettings } = useAppData();
+  const { startCurrentTour } = useTour();
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -156,7 +159,13 @@ function MainLayoutContent({ children }: { children: React.ReactNode }) {
                        <SidebarContent />
                     </SheetContent>
                 </Sheet>
-                <FlowSalesLogo logoUrl={brandingSettings?.logoUrl} companyName={brandingSettings?.companyName} isMobile={true} />
+                <div className="flex-1">
+                  <FlowSalesLogo logoUrl={brandingSettings?.logoUrl} companyName={brandingSettings?.companyName} isMobile={true} />
+                </div>
+                <Button variant="ghost" size="icon" onClick={startCurrentTour}>
+                  <HelpCircle className="h-5 w-5" />
+                  <span className="sr-only">Help & Guide</span>
+                </Button>
             </header>
             <main className="flex-1">
                 <div className="p-4 md:p-8">{children}</div>

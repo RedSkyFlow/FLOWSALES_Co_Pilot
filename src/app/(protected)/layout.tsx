@@ -23,6 +23,7 @@ export default function AuthenticatedLayout({
           <MainLayout>
             {children}
           </MainLayout>
+          {/* AI Chat Assistant is now a part of the layout, not the main content */}
           <AIChatAssistant />
       </TourProvider>
     </AppDataProvider>

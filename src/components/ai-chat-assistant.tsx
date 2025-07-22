@@ -81,9 +81,9 @@ export function AIChatAssistant() {
       <PopoverTrigger asChild>
         <Button
           variant="secondary"
-          className="fixed bottom-6 right-6 rounded-full w-16 h-16 shadow-lg hover:shadow-glow-secondary"
+          className="fixed bottom-6 right-6 rounded-full w-14 h-14 md:w-16 md:h-16 shadow-lg hover:shadow-glow-secondary"
         >
-          <Sparkles className="h-8 w-8" />
+          <Sparkles className="h-6 w-6 md:h-8 md:w-8" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
