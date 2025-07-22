@@ -21,8 +21,10 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle, MoreHorizontal } from "lucide-react";
+import { Loader2, PlusCircle, MoreHorizontal, ShieldCheck, Trash2, KeyRound } from "lucide-react";
 import { Badge } from '@/components/ui/badge';
+import { InviteUserDialog } from '@/components/invite-user-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 function getInitials(name: string | null) {
     if (!name) return 'U';
@@ -36,6 +38,8 @@ export default function UserManagementPage() {
     const [user, loadingAuth] = useAuthState(auth);
     const [team, setTeam] = useState<User[]>([]);
     const [loadingTeam, setLoadingTeam] = useState(true);
+    const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+    const [currentUserData, setCurrentUserData] = useState<User | null>(null);
 
     useEffect(() => {
         if (loadingAuth || !user) {
@@ -46,6 +50,15 @@ export default function UserManagementPage() {
         // In a real app, the user's tenantId would be part of their auth token claims.
         // For now, we'll use a hardcoded tenant ID.
         const tenantId = 'tenant-001';
+        
+        setCurrentUserData({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            role: 'admin', // MOCK: Assume admin for settings pages
+            tenantId: tenantId,
+        });
+
 
         setLoadingTeam(true);
         const usersCollectionRef = collection(db, 'users');
@@ -63,6 +76,8 @@ export default function UserManagementPage() {
         return () => unsubscribe();
     }, [user, loadingAuth]);
 
+    const canManage = currentUserData?.role === 'admin';
+
     return (
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -72,13 +87,15 @@ export default function UserManagementPage() {
                         Invite and manage your team members.
                     </p>
                 </div>
-                <Button
-                    className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
-                    disabled // Will be enabled when invite functionality is added
-                >
-                    <PlusCircle className="mr-2 h-5 w-5" />
-                    Invite User
-                </Button>
+                {canManage && (
+                    <Button
+                        className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
+                        onClick={() => setIsInviteDialogOpen(true)}
+                    >
+                        <PlusCircle className="mr-2 h-5 w-5" />
+                        Invite User
+                    </Button>
+                )}
             </div>
             
             <Card>
@@ -117,9 +134,27 @@ export default function UserManagementPage() {
                                                 <Badge variant="outline" className="capitalize">{member.role.replace('_', ' ')}</Badge>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon" disabled>
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
+                                                {canManage && member.uid !== currentUserData?.uid ? (
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem disabled>
+                                                                <ShieldCheck className="mr-2 h-4 w-4" /> Change Role
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem disabled>
+                                                                <KeyRound className="mr-2 h-4 w-4" /> Reset Password
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                             <DropdownMenuItem disabled className="text-destructive focus:text-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" /> Remove User
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                ) : null}
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -135,6 +170,12 @@ export default function UserManagementPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <InviteUserDialog 
+                open={isInviteDialogOpen} 
+                onOpenChange={setIsInviteDialogOpen} 
+                tenantId={currentUserData?.tenantId} 
+            />
         </div>
     );
 }
