@@ -131,12 +131,12 @@ export default function RulesPage() {
                         )}
                     </CardContent>
                 </Card>
+                <AddRuleDialog 
+                    open={isAddRuleOpen} 
+                    onOpenChange={setIsAddRuleOpen} 
+                    products={products} 
+                    tenantId={userData?.tenantId} 
+                />
             </div>
-            <AddRuleDialog 
-                open={isAddRuleOpen} 
-                onOpenChange={setIsAddRuleOpen} 
-                products={products} 
-                tenantId={userData?.tenantId} 
-            />
     );
 }

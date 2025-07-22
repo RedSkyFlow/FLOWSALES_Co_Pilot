@@ -122,118 +122,118 @@ export default function ProductsPage() {
 
 
     return (
-            <div className="space-y-8">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-4xl font-bold">Product Catalog</h1>
-                        <p className="text-muted-foreground mt-1">
-                            Add, view, and manage the products and services you offer.
-                        </p>
-                    </div>
-                    {userData?.role === 'admin' && (
-                        <div className="flex gap-2">
-                             <Button
-                                variant="outline"
-                                className="font-semibold rounded-lg px-4 py-2 flex items-center gap-2"
-                                onClick={() => setIsBulkAddDialogOpen(true)}
-                            >
-                                <Upload className="mr-2 h-5 w-5" />
-                                Bulk Add Products
-                            </Button>
-                            <Button
-                                className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
-                                onClick={handleAddNewProduct}
-                            >
-                                <PlusCircle className="mr-2 h-5 w-5" />
-                                Add New Product
-                            </Button>
-                        </div>
-                    )}
+        <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h1 className="text-4xl font-bold">Product Catalog</h1>
+                    <p className="text-muted-foreground mt-1">
+                        Add, view, and manage the products and services you offer.
+                    </p>
                 </div>
-                
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Your Products</CardTitle>
-                        <CardDescription>A list of all products and services for this tenant.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {loadingAuth || loadingProducts ? (
-                            <div className="flex justify-center items-center py-16">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            </div>
-                        ) : (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Type</TableHead>
-                                        <TableHead>Base Price</TableHead>
-                                        <TableHead>Description</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {products.length > 0 ? (
-                                        products.map((product) => (
-                                            <TableRow key={product.id}>
-                                                <TableCell className="font-medium">{product.name}</TableCell>
-                                                <TableCell className="capitalize">{product.type}</TableCell>
-                                                <TableCell>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(product.basePrice)}</TableCell>
-                                                <TableCell>{product.description}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <AlertDialog>
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="tertiary" size="icon">
-                                                                    <MoreHorizontal className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem onClick={() => handleEditProduct(product)}>
-                                                                    <Pencil className="mr-2 h-4 w-4" /> Edit
+                {userData?.role === 'admin' && (
+                    <div className="flex gap-2">
+                         <Button
+                            variant="outline"
+                            className="font-semibold rounded-lg px-4 py-2 flex items-center gap-2"
+                            onClick={() => setIsBulkAddDialogOpen(true)}
+                        >
+                            <Upload className="mr-2 h-5 w-5" />
+                            Bulk Add Products
+                        </Button>
+                        <Button
+                            className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
+                            onClick={handleAddNewProduct}
+                        >
+                            <PlusCircle className="mr-2 h-5 w-5" />
+                            Add New Product
+                        </Button>
+                    </div>
+                )}
+            </div>
+            
+            <Card>
+                <CardHeader>
+                    <CardTitle>Your Products</CardTitle>
+                    <CardDescription>A list of all products and services for this tenant.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {loadingAuth || loadingProducts ? (
+                        <div className="flex justify-center items-center py-16">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead>Base Price</TableHead>
+                                    <TableHead>Description</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {products.length > 0 ? (
+                                    products.map((product) => (
+                                        <TableRow key={product.id}>
+                                            <TableCell className="font-medium">{product.name}</TableCell>
+                                            <TableCell className="capitalize">{product.type}</TableCell>
+                                            <TableCell>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(product.basePrice)}</TableCell>
+                                            <TableCell>{product.description}</TableCell>
+                                            <TableCell className="text-right">
+                                                <AlertDialog>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => handleEditProduct(product)}>
+                                                                <Pencil className="mr-2 h-4 w-4" /> Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleDuplicateProduct(product.id)}>
+                                                                <Copy className="mr-2 h-4 w-4" /> Duplicate
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <AlertDialogTrigger asChild>
+                                                                <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => handleDuplicateProduct(product.id)}>
-                                                                    <Copy className="mr-2 h-4 w-4" /> Duplicate
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuSeparator />
-                                                                <AlertDialogTrigger asChild>
-                                                                    <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                                                         <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                                    </DropdownMenuItem>
-                                                                </AlertDialogTrigger>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    This action cannot be undone. This will permanently delete the product "{product.name}".
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleDeleteProduct(product.id)} className={buttonVariants({ variant: 'destructive'})}>
-                                                                    Continue
-                                                                </AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={5} className="h-24 text-center">
-                                                No products found. Add your first product to get started.
+                                                            </AlertDialogTrigger>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                This action cannot be undone. This will permanently delete the product "{product.name}".
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDeleteProduct(product.id)} className={buttonVariants({ variant: 'destructive'})}>
+                                                                Continue
+                                                            </AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
                                             </TableCell>
                                         </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="h-24 text-center">
+                                            No products found. Add your first product to get started.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    )}
+                </CardContent>
+            </Card>
+
             <AddProductDialog 
                 key={editingProduct ? editingProduct.id : 'new'}
                 open={isAddDialogOpen} 
@@ -246,5 +246,6 @@ export default function ProductsPage() {
                 onOpenChange={setIsBulkAddDialogOpen}
                 tenantId={userData?.tenantId}
             />
+        </div>
     );
 }
