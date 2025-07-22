@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Palette, Sparkles, Upload, Wand2 } from 'lucide-react';
-import { generateBrandAnalysis } from './actions';
+import { generateBrandAnalysis } from '@/app/settings/branding/actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
 import { useTour, TourStep } from '@/hooks/use-tour';
@@ -209,3 +209,5 @@ export default function BrandingPage() {
         </MainLayout>
     );
 }
+
+    
