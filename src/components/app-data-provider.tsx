@@ -5,13 +5,14 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { collection, onSnapshot, query, doc } from 'firebase/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import type { Client, Product, ProductRule, ProposalTemplate, BrandingSettings } from '@/lib/types';
+import type { Client, Product, ProductRule, ProposalTemplate, BrandingSettings, LegalDocument } from '@/lib/types';
 
 interface AppDataContextType {
   templates: ProposalTemplate[];
   clients: Client[];
   products: Product[];
   rules: ProductRule[];
+  legalDocuments: LegalDocument[];
   brandingSettings: BrandingSettings | null;
   loading: boolean;
 }
@@ -21,6 +22,7 @@ const AppDataContext = createContext<AppDataContextType>({
   clients: [],
   products: [],
   rules: [],
+  legalDocuments: [],
   brandingSettings: null,
   loading: true,
 });
@@ -34,6 +36,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         clients: [],
         products: [],
         rules: [],
+        legalDocuments: [],
         brandingSettings: null,
     });
     const [loading, setLoading] = useState(true);
@@ -46,6 +49,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                 clients: [],
                 products: [],
                 rules: [],
+                legalDocuments: [],
                 brandingSettings: null,
             });
             return;
@@ -58,6 +62,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             clients: collection(db, 'tenants', tenantId, 'clients'),
             products: collection(db, 'tenants', tenantId, 'products'),
             rules: collection(db, 'tenants', tenantId, 'product_rules'),
+            legalDocuments: collection(db, 'tenants', tenantId, 'legal_documents'),
         };
         const brandingDocRef = doc(db, 'tenants', tenantId, 'settings', 'branding');
 

@@ -45,8 +45,8 @@ const settingsPanels = [
         title: "Legal & Compliance",
         description: "Set your standard terms and conditions.",
         icon: <ShieldCheck className="h-6 w-6 text-primary" />,
-        href: "#",
-        disabled: true,
+        href: "/settings/legal",
+        disabled: false,
     }
 ]
 
