@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Palette, Sparkles, Wand2 } from 'lucide-react';
+import { Loader2, Palette, Sparkles, Wand2, Building } from 'lucide-react';
 import { generateBrandAnalysis, saveBrandingSettings } from '@/app/settings/branding/actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Image from 'next/image';
@@ -24,10 +24,13 @@ const brandingSchema = z.object({
     companyName: z.string().min(1, "Company name is required"),
     websiteUrl: z.string().url().optional().or(z.literal('')),
     logoUrl: z.string().optional(),
-    primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex code").optional(),
-    secondaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex code").optional(),
+    primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex code").optional().or(z.literal('')),
+    secondaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex code").optional().or(z.literal('')),
     brandVoice: z.string().optional(),
     brandImage: z.any().optional(),
+    companyAddress: z.string().optional(),
+    companyPhone: z.string().optional(),
+    companyEmail: z.string().email().optional().or(z.literal('')),
 });
 
 type BrandingFormData = z.infer<typeof brandingSchema>;
@@ -82,6 +85,9 @@ export default function BrandingPage() {
                 primaryColor: brandingSettings.primaryColor,
                 secondaryColor: brandingSettings.secondaryColor,
                 brandVoice: brandingSettings.brandVoice,
+                companyAddress: brandingSettings.companyAddress,
+                companyPhone: brandingSettings.companyPhone,
+                companyEmail: brandingSettings.companyEmail,
             });
             if (brandingSettings.logoUrl) {
                 setImagePreview(brandingSettings.logoUrl)
@@ -114,6 +120,9 @@ export default function BrandingPage() {
             if (result.primaryColor) setValue('primaryColor', result.primaryColor);
             if (result.secondaryColor) setValue('secondaryColor', result.secondaryColor);
             if (result.brandVoice) setValue('brandVoice', result.brandVoice);
+            if (result.companyAddress) setValue('companyAddress', result.companyAddress);
+            if (result.companyPhone) setValue('companyPhone', result.companyPhone);
+            if (result.companyEmail) setValue('companyEmail', result.companyEmail);
 
             toast({ title: "Analysis Complete", description: "Branding details have been populated." });
         } catch (error) {
@@ -159,7 +168,8 @@ export default function BrandingPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Company Details</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><Building />Company Details</CardTitle>
+                        <CardDescription>Manage your company's core information.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div>
@@ -167,17 +177,22 @@ export default function BrandingPage() {
                             <Input id="companyName" {...register('companyName')} />
                             {errors.companyName && <p className="text-destructive text-sm mt-1">{errors.companyName.message}</p>}
                         </div>
-                        <div>
-                            <Label htmlFor="logoUrl">Logo Upload</Label>
-                            <Input id="logoUpload" type="file" accept="image/*" onChange={handleImageChange} />
-                            {imagePreview && (
-                                <div className="mt-4">
-                                    <Label>Logo Preview</Label>
-                                    <div className="w-48 h-24 relative mt-2 rounded-md border bg-muted p-2">
-                                        <Image src={imagePreview} alt="Logo preview" fill className="object-contain" />
-                                    </div>
-                                </div>
-                            )}
+                        <div className="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="companyPhone">Company Phone</Label>
+                                <Input id="companyPhone" {...register('companyPhone')} />
+                                {errors.companyPhone && <p className="text-destructive text-sm mt-1">{errors.companyPhone.message}</p>}
+                            </div>
+                             <div>
+                                <Label htmlFor="companyEmail">Company Email</Label>
+                                <Input id="companyEmail" {...register('companyEmail')} />
+                                {errors.companyEmail && <p className="text-destructive text-sm mt-1">{errors.companyEmail.message}</p>}
+                            </div>
+                        </div>
+                         <div>
+                            <Label htmlFor="companyAddress">Company Address</Label>
+                            <Textarea id="companyAddress" {...register('companyAddress')} />
+                            {errors.companyAddress && <p className="text-destructive text-sm mt-1">{errors.companyAddress.message}</p>}
                         </div>
                     </CardContent>
                 </Card>
@@ -186,14 +201,14 @@ export default function BrandingPage() {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><Sparkles className="text-primary"/> AI Brand Discovery</CardTitle>
                         <CardDescription>
-                            Let AI discover your brand colors and voice from your website or a brand image.
+                            Let AI discover your brand details from your website or a brand image. This will populate the fields on this page.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Tabs defaultValue="website" className="w-full">
                             <TabsList>
                                 <TabsTrigger value="website">From Website URL</TabsTrigger>
-                                <TabsTrigger value="image">From Image</TabsTrigger>
+                                <TabsTrigger value="image">From Logo/Image</TabsTrigger>
                             </TabsList>
                             <TabsContent value="website" className="pt-4">
                                 <Label htmlFor="websiteUrl">Company Website URL</Label>
@@ -201,13 +216,13 @@ export default function BrandingPage() {
                                 {errors.websiteUrl && <p className="text-destructive text-sm mt-1">{errors.websiteUrl.message}</p>}
                             </TabsContent>
                             <TabsContent value="image" className="pt-4">
-                                <Label htmlFor="brandImageUpload">Upload Screenshot or Brand Kit</Label>
+                                <Label htmlFor="brandImageUpload">Upload Logo, Screenshot or Brand Kit</Label>
                                 <Input id="brandImageUpload" type="file" accept="image/*" onChange={handleImageChange} />
                                 {imagePreview && (
                                     <div className="mt-4">
                                         <Label>Image Preview</Label>
-                                        <div className="w-48 h-24 relative mt-2 rounded-md border">
-                                            <Image src={imagePreview} alt="Brand preview" fill className="object-cover" />
+                                        <div className="w-48 h-24 relative mt-2 rounded-md border bg-muted p-2">
+                                            <Image src={imagePreview} alt="Brand preview" fill className="object-contain" />
                                         </div>
                                     </div>
                                 )}
@@ -222,12 +237,24 @@ export default function BrandingPage() {
 
                 <Card data-tour-id="manual-config-card">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Palette /> Manual Configuration</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><Palette /> Visual Branding</CardTitle>
                         <CardDescription>
-                            Manually set your brand colors and voice. These will override the defaults in globals.css.
+                            Manually set your brand colors and upload your logo. These will override the defaults in globals.css.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        <div>
+                            <Label htmlFor="logoUrl">Logo Upload</Label>
+                            <Input id="logoUpload" type="file" accept="image/*" onChange={handleImageChange} />
+                            {imagePreview && (
+                                <div className="mt-4">
+                                    <Label>Logo Preview</Label>
+                                    <div className="w-48 h-24 relative mt-2 rounded-md border bg-muted p-2">
+                                        <Image src={imagePreview} alt="Logo preview" fill className="object-contain" />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         <div className="grid md:grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="primaryColor">Primary Color (Hex)</Label>

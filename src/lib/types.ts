@@ -76,6 +76,9 @@ export interface BrandingSettings {
     fontHeadline?: string;
     fontBody?: string;
     brandVoice?: string;
+    companyAddress?: string;
+    companyPhone?: string;
+    companyEmail?: string;
 }
 
 export interface LegalDocument {

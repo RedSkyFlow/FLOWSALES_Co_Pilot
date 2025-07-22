@@ -22,6 +22,9 @@ const GenerateBrandAnalysisOutputSchema = z.object({
   primaryColor: z.string().describe('The extracted primary color in hex format (e.g., #RRGGBB).'),
   secondaryColor: z.string().describe('The extracted secondary color in hex format (e.g., #RRGGBB).'),
   brandVoice: z.string().describe('A summary of the brand voice and tone, described in 2-3 sentences.'),
+  companyAddress: z.string().optional().describe("The company's primary physical address."),
+  companyPhone: z.string().optional().describe("The company's primary contact phone number."),
+  companyEmail: z.string().optional().describe("The company's primary contact email address."),
 });
 export type GenerateBrandAnalysisOutput = z.infer<typeof GenerateBrandAnalysisOutputSchema>;
 
@@ -38,12 +41,12 @@ const prompt = ai.definePrompt({
   name: 'generateBrandAnalysisPrompt',
   input: { schema: GenerateBrandAnalysisInputSchema },
   output: { schema: GenerateBrandAnalysisOutputSchema },
-  prompt: `You are a professional brand analyst. Analyze the provided source material (either a website URL or an image) to determine the company's branding.
+  prompt: `You are a professional brand and data analyst. Analyze the provided source material (either a website URL or an image) to determine the company's branding and contact information.
   
-Your task is to identify the primary and secondary colors and summarize the brand's voice and tone.
-
-Provide the colors in hex format (#RRGGBB).
-The brand voice summary should be concise (2-3 sentences).
+**Your Tasks:**
+1.  **Identify Branding:** Determine the primary and secondary colors and summarize the brand's voice and tone.
+2.  **Extract Contact Information:** Scour the website, especially the footer and any 'Contact Us' page, for the main company address, phone number, and general contact email address.
+3.  **Format Output:** Provide colors in hex format (#RRGGBB). The brand voice summary should be concise (2-3 sentences).
 
 {{#if websiteUrl}}
 Analyze the website at this URL: {{{websiteUrl}}}
