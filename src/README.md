@@ -124,9 +124,11 @@ The application's backend uses the Firebase Admin SDK for tasks like inviting us
     *   Click the **"Generate new private key"** button. A JSON file will be downloaded.
 
 2.  **Set Environment Variable:**
-    *   Open the downloaded JSON file.
-    *   Copy the entire contents of the file.
-    *   Paste the copied JSON into your `.env` file as the value for `FIREBASE_SERVICE_ACCOUNT_KEY`.
+    *   Open the downloaded JSON file in a text editor.
+    *   Copy the **entire contents** of the file, starting from `{` and ending with `}`.
+    *   In your project, open the `.env` file.
+    *   Find the line that starts with `FIREBASE_SERVICE_ACCOUNT_KEY=`.
+    *   Paste the copied JSON content directly after the equals sign. The result should look like this: `FIREBASE_SERVICE_ACCOUNT_KEY={"type": "service_account", ...}`. The value should be all on one line.
 
 ---
 
