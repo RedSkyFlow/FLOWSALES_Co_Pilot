@@ -17,8 +17,8 @@ const settingsPanels = [
         title: "User Management",
         description: "Add or remove team members.",
         icon: <Users className="h-6 w-6 text-primary" />,
-        href: "#",
-        disabled: true,
+        href: "/settings/users",
+        disabled: false,
     },
     {
         title: "Branding",
