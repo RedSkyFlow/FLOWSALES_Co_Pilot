@@ -6,7 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { addProduct, updateProduct } from '@/app/settings/products/actions';
+import { addProduct, updateProduct, generateProductDescription } from '@/app/settings/products/actions';
 import type { Product } from '@/lib/types';
 
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from 'lucide-react';
+import { Loader2, Wand2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Textarea } from './ui/textarea';
 
@@ -44,9 +44,10 @@ interface AddProductDialogProps {
 export function AddProductDialog({ open, onOpenChange, productToEdit }: AddProductDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const isEditMode = !!productToEdit;
 
-  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ProductFormData>({
+  const { register, handleSubmit, reset, control, setValue, watch, formState: { errors } } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
         name: '',
@@ -57,6 +58,9 @@ export function AddProductDialog({ open, onOpenChange, productToEdit }: AddProdu
         tags: '',
     }
   });
+
+  const productName = watch('name');
+  const productType = watch('type');
 
   useEffect(() => {
     if (productToEdit) {
@@ -85,6 +89,24 @@ export function AddProductDialog({ open, onOpenChange, productToEdit }: AddProdu
       onOpenChange(isOpen);
     }
   };
+
+  const handleGenerateDescription = async () => {
+    if (!productName || !productType) {
+        toast({ title: "Missing Info", description: "Please provide a product name and type first.", variant: "destructive" });
+        return;
+    }
+    setIsGenerating(true);
+    try {
+        const description = await generateProductDescription({ productName, productType });
+        setValue('description', description, { shouldValidate: true });
+        toast({ title: "Description Generated", description: "The product description has been populated." });
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Error", description: "Could not generate description.", variant: "destructive" });
+    } finally {
+        setIsGenerating(false);
+    }
+  }
 
   const onSubmit = async (data: ProductFormData) => {
     setIsSubmitting(true);
@@ -137,7 +159,13 @@ export function AddProductDialog({ open, onOpenChange, productToEdit }: AddProdu
               {errors.name && <p className="text-destructive text-xs mt-1">{errors.name.message}</p>}
             </div>
              <div className="space-y-1">
-              <Label htmlFor="description">Description</Label>
+                <div className="flex justify-between items-center">
+                    <Label htmlFor="description">Description</Label>
+                    <Button type="button" variant="ghost" size="sm" onClick={handleGenerateDescription} disabled={isGenerating || !productName || !productType}>
+                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                        Generate
+                    </Button>
+                </div>
               <Textarea id="description" {...register('description')} className={errors.description ? 'border-destructive' : ''} />
               {errors.description && <p className="text-destructive text-xs mt-1">{errors.description.message}</p>}
             </div>
@@ -190,7 +218,7 @@ export function AddProductDialog({ open, onOpenChange, productToEdit }: AddProdu
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || isGenerating}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditMode ? 'Save Changes' : 'Save Product'}
             </Button>

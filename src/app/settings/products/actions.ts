@@ -6,6 +6,8 @@ import { addDoc, collection, doc, updateDoc, deleteDoc, getDoc, writeBatch } fro
 import { revalidatePath } from 'next/cache';
 import type { Product } from '@/lib/types';
 import { parseProductList } from '@/ai/flows/parse-product-list';
+import { generateProductDescription as generateProductDescriptionFlow, type GenerateProductDescriptionInput } from '@/ai/flows/generate-product-description';
+
 
 interface AddProductInput {
     tenantId: string;
@@ -143,5 +145,15 @@ export async function bulkAddProducts(tenantId: string, productList: string): Pr
     } catch (error) {
         console.error("Error bulk adding products: ", error);
         throw new Error("Could not add products. Please check the format or try again.");
+    }
+}
+
+export async function generateProductDescription(input: GenerateProductDescriptionInput) {
+    try {
+        const { description } = await generateProductDescriptionFlow(input);
+        return description;
+    } catch (error) {
+        console.error("Error generating product description:", error);
+        throw new Error("Failed to generate product description.");
     }
 }
