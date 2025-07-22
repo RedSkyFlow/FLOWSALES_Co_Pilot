@@ -12,11 +12,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, PlusCircle, Trash2, GripVertical, Users, Package, FileText } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, GripVertical, Users, Package, FileText, Sparkles, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { createTemplate } from '@/app/templates/actions';
+import { createTemplate, ingestDocument } from '@/app/templates/actions';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const sectionSchema = z.object({
     title: z.string().min(1, 'Section title is required'),
@@ -44,11 +45,16 @@ export default function NewTemplatePage() {
   const { toast } = useToast();
   const [user, loadingAuth] = useAuthState(auth);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [documentContent, setDocumentContent] = useState('');
+  const [activeTab, setActiveTab] = useState('manual');
+
 
   const {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { errors },
   } = useForm<TemplateFormData>({
     resolver: zodResolver(templateSchema),
@@ -60,10 +66,33 @@ export default function NewTemplatePage() {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: 'sections',
   });
+
+  const handleAnalyzeDocument = async () => {
+      if (!documentContent.trim()) {
+          toast({ title: 'Error', description: 'Please paste document content to analyze.', variant: 'destructive' });
+          return;
+      }
+      setIsAnalyzing(true);
+      try {
+          const { sections } = await ingestDocument(documentContent);
+          if (sections.length > 0) {
+              replace(sections);
+              toast({ title: 'Success', description: 'Document parsed and sections have been populated in the manual editor.' });
+              setActiveTab('manual');
+          } else {
+              toast({ title: 'No Sections Found', description: 'The AI could not identify distinct sections in the provided text.', variant: 'destructive' });
+          }
+      } catch (error) {
+          toast({ title: 'Error', description: 'Failed to analyze document.', variant: 'destructive' });
+      } finally {
+          setIsAnalyzing(false);
+      }
+  };
+
 
   const onSubmit = async (data: TemplateFormData) => {
     if (!user) {
@@ -97,114 +126,144 @@ export default function NewTemplatePage() {
   }
   
   return (
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+    <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-headline font-bold">Create New Template</h1>
           <p className="text-muted-foreground">Design a new proposal template for your team to use.</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Template Details</CardTitle>
-            <CardDescription>Give your template a name, description, and an icon.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name">Template Name</Label>
-                <Input id="name" {...register('name')} />
-                {errors.name && <p className="text-destructive text-sm mt-1">{errors.name.message}</p>}
-              </div>
-              <div>
-                <Label htmlFor="icon">Icon</Label>
-                <Controller
-                    name="icon"
-                    control={control}
-                    render={({ field }) => (
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <SelectTrigger id="icon">
-                                <SelectValue placeholder="Select an icon" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {Object.keys(iconMap).map((iconKey) => (
-                                <SelectItem key={iconKey} value={iconKey}>
-                                    <div className="flex items-center gap-2">
-                                    {iconMap[iconKey as keyof typeof iconMap]}
-                                    {iconKey}
-                                    </div>
-                                </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    )}
-                />
-                 {errors.icon && <p className="text-destructive text-sm mt-1">{errors.icon.message}</p>}
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="description">Description</Label>
-              <Textarea id="description" {...register('description')} />
-              {errors.description && <p className="text-destructive text-sm mt-1">{errors.description.message}</p>}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="manual"><Pencil className="mr-2 h-4 w-4"/> Create Manually</TabsTrigger>
+            <TabsTrigger value="import"><Sparkles className="mr-2 h-4 w-4"/> Import from Document</TabsTrigger>
+        </TabsList>
+        <TabsContent value="import">
+            <Card>
+                <CardHeader>
+                    <CardTitle>AI Document Importer</CardTitle>
+                    <CardDescription>Paste the entire contents of an existing proposal, and the AI will attempt to structure it into a template for you.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                     <Textarea
+                        value={documentContent}
+                        onChange={(e) => setDocumentContent(e.target.value)}
+                        placeholder="Paste your full document text here..."
+                        rows={15}
+                     />
+                     <Button onClick={handleAnalyzeDocument} disabled={isAnalyzing}>
+                        {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4"/>}
+                        Analyze & Create Template
+                     </Button>
+                </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="manual">
+         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+            <Card>
             <CardHeader>
-                <CardTitle>Template Sections</CardTitle>
-                <CardDescription>Add and arrange the content sections for this template.</CardDescription>
+                <CardTitle>Template Details</CardTitle>
+                <CardDescription>Give your template a name, description, and an icon.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-            {fields.map((field, index) => (
-              <div key={field.id} className="flex gap-2 p-4 border rounded-lg bg-muted/20">
-                <GripVertical className="h-5 w-5 text-muted-foreground mt-1 cursor-grab" />
-                <div className="flex-grow space-y-2">
-                    <Label htmlFor={`sections.${index}.title`}>Section Title</Label>
-                    <Input
-                        id={`sections.${index}.title`}
-                        {...register(`sections.${index}.title`)}
-                        placeholder="e.g., Executive Summary"
-                    />
-                    {errors.sections?.[index]?.title && <p className="text-destructive text-sm">{errors.sections[index].title.message}</p>}
-
-                    <Label htmlFor={`sections.${index}.content`}>Default Content</Label>
-                    <Textarea
-                        id={`sections.${index}.content`}
-                        {...register(`sections.${index}.content`)}
-                        placeholder="Enter the default text for this section..."
-                        rows={4}
-                    />
-                    {errors.sections?.[index]?.content && <p className="text-destructive text-sm">{errors.sections[index].content.message}</p>}
+                <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                    <Label htmlFor="name">Template Name</Label>
+                    <Input id="name" {...register('name')} />
+                    {errors.name && <p className="text-destructive text-sm mt-1">{errors.name.message}</p>}
                 </div>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  onClick={() => remove(index)}
-                  className="shrink-0"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-             {errors.sections && !errors.sections.root && <p className="text-destructive text-sm mt-1">{errors.sections.message}</p>}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => append({ title: '', content: '', type: 'template' })}
-            >
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Section
-            </Button>
-          </CardContent>
-        </Card>
+                <div>
+                    <Label htmlFor="icon">Icon</Label>
+                    <Controller
+                        name="icon"
+                        control={control}
+                        render={({ field }) => (
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <SelectTrigger id="icon">
+                                    <SelectValue placeholder="Select an icon" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {Object.keys(iconMap).map((iconKey) => (
+                                    <SelectItem key={iconKey} value={iconKey}>
+                                        <div className="flex items-center gap-2">
+                                        {iconMap[iconKey as keyof typeof iconMap]}
+                                        {iconKey}
+                                        </div>
+                                    </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
+                    {errors.icon && <p className="text-destructive text-sm mt-1">{errors.icon.message}</p>}
+                </div>
+                </div>
+                <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea id="description" {...register('description')} />
+                {errors.description && <p className="text-destructive text-sm mt-1">{errors.description.message}</p>}
+                </div>
+            </CardContent>
+            </Card>
 
-        <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting || loadingAuth}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Template
-            </Button>
-        </div>
-      </form>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Template Sections</CardTitle>
+                    <CardDescription>Add and arrange the content sections for this template.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                {fields.map((field, index) => (
+                <div key={field.id} className="flex gap-2 p-4 border rounded-lg bg-muted/20">
+                    <GripVertical className="h-5 w-5 text-muted-foreground mt-1 cursor-grab" />
+                    <div className="flex-grow space-y-2">
+                        <Label htmlFor={`sections.${index}.title`}>Section Title</Label>
+                        <Input
+                            id={`sections.${index}.title`}
+                            {...register(`sections.${index}.title`)}
+                            placeholder="e.g., Executive Summary"
+                        />
+                        {errors.sections?.[index]?.title && <p className="text-destructive text-sm">{errors.sections[index].title.message}</p>}
+
+                        <Label htmlFor={`sections.${index}.content`}>Default Content</Label>
+                        <Textarea
+                            id={`sections.${index}.content`}
+                            {...register(`sections.${index}.content`)}
+                            placeholder="Enter the default text for this section..."
+                            rows={4}
+                        />
+                        {errors.sections?.[index]?.content && <p className="text-destructive text-sm">{errors.sections[index].content.message}</p>}
+                    </div>
+                    <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    onClick={() => remove(index)}
+                    className="shrink-0"
+                    >
+                    <Trash2 className="h-4 w-4" />
+                    </Button>
+                </div>
+                ))}
+                {errors.sections && !errors.sections.root && <p className="text-destructive text-sm mt-1">{errors.sections.message}</p>}
+                <Button
+                type="button"
+                variant="outline"
+                onClick={() => append({ title: '', content: '', type: 'template' })}
+                >
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Section
+                </Button>
+            </CardContent>
+            </Card>
+
+            <div className="flex justify-end gap-2">
+                <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
+                <Button type="submit" disabled={isSubmitting || loadingAuth}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Template
+                </Button>
+            </div>
+        </form>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

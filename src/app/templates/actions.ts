@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase';
 import type { ProposalSection, ProposalTemplate } from '@/lib/types';
 import { addDoc, collection, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
+import { ingestDocumentForTemplate } from '@/ai/flows/ingest-document-for-template';
 
 interface CreateTemplateInput {
     tenantId: string;
@@ -92,5 +93,15 @@ export async function duplicateTemplate(tenantId: string, template: ProposalTemp
     } catch (error) {
         console.error("Error duplicating template: ", error);
         throw new Error('Could not duplicate template. Please try again.');
+    }
+}
+
+export async function ingestDocument(documentContent: string) {
+    try {
+        const output = await ingestDocumentForTemplate(documentContent);
+        return output;
+    } catch (error) {
+        console.error("Error in ingestDocument server action:", error);
+        throw new Error("Failed to analyze the document with AI.");
     }
 }
