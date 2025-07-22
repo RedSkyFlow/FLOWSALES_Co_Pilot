@@ -17,8 +17,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle, MoreHorizontal, Copy, Trash2, Pencil } from "lucide-react";
+import { Loader2, PlusCircle, MoreHorizontal, Copy, Trash2, Pencil, Upload } from "lucide-react";
 import { AddProductDialog } from '@/components/add-product-dialog';
+import { BulkAddProductsDialog } from '@/components/bulk-add-products-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { deleteProduct, duplicateProduct } from '@/app/settings/products/actions';
@@ -30,6 +31,7 @@ export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [loadingProducts, setLoadingProducts] = useState(true);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [isBulkAddDialogOpen, setIsBulkAddDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [userData, setUserData] = useState<User | null>(null);
 
@@ -123,13 +125,23 @@ export default function ProductsPage() {
                         </p>
                     </div>
                     {userData?.role === 'admin' && (
-                        <Button
-                            className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
-                            onClick={handleAddNewProduct}
-                        >
-                            <PlusCircle className="mr-2 h-5 w-5" />
-                            Add New Product
-                        </Button>
+                        <div className="flex gap-2">
+                             <Button
+                                variant="outline"
+                                className="font-semibold rounded-lg px-4 py-2 flex items-center gap-2"
+                                onClick={() => setIsBulkAddDialogOpen(true)}
+                            >
+                                <Upload className="mr-2 h-5 w-5" />
+                                Bulk Add Products
+                            </Button>
+                            <Button
+                                className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
+                                onClick={handleAddNewProduct}
+                            >
+                                <PlusCircle className="mr-2 h-5 w-5" />
+                                Add New Product
+                            </Button>
+                        </div>
                     )}
                 </div>
                 
@@ -221,6 +233,10 @@ export default function ProductsPage() {
                 open={isAddDialogOpen} 
                 onOpenChange={setIsAddDialogOpen}
                 productToEdit={editingProduct} 
+            />
+            <BulkAddProductsDialog
+                open={isBulkAddDialogOpen}
+                onOpenChange={setIsBulkAddDialogOpen}
             />
         </MainLayout>
     );

@@ -2,9 +2,10 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { addDoc, collection, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, updateDoc, deleteDoc, getDoc, writeBatch } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Product } from '@/lib/types';
+import { parseProductList } from '@/ai/flows/parse-product-list';
 
 interface AddProductInput {
     tenantId: string;
@@ -104,5 +105,43 @@ export async function duplicateProduct(tenantId: string, productId: string): Pro
     } catch (error) {
         console.error("Error duplicating product: ", error);
         throw new Error('Could not duplicate the product. Please try again.');
+    }
+}
+
+
+export async function bulkAddProducts(tenantId: string, productList: string): Promise<number> {
+    if (!tenantId || !productList) {
+        throw new Error('Tenant ID and product list are required.');
+    }
+
+    try {
+        const { products } = await parseProductList(productList);
+        if (!products || products.length === 0) {
+            return 0;
+        }
+        
+        const productsCollectionRef = collection(db, 'tenants', tenantId, 'products');
+        const batch = writeBatch(db);
+
+        products.forEach(product => {
+            const docRef = doc(productsCollectionRef); // Create a new doc with a new ID
+            batch.set(docRef, {
+                ...product,
+                // Set default values for fields not provided by AI
+                type: product.type || 'product',
+                pricingModel: product.pricingModel || 'one-time',
+                tags: product.tags || [],
+            });
+        });
+
+        await batch.commit();
+
+        revalidatePath('/settings/products');
+        revalidatePath('/proposals/new');
+        
+        return products.length;
+    } catch (error) {
+        console.error("Error bulk adding products: ", error);
+        throw new Error("Could not add products. Please check the format or try again.");
     }
 }

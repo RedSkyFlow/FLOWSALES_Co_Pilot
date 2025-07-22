@@ -8,4 +8,4 @@ import '@/ai/flows/suggest-case-studies.ts';
 import '@/ai/flows/analyze-meeting-transcript.ts';
 import '@/ai/flows/generate-brand-analysis.ts';
 import '@/ai/flows/generate-full-proposal.ts';
-
+import '@/ai/flows/parse-product-list.ts';
