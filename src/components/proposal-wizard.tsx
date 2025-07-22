@@ -195,7 +195,7 @@ export function ProposalWizard() {
 
   const handleBack = () => {
     if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+      setCurrentStep(currentStep + 1);
     }
   };
 
@@ -228,7 +228,7 @@ export function ProposalWizard() {
       
       try {
           const result = await analyzeMeetingTranscript({
-              transcript: [{ speaker: "Combined", text: meetingTranscript }],
+              transcript: meetingTranscript.split('\n').map(line => ({ speaker: "Combined", text: line })),
               availableModules: products.map(p => p.name),
               availableTemplates: templates.map(t => t.name),
           });
