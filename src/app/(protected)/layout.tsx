@@ -1,12 +1,8 @@
 
 'use client';
 
-import { AppDataProvider } from "@/components/app-data-provider";
 import { MainLayout } from "@/components/main-layout";
-import { TourProvider } from "@/hooks/use-tour";
 import type React from "react";
-import { useAppData } from "@/components/app-data-provider";
-import { TourStep } from "@/hooks/use-tour";
 import { AIChatAssistant } from "@/components/ai-chat-assistant";
 
 
@@ -18,14 +14,9 @@ export default function AuthenticatedLayout({
   children: React.ReactNode;
 }) {
   return (
-    <AppDataProvider>
-      <TourProvider>
-          <MainLayout>
-            {children}
-          </MainLayout>
-          {/* AI Chat Assistant is now a part of the layout, not the main content */}
-          <AIChatAssistant />
-      </TourProvider>
-    </AppDataProvider>
+    <MainLayout>
+      {children}
+      <AIChatAssistant />
+    </MainLayout>
   );
 }

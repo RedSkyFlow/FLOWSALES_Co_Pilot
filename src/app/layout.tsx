@@ -2,6 +2,8 @@ import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { Inter } from 'next/font/google';
+import { AppDataProvider } from '@/components/app-data-provider';
+import { TourProvider } from '@/hooks/use-tour';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -20,8 +22,12 @@ export default function RootLayout({
       <head>
       </head>
       <body className={`${inter.className} antialiased`}>
-        {children}
-        <Toaster />
+        <AppDataProvider>
+          <TourProvider>
+            {children}
+            <Toaster />
+          </TourProvider>
+        </AppDataProvider>
       </body>
     </html>
   );
