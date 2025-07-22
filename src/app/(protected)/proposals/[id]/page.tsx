@@ -56,6 +56,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { useAppData } from "@/components/app-data-provider";
+import Image from "next/image";
 
 function getStatusBadgeClasses(status: ProposalStatus) {
   const baseClasses = "capitalize text-base font-semibold px-4 py-2 rounded-lg border";
@@ -82,6 +84,45 @@ function getInitials(name: string) {
     return (names[0][0] + names[names.length - 1][0]).toUpperCase();
 }
 
+function hexToHsl(hex: string): string | null {
+    if (!hex || !/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex)) {
+        return null;
+    }
+    let r, g, b;
+    hex = hex.substring(1);
+    if (hex.length === 3) {
+        r = parseInt(hex[0] + hex[0], 16);
+        g = parseInt(hex[1] + hex[1], 16);
+        b = parseInt(hex[2] + hex[2], 16);
+    } else {
+        r = parseInt(hex.substring(0, 2), 16);
+        g = parseInt(hex.substring(2, 4), 16);
+        b = parseInt(hex.substring(4, 6), 16);
+    }
+
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+
+    if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+    
+    h = Math.round(h * 360);
+    s = Math.round(s * 100);
+    l = Math.round(l * 100);
+
+    return `${h} ${s}% ${l}%`;
+}
+
+
 export default function ProposalDetailPage() {
   const params = useParams();
   const proposalId = params.id as string;
@@ -89,6 +130,7 @@ export default function ProposalDetailPage() {
   const [user, loadingAuth] = useAuthState(auth);
   const { toast } = useToast();
   const proposalContentRef = useRef<HTMLDivElement>(null);
+  const { brandingSettings, loading: loadingAppData } = useAppData();
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -318,7 +360,7 @@ export default function ProposalDetailPage() {
   };
 
 
-  if (isLoading || loadingAuth) {
+  if (isLoading || loadingAuth || loadingAppData) {
       return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin"/></div>
   }
 
@@ -330,15 +372,28 @@ export default function ProposalDetailPage() {
   const pendingSuggestions = suggestedEdits.filter(s => s.status === 'pending');
   const canBeAccepted = proposal.status === 'sent' || proposal.status === 'viewed' || proposal.status === 'changes_requested';
 
+  const dynamicStyles: React.CSSProperties = {};
+  if (brandingSettings?.primaryColor) {
+      const primaryHsl = hexToHsl(brandingSettings.primaryColor);
+      if (primaryHsl) {
+        dynamicStyles['--primary-proposal'] = primaryHsl;
+      }
+  }
+
   return (
     <>
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-            <div ref={proposalContentRef} className="space-y-8 bg-background p-8 rounded-lg">
+            <div ref={proposalContentRef} className="space-y-8 bg-background p-8 rounded-lg proposal-brand-scope" style={dynamicStyles}>
                 {/* Header */}
                 <div className="pb-6 border-b border-border">
-                    <div className="flex justify-between items-start">
-                        <div>
+                    <div className="flex justify-between items-start gap-4">
+                        {brandingSettings?.logoUrl && (
+                            <div className="relative w-32 h-16 shrink-0">
+                                <Image src={brandingSettings.logoUrl} alt={`${brandingSettings.companyName || ''} Logo`} fill className="object-contain" />
+                            </div>
+                        )}
+                        <div className="flex-grow">
                             <h1 className="text-4xl font-bold text-foreground">{proposal.title}</h1>
                             <p className="text-lg text-muted-foreground mt-1">For {proposal.clientName || 'Unknown Client'}</p>
                         </div>
@@ -382,7 +437,7 @@ export default function ProposalDetailPage() {
             {/* Proposal Content */}
             <Card>
                 <CardHeader>
-                <CardTitle className="text-2xl flex items-center gap-2"><FileText className="text-primary"/> Proposal Sections</CardTitle>
+                <CardTitle className="text-2xl flex items-center gap-2"><FileText className="text-primary-proposal"/> Proposal Sections</CardTitle>
                 </CardHeader>
                 <CardContent className="prose dark:prose-invert max-w-none space-y-6">
                     {proposal.sections.map((section, index) => (
@@ -401,7 +456,7 @@ export default function ProposalDetailPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-2xl flex items-center gap-2"><Briefcase className="text-primary"/> Included Products</CardTitle>
+                    <CardTitle className="text-2xl flex items-center gap-2"><Briefcase className="text-primary-proposal"/> Included Products</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-0">
                     <div className="divide-y divide-border">
@@ -421,7 +476,7 @@ export default function ProposalDetailPage() {
                 <CardFooter className="bg-card-foreground/5 p-4 rounded-b-lg flex justify-end">
                     <div className="text-right">
                         <p className="text-muted-foreground">Total Value</p>
-                        <p className="text-2xl font-bold text-primary">{new Intl.NumberFormat('en-US', { style: 'currency', 'currency': 'USD' }).format(proposal.totalPrice)}</p>
+                        <p className="text-2xl font-bold text-primary-proposal">{new Intl.NumberFormat('en-US', { style: 'currency', 'currency': 'USD' }).format(proposal.totalPrice)}</p>
                     </div>
                 </CardFooter>
             </Card>

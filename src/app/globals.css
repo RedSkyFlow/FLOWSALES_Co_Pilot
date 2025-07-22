@@ -91,6 +91,9 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+  .proposal-brand-scope {
+    --primary: var(--primary-proposal, 180 100% 25%);
+  }
 }
 
 @layer components {
@@ -176,6 +179,6 @@
     color: #000000 !important;
 }
 
-.pdf-export-light .text-primary {
-    color: hsl(var(--primary)) !important;
+.pdf-export-light .text-primary-proposal {
+    color: hsl(var(--primary-proposal)) !important;
 }
