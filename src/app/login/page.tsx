@@ -91,7 +91,6 @@ export default function LoginPage() {
             <CardTitle className="text-2xl font-headline">Welcome</CardTitle>
             <CardDescription>
               Enter your credentials to access your sales dashboard.
-              Use agent@flowsales.com / password to sign in.
             </CardDescription>
           </div>
         </CardHeader>
@@ -102,7 +101,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="agent@flowsales.com"
+                placeholder="m@example.com"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
