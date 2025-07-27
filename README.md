@@ -160,6 +160,32 @@ This phase defines the advanced features that make the tool a game-changer.
 
 ---
 
+### **Phase 4: The Intelligent Ingestion & Onboarding Engine**
+
+This phase outlines the strategic approach for onboarding new tenants, ensuring the platform is both powerful enough for complex configurations (e.g., a telecom provider) and simple enough for basic businesses. It uses a hybrid model combining bulk data upload with AI-driven analysis and user verification.
+
+**1\. Step 1: Upload & Ingest**
+*   **Action:** A new client (tenant) uploads their existing product catalog (e.g., an Excel, CSV, or Google Sheet file) into a dedicated onboarding area within the application.
+*   **System Backend:** A file parser reads the data, identifying columns like 'Product Name', 'Category', 'Price', and 'SKU'. It populates the tenant's private product database, with each imported item initially tagged with a status of "Unverified."
+
+**2\. Step 2: AI Analysis, Research & Dependency Mapping**
+*   **Action:** After the upload, a background AI process begins automatically.
+*   **System Backend:** For each "Unverified" product, the AI performs:
+    *   **Internal Analysis:** Scans product names and descriptions from the uploaded file to identify potential relationships and hierarchies.
+    *   **External Research:** For key products (e.g., "Yealink T33G Phone"), the AI performs targeted web searches to understand technical specifications, requirements, and common dependencies (e.g., Power over Ethernet requirements).
+    *   **Dependency Proposal:** Based on its research, the AI formulates potential rules and dependencies. For example, it discovers a PoE phone requires either a PoE switch or a separate power adapter.
+
+**3\. Step 3: AI-Powered Verification Q&A**
+*   **Action:** The system engages the tenant's administrator in an efficient, AI-driven conversational wizard to finalize the setup.
+*   **System Backend & UI:** The AI presents its findings and proposed rules in plain English for confirmation.
+    *   **Example Prompt:** "I've analyzed your 'Yealink T33G IP Phone' and found it's a Power over Ethernet device. To ensure quotes are always accurate, I can create a rule: 'When adding a Yealink T33G, if a PoE Switch is not included, automatically add a 5V Power Adapter.' Would you like to activate this rule?"
+    *   **User Interaction:** The administrator can confirm ("Yes"), deny ("No, we always bundle the adapter"), or modify the rule ("Change that to 'prompt me to add it'").
+    *   **Configuration:** The system continues this Q&A process for other discovered dependencies and configurations (e.g., "Do you sell both cloud and on-site PBX systems, or should I disable one?").
+
+This hybrid approach ensures rapid onboarding via bulk upload while leveraging AI to intelligently structure complex business logic, which is then verified by a human for perfect accuracy.
+
+---
+
 # ***Comprehensive Design and style rules and guide***
 
 # 1. Introduction & Design Principles
