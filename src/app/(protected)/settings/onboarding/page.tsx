@@ -72,11 +72,10 @@ export default function OnboardingPage() {
                 if (result.success) {
                     toast({
                         title: 'Catalog Processing Initiated',
-                        description: `${result.count} products have been added as 'unverified'. The AI will now analyze them.`
+                        description: `${result.count} products have been added. You will now be taken to the verification step.`
                     });
-                    // In a real app, you would navigate to the next step of the onboarding flow
-                    // For now, we'll just re-route to the products page to show the result
-                    router.push('/settings/products');
+                    // Re-route to the new verification page
+                    router.push('/settings/products/verify');
                 } else {
                     toast({ variant: 'destructive', title: 'Processing Failed', description: result.message });
                 }

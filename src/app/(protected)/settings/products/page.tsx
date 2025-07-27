@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, query, onSnapshot, doc } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, where } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { MainLayout } from "@/components/main-layout";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle, Copy, Edit } from "lucide-react";
+import { Loader2, PlusCircle, Copy, Edit, Wand2 } from "lucide-react";
 import type { Product, User } from '@/lib/types';
 import { ProductEditDialog } from '@/components/product-edit-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -27,12 +27,14 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/components/ui/tooltip";
+import Link from 'next/link';
 
 export default function ProductsPage() {
     const [user, loadingAuth] = useAuthState(auth);
     const [userData, setUserData] = useState<User | null>(null);
     const [products, setProducts] = useState<Product[]>([]);
+    const [unverifiedCount, setUnverifiedCount] = useState(0);
     const [loadingData, setLoadingData] = useState(true);
     const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -52,8 +54,10 @@ export default function ProductsPage() {
                 
                 if (fetchedUserData.tenantId) {
                     const productsCollectionRef = collection(db, 'tenants', fetchedUserData.tenantId, 'products');
-                    const q = query(productsCollectionRef);
-                    const unsubscribeProducts = onSnapshot(q, (querySnapshot) => {
+                    
+                    // Query for all products
+                    const allProductsQuery = query(productsCollectionRef);
+                    const unsubscribeAll = onSnapshot(allProductsQuery, (querySnapshot) => {
                         const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
                         setProducts(productsData);
                         setLoadingData(false);
@@ -62,7 +66,17 @@ export default function ProductsPage() {
                         toast({ title: 'Error', description: 'Could not fetch products.', variant: 'destructive' });
                         setLoadingData(false);
                     });
-                    return () => unsubscribeProducts();
+
+                    // Query for unverified products count
+                    const unverifiedQuery = query(productsCollectionRef, where("status", "==", "unverified"));
+                    const unsubscribeUnverified = onSnapshot(unverifiedQuery, (querySnapshot) => {
+                        setUnverifiedCount(querySnapshot.size);
+                    });
+
+                    return () => {
+                        unsubscribeAll();
+                        unsubscribeUnverified();
+                    };
                 } else {
                      setLoadingData(false);
                      toast({ title: 'Error', description: 'No tenant ID found for user.', variant: 'destructive' });
@@ -114,13 +128,23 @@ export default function ProductsPage() {
                             </p>
                         </div>
                         {isAdmin && (
-                            <Button
-                                className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
-                                onClick={handleAddProduct}
-                            >
-                                <PlusCircle className="mr-2 h-5 w-5" />
-                                Add New Product
-                            </Button>
+                            <div className="flex gap-2">
+                                {unverifiedCount > 0 && (
+                                    <Button asChild variant="outline">
+                                        <Link href="/settings/products/verify" className="flex items-center">
+                                            <Wand2 className="mr-2 h-5 w-5 text-impact" />
+                                            Verify {unverifiedCount} Imported Products
+                                        </Link>
+                                    </Button>
+                                )}
+                                <Button
+                                    className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
+                                    onClick={handleAddProduct}
+                                >
+                                    <PlusCircle className="mr-2 h-5 w-5" />
+                                    Add New Product
+                                </Button>
+                            </div>
                         )}
                     </div>
                     
