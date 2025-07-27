@@ -9,22 +9,46 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { UploadCloud, Wand2, File, X, Loader2 } from 'lucide-react';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, db } from '@/lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import type { User } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
+import { processProductCatalog } from './actions';
+import { useRouter } from 'next/navigation';
 
 export default function OnboardingPage() {
+    const [user] = useAuthState(auth);
+    const [userData, setUserData] = useState<User | null>(null);
     const [file, setFile] = useState<File | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
+    const router = useRouter();
+
+    useState(() => {
+        if (!user) return;
+        const userDocRef = doc(db, 'users', user.uid);
+        const unsub = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setUserData(docSnap.data() as User);
+            }
+        });
+        return () => unsub();
+    });
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
         if (files && files.length > 0) {
             const selectedFile = files[0];
-            // Simple validation for file type
             if (selectedFile.type === 'text/csv' || selectedFile.name.endsWith('.csv')) {
                  setFile(selectedFile);
             } else {
-                // You would use a toast notification here in a real app
-                alert("Please upload a valid CSV file.");
+                toast({
+                    variant: "destructive",
+                    title: "Invalid File Type",
+                    description: "Please upload a valid CSV file.",
+                })
                 if(fileInputRef.current) {
                     fileInputRef.current.value = "";
                 }
@@ -33,18 +57,41 @@ export default function OnboardingPage() {
     };
     
     const handleProcessFile = () => {
-        if(!file) return;
-
-        console.log("Processing file:", file.name);
+        if(!file || !userData?.tenantId) {
+             toast({ variant: 'destructive', title: 'Error', description: 'File or user data is missing.' });
+             return;
+        }
+        
         setIsProcessing(true);
-
-        // TODO: Implement the backend logic for Step 1 (Upload & Ingest)
-        // This will involve reading the file and creating "Unverified" products in Firestore.
-        // For now, we just simulate a delay.
-        setTimeout(() => {
-             console.log("Finished processing.");
-             setIsProcessing(false);
-        }, 3000)
+        
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const csvContent = e.target?.result as string;
+            try {
+                const result = await processProductCatalog(userData.tenantId, csvContent);
+                if (result.success) {
+                    toast({
+                        title: 'Catalog Processing Initiated',
+                        description: `${result.count} products have been added as 'unverified'. The AI will now analyze them.`
+                    });
+                    // In a real app, you would navigate to the next step of the onboarding flow
+                    // For now, we'll just re-route to the products page to show the result
+                    router.push('/settings/products');
+                } else {
+                    toast({ variant: 'destructive', title: 'Processing Failed', description: result.message });
+                }
+            } catch (error) {
+                console.error(error);
+                toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred.' });
+            } finally {
+                setIsProcessing(false);
+            }
+        };
+        reader.onerror = () => {
+            toast({ variant: 'destructive', title: 'File Error', description: 'Could not read the file.' });
+            setIsProcessing(false);
+        };
+        reader.readAsText(file);
     };
     
     return (
