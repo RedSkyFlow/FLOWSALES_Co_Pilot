@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useSignInWithEmailAndPassword, useCreateUserWithEmailAndPassword } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { onUserCreate } from "@/app/users/actions";
 import { updateProfile } from "firebase/auth";
@@ -51,6 +51,7 @@ function FlowSalesLogo() {
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [signInWithEmailAndPassword, user, loading, error] = useSignInWithEmailAndPassword(auth);
   const [createUserWithEmailAndPassword, newUser, creating, createError] = useCreateUserWithEmailAndPassword(auth);
   const router = useRouter();
@@ -133,13 +134,26 @@ export default function LoginPage() {
                   Forgot your password?
                 </Link>
               </div>
-              <Input 
-                id="password" 
-                type="password" 
-                required 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div className="relative">
+                <Input 
+                  id="password" 
+                  type={showPassword ? "text" : "password"} 
+                  required 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    <span className="sr-only">{showPassword ? 'Hide password' : 'Show password'}</span>
+                </Button>
+              </div>
             </div>
             <Button type="submit" className="w-full" disabled={loading || creating}>
                 {(loading || creating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
