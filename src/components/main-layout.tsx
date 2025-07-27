@@ -11,13 +11,15 @@ import {
   Settings,
   BookUser,
   LogOut,
-  Loader2
+  Loader2,
+  HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthState, useSignOut } from 'react-firebase-hooks/auth';
 import { auth } from '@/lib/firebase';
 import { useEffect } from 'react';
 import { Button } from './ui/button';
+import { useTour } from './tour/use-tour';
 
 function FlowSalesLogo() {
   return (
@@ -47,19 +49,18 @@ function FlowSalesLogo() {
 }
 
 const navItems = [
-  { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/clients', icon: Users, label: 'Clients' },
   { href: '/templates', icon: Briefcase, label: 'Templates' },
 ];
 
 const secondaryNavItems = [
-    { href: '/guide', icon: BookUser, label: 'Help & Guide' },
     { href: '/settings', icon: Settings, label: 'Settings' },
 ];
 
 function NavItem({ href, icon: Icon, label }: typeof navItems[0]) {
     const pathname = usePathname();
-    const isActive = href === '/' ? pathname === href : pathname.startsWith(href);
+    const isActive = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
 
     return (
         <Link href={href}>
@@ -80,6 +81,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   const [user, loading] = useAuthState(auth);
   const [signOut] = useSignOut(auth);
   const router = useRouter();
+  const { startTour } = useTour();
 
   useEffect(() => {
       if (!loading && !user) {
@@ -112,6 +114,10 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
             {secondaryNavItems.map((item) => (
                 <NavItem key={item.href} {...item} />
             ))}
+             <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={startTour}>
+                <HelpCircle className="h-5 w-5 mr-3"/>
+                <span>Help &amp; Guide</span>
+            </Button>
             <Button variant="ghost" className="w-full justify-start text-muted-foreground" onClick={async () => await signOut()}>
                 <LogOut className="h-5 w-5 mr-3"/>
                 <span>Log Out</span>

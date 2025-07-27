@@ -47,10 +47,10 @@ import { collection, query, onSnapshot, doc } from "firebase/firestore";
 
 
 const steps = [
-  { name: "Select Template", icon: <FileText /> },
-  { name: "Client & AI Content", icon: <Lightbulb /> },
-  { name: "Select Modules", icon: <Package /> },
-  { name: "Review & Finalize", icon: <ClipboardCheck /> },
+  { name: "Select Template", id: "wizard-step-1" },
+  { name: "Client & AI Content", id: "wizard-step-2" },
+  { name: "Select Modules", id: "wizard-step-3" },
+  { name: "Review & Finalize", id: "wizard-step-4" },
 ];
 
 const iconMap = {
@@ -295,7 +295,7 @@ export function ProposalWizard() {
       </CardHeader>
       <CardContent className="min-h-[400px]">
         {currentStep === 0 && (
-          <div className="space-y-4">
+          <div className="space-y-4" id={steps[0].id}>
             <h2 className="text-2xl font-headline font-semibold text-center">
               Choose a Proposal Template
             </h2>
@@ -333,7 +333,7 @@ export function ProposalWizard() {
         )}
 
         {currentStep === 1 && (
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-2 gap-8" id={steps[1].id}>
             <div className="space-y-4">
                 <h2 className="text-2xl font-headline font-semibold">Client & AI Content</h2>
                 <div>
@@ -420,7 +420,7 @@ export function ProposalWizard() {
         )}
 
         {currentStep === 2 && (
-          <div className="space-y-4">
+          <div className="space-y-4" id={steps[2].id}>
             <h2 className="text-2xl font-headline font-semibold">Select Modules</h2>
             {loadingProducts ? <Skeleton className="h-64 w-full"/> : (
                 <div className="grid md:grid-cols-2 gap-6">
@@ -464,7 +464,7 @@ export function ProposalWizard() {
         )}
 
         {currentStep === 3 && (
-            <div className="text-center space-y-4 flex flex-col items-center">
+            <div className="text-center space-y-4 flex flex-col items-center" id={steps[3].id}>
                 <CheckCircle className="h-16 w-16 text-green-500" />
                 <h2 className="text-2xl font-headline font-semibold">Proposal Ready!</h2>
                 <p className="max-w-prose text-muted-foreground">

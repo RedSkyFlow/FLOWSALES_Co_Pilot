@@ -53,6 +53,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { trackProposalView, createSuggestedEdit, acceptSuggestedEdit, rejectSuggestedEdit } from "@/app/proposals/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
+import { useTour } from "@/components/tour/use-tour";
+import { proposalDetailTourSteps } from "@/components/tour/tour-steps";
 
 function getStatusBadgeClasses(status: ProposalStatus) {
   const baseClasses = "capitalize text-base font-semibold px-4 py-2 rounded-lg border";
@@ -102,7 +104,16 @@ export default function ProposalDetailPage({
   const [currentSection, setCurrentSection] = useState<{ section: ProposalSection; index: number } | null>(null);
   const [suggestionText, setSuggestionText] = useState("");
   const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
+
+  const { setSteps } = useTour();
   
+  const isSalesAgent = user?.uid === proposal?.salesAgentId;
+
+  useEffect(() => {
+    setSteps(proposalDetailTourSteps(isSalesAgent));
+  }, [setSteps, user, proposal, isSalesAgent]);
+
+
   useEffect(() => {
     // This hook runs on the client, so `params` is available.
     // We use a state to hold the id to avoid issues with server/client mismatch.
@@ -238,18 +249,17 @@ export default function ProposalDetailPage({
 
 
   if (isLoading || loadingAuth || !proposalId) {
-      return <MainLayout><div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin"/></div></MainLayout>
+      return <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin"/></div>
   }
 
   if (!proposal) {
-    return <MainLayout><div></div></MainLayout>;
+    return <div></div>;
   }
 
-  const isSalesAgent = user?.uid === proposal.salesAgentId;
   const pendingSuggestions = suggestedEdits.filter(s => s.status === 'pending');
 
   return (
-    <MainLayout>
+    <>
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
             {/* Header */}
@@ -273,7 +283,7 @@ export default function ProposalDetailPage({
             </div>
 
             {isSalesAgent && pendingSuggestions.length > 0 && (
-              <Card className="border-impact/50">
+              <Card id="tour-step-agent-2" className="border-impact/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-impact"><GitPullRequest /> Pending Suggestions</CardTitle>
                   <CardDescription>The client has suggested the following edits. Accept or reject them below.</CardDescription>
@@ -303,7 +313,7 @@ export default function ProposalDetailPage({
             </CardHeader>
             <CardContent className="prose dark:prose-invert max-w-none space-y-6">
                 {proposal.sections.map((section, index) => (
-                    <div key={index} className="relative group">
+                    <div key={index} className="relative group" id={index === 0 ? 'tour-step-client-1' : undefined}>
                       <h3 className="text-xl font-semibold border-b border-border pb-2 mb-2">{section.title}</h3>
                       <p className="whitespace-pre-wrap">{section.content}</p>
                       {!isSalesAgent && (
@@ -340,7 +350,7 @@ export default function ProposalDetailPage({
 
         {/* Sidebar */}
         <div className="space-y-6">
-          <Card>
+          <Card id="tour-step-client-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CheckCircle /> Client Actions
@@ -348,7 +358,7 @@ export default function ProposalDetailPage({
             </CardHeader>
             <CardContent className="space-y-2">
               <Button className="w-full" variant="secondary" disabled={isSalesAgent}>
-                <PenSquare className="mr-2 h-4 w-4" /> Accept & E-Sign
+                <PenSquare className="mr-2 h-4 w-4" /> Accept &amp; E-Sign
               </Button>
                <Button variant="outline" className="w-full">
                 <Download className="mr-2 h-4 w-4" /> Download as PDF
@@ -360,7 +370,7 @@ export default function ProposalDetailPage({
             </CardContent>
           </Card>
 
-          <Card>
+          <Card id="tour-step-agent-1">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Eye /> Engagement Analytics
@@ -380,10 +390,10 @@ export default function ProposalDetailPage({
             </CardContent>
           </Card>
         
-          <Card>
+          <Card id="tour-step-3">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MessageCircle /> Comments & Discussion
+                <MessageCircle /> Comments &amp; Discussion
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -457,6 +467,6 @@ export default function ProposalDetailPage({
               </SheetFooter>
           </SheetContent>
       </Sheet>
-    </MainLayout>
+    </>
   );
 }
