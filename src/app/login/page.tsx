@@ -14,10 +14,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSignInWithEmailAndPassword, useCreateUserWithEmailAndPassword } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { onUserCreate } from "@/app/users/actions";
+import { updateProfile } from "firebase/auth";
 
 function FlowSalesLogo() {
   return (
@@ -59,9 +61,23 @@ export default function LoginPage() {
     signInWithEmailAndPassword(email, password);
   };
   
-  const handleSignUp = (e: React.FormEvent) => {
-      e.preventDefault();
-      createUserWithEmailAndPassword(email, password);
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+        const userCredential = await createUserWithEmailAndPassword(email, password);
+        if (userCredential) {
+            const displayName = email.split('@')[0];
+            await updateProfile(userCredential.user, { displayName });
+            await onUserCreate({
+                uid: userCredential.user.uid,
+                email: userCredential.user.email,
+                displayName: displayName,
+            });
+            // The useEffect will handle the redirect
+        }
+    } catch (e) {
+        // The useEffect for createError will handle displaying the toast
+    }
   };
 
   useEffect(() => {
@@ -72,7 +88,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (error) {
-        toast({ title: "Login Failed", description: error.message, variant: "destructive"});
+        toast({ title: "Login Failed", description: "Invalid email or password. Please try again or sign up.", variant: "destructive"});
     }
     if (createError) {
         toast({ title: "Sign Up Failed", description: createError.message, variant: "destructive"});
