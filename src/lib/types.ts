@@ -20,6 +20,7 @@ export interface User {
   // Role is now within the context of a tenant
   role: 'admin' | 'sales_agent';
   tenantId: string; // The tenant this user belongs to
+  subscription?: Tenant['subscription']; // Add subscription to user type for easier access
 }
 
 // Client of our Tenant
