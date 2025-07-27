@@ -7,6 +7,31 @@ import { addDoc, collection, writeBatch, doc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 /**
+ * A robust CSV parser that handles commas inside quoted fields.
+ * @param line The CSV line to parse.
+ * @returns An array of strings representing the columns.
+ */
+function parseCsvLine(line: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    result.push(current.trim());
+    return result;
+}
+
+
+/**
  * Parses a CSV file content and creates unverified products for a given tenant.
  * @param tenantId The ID of the tenant.
  * @param csvContent The string content of the uploaded CSV file.
@@ -22,37 +47,42 @@ export async function processProductCatalog(tenantId: string, csvContent: string
             return { success: false, message: 'CSV file must have a header and at least one data row.', count: 0 };
         }
         
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+        const headers = parseCsvLine(lines[0]).map(h => h.trim().toLowerCase().replace(/"/g, ''));
         const products: Omit<Product, 'id'>[] = [];
 
         // Flexible header mapping
-        const nameIndex = headers.findIndex(h => h.includes('name') || h.includes('description'));
+        const nameIndex = headers.findIndex(h => h.includes('name') || h.includes('product') || h.includes('description'));
         const descriptionIndex = headers.findIndex(h => h.includes('description'));
         const basePriceIndex = headers.findIndex(h => h.includes('price') || h.includes('selling price') || h.includes('retail price'));
         const pricingModelIndex = headers.findIndex(h => h.includes('pricing') || h.includes('model'));
         const typeIndex = headers.findIndex(h => h.includes('type'));
         const tagsIndex = headers.indexOf('tags');
 
-        if (nameIndex === -1 || basePriceIndex === -1) {
-            return { success: false, message: 'CSV must contain at least a "name" (or "description") and a "price" column.', count: 0 };
+        if (nameIndex === -1) {
+            return { success: false, message: 'CSV must contain at least a "name" or "description" column.', count: 0 };
         }
 
         for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+            const values = parseCsvLine(lines[i]).map(v => v.trim().replace(/"/g, ''));
             
-            if (values.length < headers.length) continue;
+            // Skip empty lines or lines that don't match header length
+            if (values.length < headers.length || values.every(v => v === '')) continue;
 
-            const basePrice = parseFloat(values[basePriceIndex]);
-            if (isNaN(basePrice)) continue; // Skip rows with invalid price
+            // Use a default price of 0 if parsing fails or index is invalid
+            const basePrice = basePriceIndex !== -1 ? parseFloat(values[basePriceIndex]) : NaN;
+
+            const productName = values[nameIndex] || 'Unnamed Product';
+            if (!productName || productName === 'Unnamed Product') {
+                continue; // Skip rows without a valid name
+            }
 
             const productData: Omit<Product, 'id'> = {
-                name: values[nameIndex] || 'Unnamed Product',
+                name: productName,
                 description: descriptionIndex !== -1 ? values[descriptionIndex] || '' : 'No description provided.',
-                basePrice: basePrice,
+                basePrice: isNaN(basePrice) ? 0 : basePrice,
                 pricingModel: (pricingModelIndex !== -1 ? values[pricingModelIndex] as any : 'one-time') || 'one-time',
                 type: (typeIndex !== -1 ? values[typeIndex] as any : 'product') || 'product',
                 tags: tagsIndex !== -1 && values[tagsIndex] ? values[tagsIndex].split(';').map(t => t.trim()) : [],
-                // @ts-ignore - Adding a temporary status for the onboarding flow
                 status: 'unverified'
             };
             products.push(productData);
@@ -75,7 +105,7 @@ export async function processProductCatalog(tenantId: string, csvContent: string
         revalidatePath('/settings/products');
         revalidatePath('/settings/onboarding');
 
-        return { success: true, message: 'Successfully imported products.', count: products.length };
+        return { success: true, message: `Successfully imported ${products.length} products.`, count: products.length };
 
     } catch (error) {
         console.error("Error processing product catalog: ", error);
