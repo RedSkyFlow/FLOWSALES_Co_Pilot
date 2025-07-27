@@ -59,6 +59,16 @@ const iconMap = {
     FileText: <FileText className="h-8 w-8 text-primary" />,
 }
 
+// Define a simple type for a rule for now.
+// In a real app, this would likely be in `types.ts`
+type BusinessRule = {
+    id: string;
+    name: string;
+    description: string;
+    condition: string; // e.g., "if product 'Yealink T33G' is selected"
+    action: string;    // e.g., "add product '5V Power Adapter'"
+}
+
 export function ProposalWizard() {
   const router = useRouter();
   const { toast } = useToast();
@@ -78,6 +88,8 @@ export function ProposalWizard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
+  const [rules, setRules] = useState<BusinessRule[]>([]);
+
 
   const [painPoints, setPainPoints] = useState("");
   const [meetingTranscript, setMeetingTranscript] = useState("");
@@ -118,6 +130,8 @@ export function ProposalWizard() {
     const clientsQuery = query(collection(db, 'tenants', tenantId, 'clients'));
     const productsQuery = query(collection(db, 'tenants', tenantId, 'products'));
     const templatesQuery = query(collection(db, 'tenants', tenantId, 'proposal_templates'));
+    const rulesQuery = query(collection(db, 'tenants', tenantId, 'rules'));
+
 
     const unsubClients = onSnapshot(clientsQuery, (snapshot) => {
         setClients(snapshot.docs.map(d => ({id: d.id, ...d.data()} as Client)));
@@ -131,14 +145,45 @@ export function ProposalWizard() {
         setTemplates(snapshot.docs.map(d => ({id: d.id, ...d.data()} as ProposalTemplate)));
         setLoadingTemplates(false);
     });
+    const unsubRules = onSnapshot(rulesQuery, (snapshot) => {
+        setRules(snapshot.docs.map(d => ({id: d.id, ...d.data()} as BusinessRule)));
+    });
 
     return () => {
         unsubClients();
         unsubProducts();
         unsubTemplates();
+        unsubRules();
     }
 
   }, [userData]);
+
+
+  // Effect for checking rules
+  useEffect(() => {
+    if (rules.length === 0 || products.length === 0) return;
+
+    const selectedProductNames = new Set(selectedProducts.map(p => p.name));
+
+    rules.forEach(rule => {
+        // Simple string matching for condition and action for this POC
+        // e.g. condition: "if product 'Product A' is selected"
+        const conditionProductMatch = /if product '([^']+)' is selected/.exec(rule.condition);
+        
+        if (conditionProductMatch && selectedProductNames.has(conditionProductMatch[1])) {
+             // e.g. action: "add product 'Product B'"
+            const actionProductMatch = /add product '([^']+)'/.exec(rule.action);
+            
+            if(actionProductMatch && !selectedProductNames.has(actionProductMatch[1])) {
+                 toast({
+                    title: "Rule Suggestion",
+                    description: `This configuration may also require "${actionProductMatch[1]}". Please review your selections.`,
+                 });
+            }
+        }
+    });
+
+  }, [selectedProducts, rules, products, toast]);
 
 
   const progress = ((currentStep + 1) / steps.length) * 100;
@@ -507,3 +552,5 @@ export function ProposalWizard() {
     </Card>
   );
 }
+
+    
