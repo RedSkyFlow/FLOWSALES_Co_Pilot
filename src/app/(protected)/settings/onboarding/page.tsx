@@ -14,7 +14,7 @@ import { auth, db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import type { User, Tenant } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { ingestAndAnalyzeConfigurator, DocumentAnalysisOutput } from '@/ai/flows/ingest-and-analyze-configurator';
+import { ingestAndAnalyzeConfigurator, type DocumentAnalysisOutput } from '@/ai/flows/ingest-and-analyze-configurator';
 import { saveConfiguration, createTemplateFromDocument } from './actions';
 import { useRouter } from 'next/navigation';
 
@@ -375,64 +375,62 @@ export default function OnboardingPage() {
     const hasProAccess = tenant?.subscription?.tier === 'pro' || tenant?.subscription?.tier === 'enterprise';
 
     return (
-        <MainLayout>
-            <div className="space-y-8 max-w-6xl mx-auto">
-                 <div>
-                    <h1 className="text-4xl font-bold">Intelligent Onboarding</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Use our AI-powered tools to rapidly configure your sales environment.
-                    </p>
-                </div>
-                
-                {isLoadingUser ? (
-                    <div className="flex justify-center items-center py-16">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                ) : !userData || !tenant ? (
-                    <Card><CardContent><p className="p-4">Could not load user or tenant data.</p></CardContent></Card>
-                ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                       {hasProAccess ? (
-                            <DocumentIntelligenceEngine tenantId={tenant.id} />
-                       ) : (
-                           <FeatureLockCard title={<><UploadCloud /> Document Intelligence Engine</>} description="Upload your entire product catalog, price list, or configurator spreadsheet (XLSX, PDF, DOCX) and let the AI extract all products and business rules automatically.">
-                                <div className="flex-grow">
-                                    <Label htmlFor="file-upload" className="sr-only">Upload Document</Label>
-                                    <Input 
-                                        id="file-upload" 
-                                        type="file" 
-                                        disabled
-                                        className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                                    />
-                                </div>
-                                <Button disabled className="w-full">
-                                    <Wand2 className="mr-2 h-4 w-4" />
-                                    Analyze with AI
-                                </Button>
-                           </FeatureLockCard>
-                       )}
-                       {hasProAccess ? (
-                            <CreateTemplateEngine tenantId={tenant.id} />
-                       ): (
-                           <FeatureLockCard title={<><File /> Create Template from Document</>} description="Upload an existing proposal or brochure (PDF, DOCX). The AI will analyze its structure and create a new, editable template for you automatically.">
-                                <div className="flex-grow">
-                                    <Label htmlFor="file-upload-template-lock" className="sr-only">Upload Document</Label>
-                                    <Input 
-                                        id="file-upload-template-lock" 
-                                        type="file" 
-                                        disabled
-                                        className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                                    />
-                                </div>
-                                <Button disabled className="w-full">
-                                    <Wand2 className="mr-2 h-4 w-4" />
-                                    Analyze and Create Template
-                                </Button>
-                           </FeatureLockCard>
-                       )}
-                    </div>
-                )}
+        <div className="space-y-8 max-w-6xl mx-auto">
+             <div>
+                <h1 className="text-4xl font-bold">Intelligent Onboarding</h1>
+                <p className="text-muted-foreground mt-1">
+                    Use our AI-powered tools to rapidly configure your sales environment.
+                </p>
             </div>
-        </MainLayout>
+            
+            {isLoadingUser ? (
+                <div className="flex justify-center items-center py-16">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            ) : !userData || !tenant ? (
+                <Card><CardContent><p className="p-4">Could not load user or tenant data.</p></CardContent></Card>
+            ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                   {hasProAccess ? (
+                        <DocumentIntelligenceEngine tenantId={tenant.id} />
+                   ) : (
+                       <FeatureLockCard title={<><UploadCloud /> Document Intelligence Engine</>} description="Upload your entire product catalog, price list, or configurator spreadsheet (XLSX, PDF, DOCX) and let the AI extract all products and business rules automatically.">
+                            <div className="flex-grow">
+                                <Label htmlFor="file-upload" className="sr-only">Upload Document</Label>
+                                <Input 
+                                    id="file-upload" 
+                                    type="file" 
+                                    disabled
+                                    className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                />
+                            </div>
+                            <Button disabled className="w-full">
+                                <Wand2 className="mr-2 h-4 w-4" />
+                                Analyze with AI
+                            </Button>
+                       </FeatureLockCard>
+                   )}
+                   {hasProAccess ? (
+                        <CreateTemplateEngine tenantId={tenant.id} />
+                   ): (
+                       <FeatureLockCard title={<><File /> Create Template from Document</>} description="Upload an existing proposal or brochure (PDF, DOCX). The AI will analyze its structure and create a new, editable template for you automatically.">
+                            <div className="flex-grow">
+                                <Label htmlFor="file-upload-template-lock" className="sr-only">Upload Document</Label>
+                                <Input 
+                                    id="file-upload-template-lock" 
+                                    type="file" 
+                                    disabled
+                                    className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                />
+                            </div>
+                            <Button disabled className="w-full">
+                                <Wand2 className="mr-2 h-4 w-4" />
+                                Analyze and Create Template
+                            </Button>
+                       </FeatureLockCard>
+                   )}
+                </div>
+            )}
+        </div>
     );
 }
