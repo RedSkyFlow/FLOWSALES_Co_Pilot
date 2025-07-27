@@ -85,7 +85,7 @@ export function ProductEditDialog({ open, onOpenChange, tenantId, product }: Pro
       };
       
       if (product) {
-        // await updateProduct(tenantId, product.id, productData);
+        await updateProduct(tenantId, product.id, productData);
         toast({ title: "Product Updated", description: `${data.name} has been updated.` });
       } else {
         await createProduct(tenantId, productData);
