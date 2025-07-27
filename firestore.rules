@@ -3,59 +3,72 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Default: Deny all reads and writes
-    match /{document=**} {
-      allow read, write: if false;
+    // Helper Functions
+    function isUserAuthenticated() {
+      return request.auth != null;
     }
 
-    // Tenant-based security structure
-    match /tenants/{tenantId} {
+    function getRequestingUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
 
-      // Tenant document itself (can add rules for tenant admins later)
-      allow read, write: if false;
+    function isUserInTenant(tenantId) {
+      return isUserAuthenticated() && getRequestingUserData().tenantId == tenantId;
+    }
 
-      // Proposals: Only the assigned sales agent can read or write.
-      match /proposals/{proposalId} {
-        allow read, write: if request.auth.uid == resource.data.salesAgentId;
+    function isUserRole(role) {
+      return isUserAuthenticated() && getRequestingUserData().role == role;
+    }
 
-        // Comments & Edits: Users can read, but only authenticated users can create.
-        match /comments/{commentId} {
-            allow read: if true;
-            allow create: if request.auth != null;
-        }
-        match /suggested_edits/{editId} {
-            allow read: if true;
-            allow create: if request.auth != null;
-            // Only the sales agent can update (accept/reject)
-            allow update: if get(/databases/$(database)/documents/tenants/$(tenantId)/proposals/$(proposalId)).data.salesAgentId == request.auth.uid;
-        }
-      }
-
-      // Clients: Any authenticated user within the tenant can read.
-      // Only admins or assigned agents should write. (NEEDS MORE SPECIFIC RULES)
-      match /clients/{clientId} {
-        allow read: if request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
-        allow write: if false; // Placeholder: Needs admin/role check
-      }
-
-      // Templates: Authenticated users can read.
-      // Only admins should write. (NEEDS MORE SPECIFIC RULES)
-      match /proposal_templates/{templateId} {
-        allow read: if request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
-        allow write: if false; // Placeholder: Needs admin role check
-      }
-      
-      // Products: Authenticated users can read.
-      // Only admins should write. (NEEDS MORE SPECIFIC RULES)
-      match /products/{productId} {
-         allow read: if request.auth != null && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tenantId == tenantId;
-         allow write: if false; // Placeholder: Needs admin role check
-      }
+    // Matches any document in the 'users' collection.
+    // Users can read/write their own data.
+    match /users/{userId} {
+      allow read, update: if isUserAuthenticated() && request.auth.uid == userId;
+      allow create: if isUserAuthenticated();
     }
     
-    // Users: A user can read/write their own document.
-    match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
+    // Multi-tenant data structure
+    match /tenants/{tenantId} {
+    
+      // Allow tenant document reads for its members
+      allow get: if isUserInTenant(tenantId);
+
+      // Clients can be managed by any user within the tenant
+      match /clients/{clientId} {
+        allow read, write: if isUserInTenant(tenantId);
+      }
+
+      // Proposals can only be accessed by the assigned agent
+      match /proposals/{proposalId} {
+        allow read, write: if isUserAuthenticated() && request.auth.uid == resource.data.salesAgentId;
+        
+        // Comments and edits can be made by authenticated users, 
+        // with more granular logic handled in backend functions.
+        match /comments/{commentId} {
+            allow read, write: if isUserAuthenticated();
+        }
+        match /suggested_edits/{editId} {
+            allow read, write: if isUserAuthenticated();
+        }
+      }
+
+      // Templates can be read by any user in the tenant, but only managed by admins.
+      match /proposal_templates/{templateId} {
+        allow read: if isUserInTenant(tenantId);
+        allow write: if isUserInTenant(tenantId) && isUserRole('admin');
+      }
+
+      // Products can be read by any user in the tenant, but only managed by admins.
+      match /products/{productId} {
+        allow read: if isUserInTenant(tenantId);
+        allow write: if isUserInTenant(tenantId) && isUserRole('admin');
+      }
+      
+      // Usage and budget can be read by any user in the tenant, but only written to by backend processes (not users)
+      match /usage_ledgers/{ledgerId} {
+        allow read: if isUserInTenant(tenantId);
+        allow write: if false; // Only backend can write
+      }
     }
   }
 }
