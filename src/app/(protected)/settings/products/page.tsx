@@ -151,10 +151,11 @@ export default function ProductsPage() {
                                             products.map((product) => (
                                                 <TableRow key={product.id}>
                                                     <TableCell>
-                                                        {/* @ts-ignore */}
-                                                        {product.status === 'unverified' && <Badge variant="destructive">Unverified</Badge>}
-                                                        {/* @ts-ignore */}
-                                                        {product.status !== 'unverified' && <Badge variant="success">Verified</Badge>}
+                                                        {product.status === 'unverified' ? (
+                                                            <Badge variant="destructive">Unverified</Badge>
+                                                        ) : (
+                                                            <Badge variant="success">Verified</Badge>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell className="font-medium">{product.name}</TableCell>
                                                     <TableCell><Badge variant="outline" className="capitalize">{product.type}</Badge></TableCell>
