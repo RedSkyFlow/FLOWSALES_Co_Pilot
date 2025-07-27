@@ -3,7 +3,7 @@
 
 import { MainLayout } from "@/components/main-layout";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Briefcase, Building, Palette, ShieldCheck, Users, ArrowRight } from "lucide-react";
+import { Briefcase, Building, Palette, ShieldCheck, Users, ArrowRight, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +20,7 @@ const settingsPanels = [
         description: "Add or remove team members.",
         icon: <Users className="h-6 w-6 text-primary" />,
         href: "/settings/users",
-        disabled: false,
+        disabled: true, // Re-enable when functionality is built
     },
     {
         title: "Branding",
@@ -42,6 +42,13 @@ const settingsPanels = [
         icon: <ShieldCheck className="h-6 w-6 text-primary" />,
         href: "/settings/legal",
         disabled: true,
+    },
+    {
+        title: "Intelligent Onboarding",
+        description: "Import products and configure rules with AI.",
+        icon: <Wand2 className="h-6 w-6 text-primary" />,
+        href: "/settings/onboarding",
+        disabled: false,
     }
 ]
 
