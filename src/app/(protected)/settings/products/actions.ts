@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import type { Product } from '@/lib/types';
-import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 type ProductInput = Omit<Product, 'id'>;
@@ -46,5 +46,39 @@ export async function updateProduct(tenantId: string, productId: string, data: P
     } catch (error) {
         console.error("Error updating product: ", error);
         throw new Error('Could not update the product. Please try again.');
+    }
+}
+
+/**
+ * Duplicates an existing product for a given tenant.
+ * @param tenantId The ID of the tenant.
+ * @param productId The ID of the product to duplicate.
+ */
+export async function duplicateProduct(tenantId: string, productId: string) {
+    if (!tenantId || !productId) {
+        throw new Error('Tenant ID and Product ID are required.');
+    }
+    
+    try {
+        const productDocRef = doc(db, 'tenants', tenantId, 'products', productId);
+        const productSnap = await getDoc(productDocRef);
+
+        if (!productSnap.exists()) {
+            throw new Error('Product not found');
+        }
+
+        const originalProduct = productSnap.data() as ProductInput;
+        const newProductData: ProductInput = {
+            ...originalProduct,
+            name: `${originalProduct.name} (Copy)`,
+        };
+
+        const productsCollectionRef = collection(db, 'tenants', tenantId, 'products');
+        await addDoc(productsCollectionRef, newProductData);
+
+        revalidatePath('/settings/products');
+    } catch (error) {
+        console.error("Error duplicating product: ", error);
+        throw new Error('Could not duplicate the product. Please try again.');
     }
 }

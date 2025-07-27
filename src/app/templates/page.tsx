@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, onSnapshot, doc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -12,13 +11,16 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { PlusCircle, Users, Package, FileText, Loader2, ArrowRight } from "lucide-react";
+import { PlusCircle, Users, Package, FileText, Loader2, ArrowRight, Copy } from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import type { ProposalTemplate, User } from "@/lib/types";
 import Link from 'next/link';
+import { duplicateTemplate } from './actions';
+import { useToast } from '@/hooks/use-toast';
 
 // A map to dynamically render icons based on the string from mock data
 const iconMap: Record<ProposalTemplate['icon'], React.ForwardRefExoticComponent<Omit<LucideProps, "ref"> & React.RefAttributes<SVGSVGElement>>> = {
@@ -28,11 +30,11 @@ const iconMap: Record<ProposalTemplate['icon'], React.ForwardRefExoticComponent<
 };
 
 export default function TemplatesPage() {
-    const router = useRouter();
     const [user, loadingAuth] = useAuthState(auth);
     const [userData, setUserData] = useState<User | null>(null);
     const [templates, setTemplates] = useState<ProposalTemplate[]>([]);
     const [loading, setLoading] = useState(true);
+    const { toast } = useToast();
 
     useEffect(() => {
         if (loadingAuth || !user) {
@@ -67,6 +69,18 @@ export default function TemplatesPage() {
         return () => unsubscribeUser();
     }, [user, loadingAuth]);
 
+    const handleDuplicateTemplate = async (templateId: string) => {
+        if (!userData) return;
+        try {
+            await duplicateTemplate(userData.tenantId, templateId);
+            toast({ title: 'Template Duplicated', description: 'A copy of the template has been created.' });
+        } catch (error) {
+            toast({ title: 'Error', description: 'Could not duplicate template.', variant: 'destructive' });
+        }
+    };
+
+    const isAdmin = userData?.role === 'admin';
+
   return (
     <MainLayout>
       <div className="space-y-8">
@@ -77,7 +91,7 @@ export default function TemplatesPage() {
               Create, view, and manage your reusable proposal templates.
             </p>
           </div>
-          {userData?.role === 'admin' && (
+          {isAdmin && (
             <Button
                 asChild
                 className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
@@ -113,9 +127,18 @@ export default function TemplatesPage() {
                             <CardContent className="flex-grow">
                                 <CardDescription>{template.description}</CardDescription>
                             </CardContent>
-                            <CardFooter>
-                                 <Button variant="secondary" disabled={userData?.role !== 'admin'} className="w-full">
-                                     Manage Template <ArrowRight className="ml-2 h-4 w-4"/>
+                            <CardFooter className="flex items-center gap-2">
+                                 <Button variant="outline" disabled={!isAdmin} className="w-full">
+                                     Manage <ArrowRight className="ml-2 h-4 w-4"/>
+                                 </Button>
+                                 <Button 
+                                    variant="outline" 
+                                    size="icon" 
+                                    disabled={!isAdmin} 
+                                    onClick={() => handleDuplicateTemplate(template.id)}
+                                    aria-label="Duplicate Template"
+                                 >
+                                    <Copy className="h-4 w-4" />
                                  </Button>
                             </CardFooter>
                         </Card>
@@ -124,7 +147,7 @@ export default function TemplatesPage() {
                  {templates.length === 0 && (
                     <div className="text-center py-16 text-muted-foreground col-span-full">
                         <p>No proposal templates found.</p>
-                        {userData?.role === 'admin' && <p>Click "Create New Template" to get started.</p>}
+                        {isAdmin && <p>Click "Create New Template" to get started.</p>}
                     </div>
                  )}
             </div>

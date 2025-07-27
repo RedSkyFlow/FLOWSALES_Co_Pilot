@@ -16,10 +16,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle, DollarSign, Tag, Edit } from "lucide-react";
+import { Loader2, PlusCircle, Copy, Edit } from "lucide-react";
 import type { Product, User } from '@/lib/types';
 import { ProductEditDialog } from '@/components/product-edit-dialog';
 import { Badge } from '@/components/ui/badge';
+import { duplicateProduct } from './actions';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export default function ProductsPage() {
     const [user, loadingAuth] = useAuthState(auth);
@@ -28,6 +36,7 @@ export default function ProductsPage() {
     const [loadingData, setLoadingData] = useState(true);
     const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const { toast } = useToast();
 
     useEffect(() => {
         if (loadingAuth || !user) {
@@ -63,86 +72,124 @@ export default function ProductsPage() {
     const handleAddProduct = () => {
         setSelectedProduct(null);
         setIsProductDialogOpen(true);
-    }
+    };
+
+    const handleEditProduct = (product: Product) => {
+        setSelectedProduct(product);
+        setIsProductDialogOpen(true);
+    };
     
+    const handleDuplicateProduct = async (productId: string) => {
+        if (!userData) return;
+        try {
+            await duplicateProduct(userData.tenantId, productId);
+            toast({ title: 'Product Duplicated', description: 'A copy of the product has been created.' });
+        } catch (error) {
+            toast({ title: 'Error', description: 'Could not duplicate product.', variant: 'destructive' });
+        }
+    };
+    
+    const isAdmin = userData?.role === 'admin';
+
     return (
         <MainLayout>
-            <div className="space-y-8">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-4xl font-bold">Product Catalog</h1>
-                        <p className="text-muted-foreground mt-1">
-                            Manage the products and services your team can sell.
-                        </p>
+             <TooltipProvider>
+                <div className="space-y-8">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                            <h1 className="text-4xl font-bold">Product Catalog</h1>
+                            <p className="text-muted-foreground mt-1">
+                                Manage the products and services your team can sell.
+                            </p>
+                        </div>
+                        {isAdmin && (
+                            <Button
+                                className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
+                                onClick={handleAddProduct}
+                            >
+                                <PlusCircle className="mr-2 h-5 w-5" />
+                                Add New Product
+                            </Button>
+                        )}
                     </div>
-                    {userData?.role === 'admin' && (
-                        <Button
-                            className="bg-secondary text-secondary-foreground font-semibold rounded-lg px-4 py-2 flex items-center gap-2 transition-all duration-300 hover:bg-secondary/90 hover:shadow-glow-secondary hover:-translate-y-0.5"
-                            onClick={handleAddProduct}
-                        >
-                            <PlusCircle className="mr-2 h-5 w-5" />
-                            Add New Product
-                        </Button>
-                    )}
-                </div>
-                
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Your Products & Services</CardTitle>
-                        <CardDescription>The complete list of items available for proposals.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {loadingData ? (
-                            <div className="flex justify-center items-center py-16">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            </div>
-                        ) : (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Type</TableHead>
-                                        <TableHead>Pricing Model</TableHead>
-                                        <TableHead className="text-right">Base Price</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {products.length > 0 ? (
-                                        products.map((product) => (
-                                            <TableRow key={product.id}>
-                                                <TableCell className="font-medium">{product.name}</TableCell>
-                                                <TableCell><Badge variant="outline" className="capitalize">{product.type}</Badge></TableCell>
-                                                <TableCell className="capitalize">{product.pricingModel.replace('_', '-')}</TableCell>
-                                                <TableCell className="text-right font-mono">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(product.basePrice)}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon" disabled>
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
+                    
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Your Products & Services</CardTitle>
+                            <CardDescription>The complete list of items available for proposals.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {loadingData ? (
+                                <div className="flex justify-center items-center py-16">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                </div>
+                            ) : (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Name</TableHead>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead>Pricing Model</TableHead>
+                                            <TableHead className="text-right">Base Price</TableHead>
+                                            {isAdmin && <TableHead className="text-right">Actions</TableHead>}
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {products.length > 0 ? (
+                                            products.map((product) => (
+                                                <TableRow key={product.id}>
+                                                    <TableCell className="font-medium">{product.name}</TableCell>
+                                                    <TableCell><Badge variant="outline" className="capitalize">{product.type}</Badge></TableCell>
+                                                    <TableCell className="capitalize">{product.pricingModel.replace('_', '-')}</TableCell>
+                                                    <TableCell className="text-right font-mono">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(product.basePrice)}</TableCell>
+                                                    {isAdmin && (
+                                                        <TableCell className="text-right space-x-2">
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" onClick={() => handleDuplicateProduct(product.id)}>
+                                                                        <Copy className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>Duplicate Product</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" onClick={() => handleEditProduct(product)}>
+                                                                        <Edit className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    <p>Edit Product</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TableCell>
+                                                    )}
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={isAdmin ? 5 : 4} className="h-24 text-center">
+                                                    No products found. Add your first product to get started.
                                                 </TableCell>
                                             </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={5} className="h-24 text-center">
-                                                No products found. Add your first product to get started.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-            {userData && (
-                <ProductEditDialog 
-                    open={isProductDialogOpen} 
-                    onOpenChange={setIsProductDialogOpen}
-                    tenantId={userData.tenantId}
-                    product={selectedProduct}
-                />
-            )}
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+                {userData && (
+                    <ProductEditDialog 
+                        open={isProductDialogOpen} 
+                        onOpenChange={setIsProductDialogOpen}
+                        tenantId={userData.tenantId}
+                        product={selectedProduct}
+                    />
+                )}
+            </TooltipProvider>
         </MainLayout>
     );
 }
