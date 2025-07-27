@@ -1,16 +1,22 @@
-const nextJest = require('next/jest')({
+
+const nextJest = require('next/jest');
+
+const createJestConfig = nextJest({
   // Provide the path to your Next.js app to load next.config.js and .env files in your test environment
   dir: './',
 });
 
 // Add any custom config to be passed to Jest
 const customJestConfig = {
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  moduleDirectories: ['node_modules', '<rootDir>/'],
   testEnvironment: 'jest-environment-jsdom',
-  // Add this moduleNameMapper to teach Jest about the '@/' path alias
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  // This updated pattern includes all necessary modules for transformation.
+  transformIgnorePatterns: [
+    '/node_modules/(?!(jest-next|@genkit-ai/.*|dotprompt|yaml|genkit/.*))'
+  ],
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
