@@ -50,7 +50,7 @@ import { db, auth } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc } from "firebase/firestore";
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { formatDistanceToNow } from 'date-fns';
-import { trackProposalView, createSuggestedEdit, acceptSuggestedEdit, rejectSuggestedEdit } from "@/app/proposals/actions";
+import { trackProposalView, createSuggestedEdit, acceptSuggestedEdit, rejectSuggestedEdit } from '@/app/proposals/actions';
 import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { useTour } from "@/components/tour/use-tour";
