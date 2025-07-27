@@ -21,14 +21,14 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from '@/components/ui/input';
 import { MainLayout } from '@/components/main-layout';
-import type { Proposal, ProposalStatus } from '@/lib/types';
+import type { Proposal, ProposalStatus, User } from '@/lib/types';
 import { Plus, ListFilter, FileText, Search, Loader2 } from 'lucide-react';
 import { useState, useRef, type MouseEvent, useEffect } from 'react';
 import { ClientDate } from '@/components/client-date';
 import { cn } from '@/lib/utils';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 
 
 function StatusBadge({ status }: { status: ProposalStatus }) {
@@ -126,6 +126,7 @@ const proposalStatuses: ProposalStatus[] = ['draft', 'sent', 'viewed', 'accepted
 
 export default function Dashboard() {
   const [user, loadingAuth] = useAuthState(auth);
+  const [userData, setUserData] = useState<User | null>(null);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [loadingProposals, setLoadingProposals] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -137,23 +138,35 @@ export default function Dashboard() {
       return;
     }
 
-    setLoadingProposals(true);
-    // NOTE: This uses a hardcoded tenant ID for now.
-    const tenantId = 'tenant-001';
-    const proposalsCollectionRef = collection(db, 'tenants', tenantId, 'proposals');
-    
-    const q = query(proposalsCollectionRef, where('salesAgentId', '==', user.uid));
-    
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const proposalsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Proposal));
-        setProposals(proposalsData);
-        setLoadingProposals(false);
-    }, (error) => {
-        console.error("Error fetching proposals: ", error);
-        setLoadingProposals(false);
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubUser = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const uData = docSnap.data() as User;
+            setUserData(uData);
+
+            if (uData.tenantId) {
+                setLoadingProposals(true);
+                const proposalsCollectionRef = collection(db, 'tenants', uData.tenantId, 'proposals');
+                const q = query(proposalsCollectionRef, where('salesAgentId', '==', user.uid));
+                
+                const unsubscribeProposals = onSnapshot(q, (querySnapshot) => {
+                    const proposalsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Proposal));
+                    setProposals(proposalsData);
+                    setLoadingProposals(false);
+                }, (error) => {
+                    console.error("Error fetching proposals: ", error);
+                    setLoadingProposals(false);
+                });
+                return () => unsubscribeProposals();
+            } else {
+                setLoadingProposals(false);
+            }
+        } else {
+            setLoadingProposals(false);
+        }
     });
 
-    return () => unsubscribe();
+    return () => unsubUser();
   }, [user, loadingAuth]);
 
 

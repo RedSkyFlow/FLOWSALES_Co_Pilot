@@ -3,9 +3,9 @@
 
 import { useState, useEffect } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import type { Client } from '@/lib/types';
+import type { Client, User } from '@/lib/types';
 import { MainLayout } from "@/components/main-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,37 +17,51 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, PlusCircle, Users } from "lucide-react";
+import { Loader2, PlusCircle } from "lucide-react";
 import { AddClientDialog } from '@/components/add-client-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ClientsPage() {
     const [user, loadingAuth] = useAuthState(auth);
+    const [userData, setUserData] = useState<User | null>(null);
     const [clients, setClients] = useState<Client[]>([]);
-    const [loadingClients, setLoadingClients] = useState(true);
+    const [loadingData, setLoadingData] = useState(true);
     const [isAddClientOpen, setIsAddClientOpen] = useState(false);
+    const { toast } = useToast();
 
     useEffect(() => {
         if (loadingAuth || !user) {
-            if (!loadingAuth) setLoadingClients(false);
+            if (!loadingAuth) setLoadingData(false);
             return;
         }
 
-        setLoadingClients(true);
-        // NOTE: This uses a hardcoded tenant ID for now.
-        const tenantId = 'tenant-001';
-        const clientsCollectionRef = collection(db, 'tenants', tenantId, 'clients');
-        const q = query(clientsCollectionRef);
-
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const clientsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
-            setClients(clientsData);
-            setLoadingClients(false);
-        }, (error) => {
-            console.error("Error fetching clients: ", error);
-            setLoadingClients(false);
+        const userDocRef = doc(db, 'users', user.uid);
+        const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const fetchedUserData = docSnap.data() as User;
+                setUserData(fetchedUserData);
+                
+                if (fetchedUserData.tenantId) {
+                    const clientsCollectionRef = collection(db, 'tenants', fetchedUserData.tenantId, 'clients');
+                    const q = query(clientsCollectionRef);
+                    const unsubscribeClients = onSnapshot(q, (querySnapshot) => {
+                        const clientsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+                        setClients(clientsData);
+                        setLoadingData(false);
+                    }, (error) => {
+                        console.error("Error fetching clients: ", error);
+                        setLoadingData(false);
+                    });
+                    return () => unsubscribeClients();
+                } else {
+                    setLoadingData(false);
+                }
+            } else {
+                setLoadingData(false);
+            }
         });
 
-        return () => unsubscribe();
+        return () => unsubscribeUser();
     }, [user, loadingAuth]);
     
     return (
@@ -75,7 +89,7 @@ export default function ClientsPage() {
                         <CardDescription>A list of all clients in your portfolio.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {loadingAuth || loadingClients ? (
+                        {loadingData ? (
                             <div className="flex justify-center items-center py-16">
                                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
                             </div>
@@ -112,7 +126,13 @@ export default function ClientsPage() {
                     </CardContent>
                 </Card>
             </div>
-            <AddClientDialog open={isAddClientOpen} onOpenChange={setIsAddClientOpen} />
+            {userData && (
+                 <AddClientDialog 
+                    open={isAddClientOpen} 
+                    onOpenChange={setIsAddClientOpen} 
+                    tenantId={userData.tenantId} 
+                />
+            )}
         </MainLayout>
     );
 }

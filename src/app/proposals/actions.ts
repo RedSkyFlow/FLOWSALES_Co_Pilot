@@ -51,11 +51,16 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
         throw new Error('Template and Client are required to create a proposal.');
     }
     
-    const executiveSummarySection: ProposalSection = {
-        title: 'Executive Summary',
-        content: data.executiveSummary || 'No summary was generated.',
-        type: data.executiveSummary ? 'ai_generated' : 'manual',
-    };
+    const allSections = [...data.extraSections];
+    if (data.executiveSummary) {
+        const executiveSummarySection: ProposalSection = {
+            title: 'Executive Summary',
+            content: data.executiveSummary,
+            type: 'ai_generated',
+        };
+        allSections.unshift(executiveSummarySection);
+    }
+
 
     const newProposal: Omit<Proposal, 'id'> = {
         title: `${data.selectedTemplate} for ${data.clientName || 'Unknown Client'}`,
@@ -68,7 +73,7 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
         createdAt: new Date().toISOString(),
         lastModified: new Date().toISOString(),
         selectedProducts: data.selectedProducts,
-        sections: [executiveSummarySection, ...data.extraSections],
+        sections: allSections,
         engagementData: {
             views: 0,
             timeOnPage: 0,
@@ -88,6 +93,7 @@ export async function createProposal(data: CreateProposalInput): Promise<string>
     
     const proposalsCollectionRef = collection(db, 'tenants', data.tenantId, 'proposals');
     const docRef = await addDoc(proposalsCollectionRef, newProposal);
+    revalidatePath('/');
     return docRef.id;
 }
 

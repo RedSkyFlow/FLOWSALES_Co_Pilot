@@ -23,7 +23,6 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { mockVersions } from "@/lib/mock-data";
 import { notFound, useParams } from "next/navigation";
 import {
   FileText,
@@ -39,14 +38,12 @@ import {
   GitPullRequest,
   Check,
   X,
-  Loader2,
-  ThumbsUp,
-  ThumbsDown
+  Loader2
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { ClientDate } from "@/components/client-date";
-import type { Proposal, ProposalStatus, Comment, SuggestedEdit, ProposalSection, Product } from '@/lib/types';
+import type { Proposal, ProposalStatus, Comment, SuggestedEdit, ProposalSection, Product, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { useState, useEffect, use } from "react";
 import { db, auth } from "@/lib/firebase";
@@ -89,33 +86,45 @@ export default function ProposalDetailPage({
 }) {
   const unwrappedParams = use(params);
   const proposalId = unwrappedParams.id;
-  const [proposal, setProposal] = useState<Proposal | null>(null);
+  
   const [user, loadingAuth] = useAuthState(auth);
-  const { toast } = useToast();
-
+  const [userData, setUserData] = useState<User | null>(null);
+  
+  const [proposal, setProposal] = useState<Proposal | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [newComment, setNewComment] = useState("");
   const [suggestedEdits, setSuggestedEdits] = useState<SuggestedEdit[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  const [newComment, setNewComment] = useState("");
+
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [currentSection, setCurrentSection] = useState<{ section: ProposalSection; index: number } | null>(null);
   const [suggestionText, setSuggestionText] = useState("");
   const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
   
   useEffect(() => {
-    // Hardcoded tenantId for now
-    const tenantId = 'tenant-001'; 
-    if (proposalId && user) {
-      trackProposalView(tenantId, proposalId);
-    }
-  }, [proposalId, user]);
+    if (!user) return;
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsub = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setUserData(docSnap.data() as User);
+      }
+    });
+    return () => unsub();
+  }, [user]);
 
   useEffect(() => {
-    if (!proposalId) return;
+    if (userData?.tenantId && proposalId && user) {
+      trackProposalView(userData.tenantId, proposalId);
+    }
+  }, [userData, proposalId, user]);
 
-    // Hardcoded tenantId for now
-    const tenantId = 'tenant-001';
+  useEffect(() => {
+    if (!proposalId || !userData?.tenantId) return;
+
+    const tenantId = userData.tenantId;
     const docRef = doc(db, 'tenants', tenantId, 'proposals', proposalId);
     const unsubscribeProposal = onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
@@ -145,15 +154,14 @@ export default function ProposalDetailPage({
         unsubscribeComments();
         unsubscribeEdits();
     };
-  }, [proposalId]);
+  }, [proposalId, userData]);
 
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!newComment.trim() || !user) return;
+      if (!newComment.trim() || !user || !userData?.tenantId) return;
       try {
-        // Hardcoded tenantId for now
-        const tenantId = 'tenant-001';
+        const tenantId = userData.tenantId;
         const commentsCollectionPath = `tenants/${tenantId}/proposals/${proposalId}/comments`;
         await addDoc(collection(db, commentsCollectionPath), {
           text: newComment,
@@ -176,11 +184,10 @@ export default function ProposalDetailPage({
   };
 
   const handleSuggestionSubmit = async () => {
-    if (!suggestionText.trim() || !user || !currentSection) return;
+    if (!suggestionText.trim() || !user || !currentSection || !userData?.tenantId) return;
     setIsSubmittingSuggestion(true);
     try {
-        // Hardcoded tenantId for now
-        const tenantId = 'tenant-001';
+        const tenantId = userData.tenantId;
         await createSuggestedEdit({
             tenantId,
             proposalId: proposalId,
@@ -200,9 +207,9 @@ export default function ProposalDetailPage({
   };
   
   const handleAcceptSuggestion = async (suggestion: SuggestedEdit) => {
+      if (!userData?.tenantId) return;
       try {
-          // Hardcoded tenantId for now
-          const tenantId = 'tenant-001';
+          const tenantId = userData.tenantId;
           await acceptSuggestedEdit(tenantId, suggestion);
           toast({ title: "Suggestion Accepted", description: "The proposal has been updated." });
       } catch (error) {
@@ -212,9 +219,9 @@ export default function ProposalDetailPage({
   };
 
   const handleRejectSuggestion = async (suggestion: SuggestedEdit) => {
+      if (!userData?.tenantId) return;
       try {
-          // Hardcoded tenantId for now
-          const tenantId = 'tenant-001';
+          const tenantId = userData.tenantId;
           await rejectSuggestedEdit(tenantId, suggestion);
           toast({ title: "Suggestion Rejected", description: "The suggestion has been archived." });
       } catch (error) {
@@ -292,7 +299,7 @@ export default function ProposalDetailPage({
                 {proposal.sections.map((section, index) => (
                     <div key={index} className="relative group">
                       <h3 className="text-xl font-semibold border-b border-border pb-2 mb-2">{section.title}</h3>
-                      <p>{section.content}</p>
+                      <p className="whitespace-pre-wrap">{section.content}</p>
                       {!isSalesAgent && (
                          <Button size="sm" variant="outline" className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleSuggestEditClick(section, index)}>
                             <PenSquare className="h-4 w-4 mr-2" /> Suggest Edit
@@ -414,32 +421,6 @@ export default function ProposalDetailPage({
                     </Button>
                 </form>
             </CardFooter>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock /> Version History
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {mockVersions.map((version) => (
-                <div key={version.number} className="flex items-start gap-4">
-                  <div className="flex flex-col items-center">
-                    <Avatar className="w-8 h-8 mb-1">
-                      <AvatarImage src={version.author.avatarUrl} />
-                      <AvatarFallback>{version.author.initials}</AvatarFallback>
-                    </Avatar>
-                    <div className="w-px flex-1 bg-border"></div>
-                  </div>
-                  <div>
-                    <p className="font-semibold">Version {version.number}</p>
-                    <p className="text-sm text-muted-foreground">{version.summary}</p>
-                    <p className="text-xs text-muted-foreground mt-1"><ClientDate dateString={version.date} /></p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
           </Card>
         </div>
       </div>

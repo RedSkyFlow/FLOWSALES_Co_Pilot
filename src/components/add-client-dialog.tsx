@@ -36,6 +36,7 @@ type ClientFormData = z.infer<typeof clientSchema>;
 interface AddClientDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  tenantId: string;
 }
 
 const industries = [
@@ -47,7 +48,7 @@ const industries = [
     'Other'
 ];
 
-export function AddClientDialog({ open, onOpenChange }: AddClientDialogProps) {
+export function AddClientDialog({ open, onOpenChange, tenantId }: AddClientDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit, reset, control, formState: { errors } } = useForm<ClientFormData>({
@@ -73,8 +74,6 @@ export function AddClientDialog({ open, onOpenChange }: AddClientDialogProps) {
   const onSubmit = async (data: ClientFormData) => {
     setIsSubmitting(true);
     try {
-      // Hardcoded tenantId for now
-      const tenantId = 'tenant-001';
       await addClient({ ...data, tenantId });
       toast({
         title: "Client Added",

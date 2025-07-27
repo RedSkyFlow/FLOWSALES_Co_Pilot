@@ -50,24 +50,35 @@ export default function ProductsPage() {
                 const fetchedUserData = docSnap.data() as User;
                 setUserData(fetchedUserData);
                 
-                const productsCollectionRef = collection(db, 'tenants', fetchedUserData.tenantId, 'products');
-                const q = query(productsCollectionRef);
-                const unsubscribeProducts = onSnapshot(q, (querySnapshot) => {
-                    const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-                    setProducts(productsData);
-                    setLoadingData(false);
-                }, (error) => {
-                    console.error("Error fetching products: ", error);
-                    setLoadingData(false);
-                });
-                return () => unsubscribeProducts();
+                if (fetchedUserData.tenantId) {
+                    const productsCollectionRef = collection(db, 'tenants', fetchedUserData.tenantId, 'products');
+                    const q = query(productsCollectionRef);
+                    const unsubscribeProducts = onSnapshot(q, (querySnapshot) => {
+                        const productsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+                        setProducts(productsData);
+                        setLoadingData(false);
+                    }, (error) => {
+                        console.error("Error fetching products: ", error);
+                        toast({ title: 'Error', description: 'Could not fetch products.', variant: 'destructive' });
+                        setLoadingData(false);
+                    });
+                    return () => unsubscribeProducts();
+                } else {
+                     setLoadingData(false);
+                     toast({ title: 'Error', description: 'No tenant ID found for user.', variant: 'destructive' });
+                }
             } else {
+                 toast({ title: 'Error', description: 'User data not found.', variant: 'destructive' });
                 setLoadingData(false);
             }
+        }, (error) => {
+            console.error("Error fetching user data: ", error);
+            toast({ title: 'Error', description: 'Could not fetch user data.', variant: 'destructive' });
+            setLoadingData(false);
         });
 
         return () => unsubscribeUser();
-    }, [user, loadingAuth]);
+    }, [user, loadingAuth, toast]);
 
     const handleAddProduct = () => {
         setSelectedProduct(null);
@@ -80,7 +91,7 @@ export default function ProductsPage() {
     };
     
     const handleDuplicateProduct = async (productId: string) => {
-        if (!userData) return;
+        if (!userData?.tenantId) return;
         try {
             await duplicateProduct(userData.tenantId, productId);
             toast({ title: 'Product Duplicated', description: 'A copy of the product has been created.' });
@@ -181,7 +192,7 @@ export default function ProductsPage() {
                         </CardContent>
                     </Card>
                 </div>
-                {userData && (
+                {userData?.tenantId && (
                     <ProductEditDialog 
                         open={isProductDialogOpen} 
                         onOpenChange={setIsProductDialogOpen}

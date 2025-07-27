@@ -34,8 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { mockTenantProducts } from "@/lib/mock-data";
-import type { Product, ProposalSection, Client } from "@/lib/types";
+import type { Product, ProposalSection, Client, User, ProposalTemplate } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { generateExecutiveSummary } from "@/ai/flows/generate-executive-summary";
 import { analyzeMeetingTranscript } from "@/ai/flows/analyze-meeting-transcript";
@@ -44,25 +43,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "@/lib/firebase";
 import { Skeleton } from "./ui/skeleton";
-import { collection, query, onSnapshot } from "firebase/firestore";
+import { collection, query, onSnapshot, doc } from "firebase/firestore";
 
-const templates = [
-  {
-    name: "Stadium OS Proposal",
-    description: "For sports venues and large arenas.",
-    icon: <Users className="h-8 w-8 text-primary" />,
-  },
-  {
-    name: "Shopping Mall Pilot Proposal",
-    description: "For retail centers and commercial properties.",
-    icon: <Package className="h-8 w-8 text-primary" />,
-  },
-  {
-    name: "Telco Proposal",
-    description: "For telecommunication infrastructure projects.",
-    icon: <FileText className="h-8 w-8 text-primary" />,
-  },
-];
 
 const steps = [
   { name: "Select Template", icon: <FileText /> },
@@ -71,48 +53,92 @@ const steps = [
   { name: "Review & Finalize", icon: <ClipboardCheck /> },
 ];
 
+const iconMap = {
+    Users: <Users className="h-8 w-8 text-primary" />,
+    Package: <Package className="h-8 w-8 text-primary" />,
+    FileText: <FileText className="h-8 w-8 text-primary" />,
+}
+
 export function ProposalWizard() {
   const router = useRouter();
   const { toast } = useToast();
   const [user, loadingAuth] = useAuthState(auth);
+  const [userData, setUserData] = useState<User | null>(null);
+  
   const [currentStep, setCurrentStep] = useState(0);
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-  const [selectedClient, setSelectedClient] = useState<string>("");
+  
+  const [templates, setTemplates] = useState<ProposalTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
+  const [selectedTemplate, setSelectedTemplate] = useState<ProposalTemplate | null>(null);
+
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
+  const [selectedClient, setSelectedClient] = useState<string>("");
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
+
   const [painPoints, setPainPoints] = useState("");
   const [meetingTranscript, setMeetingTranscript] = useState("");
   const [executiveSummary, setExecutiveSummary] = useState("");
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [extraSections, setExtraSections] = useState<ProposalSection[]>([]);
 
 
   useEffect(() => {
     if (loadingAuth || !user) {
-      if (!loadingAuth) setLoadingClients(false);
+      if (!loadingAuth) {
+        setLoadingClients(false);
+        setLoadingProducts(false);
+        setLoadingTemplates(false);
+      }
       return;
     }
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribeUser = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const fetchedUserData = docSnap.data() as User;
+            setUserData(fetchedUserData);
+        }
+    });
+    return () => unsubscribeUser();
+  }, [user, loadingAuth]);
 
+  useEffect(() => {
+    if (!userData?.tenantId) return;
+
+    const tenantId = userData.tenantId;
     setLoadingClients(true);
-    // NOTE: This uses a hardcoded tenant ID for now.
-    const tenantId = 'tenant-001';
-    const clientsCollectionRef = collection(db, 'tenants', tenantId, 'clients');
-    const q = query(clientsCollectionRef);
+    setLoadingProducts(true);
+    setLoadingTemplates(true);
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const clientsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
-        setClients(clientsData);
-        setLoadingClients(false);
-    }, (error) => {
-        console.error("Error fetching clients: ", error);
+    const clientsQuery = query(collection(db, 'tenants', tenantId, 'clients'));
+    const productsQuery = query(collection(db, 'tenants', tenantId, 'products'));
+    const templatesQuery = query(collection(db, 'tenants', tenantId, 'proposal_templates'));
+
+    const unsubClients = onSnapshot(clientsQuery, (snapshot) => {
+        setClients(snapshot.docs.map(d => ({id: d.id, ...d.data()} as Client)));
         setLoadingClients(false);
     });
+    const unsubProducts = onSnapshot(productsQuery, (snapshot) => {
+        setProducts(snapshot.docs.map(d => ({id: d.id, ...d.data()} as Product)));
+        setLoadingProducts(false);
+    });
+    const unsubTemplates = onSnapshot(templatesQuery, (snapshot) => {
+        setTemplates(snapshot.docs.map(d => ({id: d.id, ...d.data()} as ProposalTemplate)));
+        setLoadingTemplates(false);
+    });
 
-    return () => unsubscribe();
-  }, [user, loadingAuth]);
+    return () => {
+        unsubClients();
+        unsubProducts();
+        unsubTemplates();
+    }
+
+  }, [userData]);
 
 
   const progress = ((currentStep + 1) / steps.length) * 100;
@@ -134,7 +160,7 @@ export function ProposalWizard() {
     setIsSummaryLoading(true);
     setExecutiveSummary("");
     try {
-        const result = await generateExecutiveSummary({ clientPainPoints: painPoints, proposalType: selectedTemplate });
+        const result = await generateExecutiveSummary({ clientPainPoints: painPoints, proposalType: selectedTemplate.name });
         setExecutiveSummary(result.executiveSummary);
         toast({ title: "Summary Generated", description: "The executive summary has been populated." });
     } catch (error) {
@@ -156,7 +182,7 @@ export function ProposalWizard() {
       try {
           const result = await analyzeMeetingTranscript({
               transcript: [{ speaker: "Combined", text: meetingTranscript }],
-              availableModules: mockTenantProducts.map(p => p.name)
+              availableModules: products.map(p => p.name)
           });
           
           setPainPoints(result.clientPainPoints.join('\n'));
@@ -165,7 +191,7 @@ export function ProposalWizard() {
               { title: "Proposed Solution", content: result.solutionProposalDraft, type: "ai_generated" }
           ]);
           
-          const suggestedProducts = mockTenantProducts.filter(p => result.suggestedModules.includes(p.name));
+          const suggestedProducts = products.filter(p => result.suggestedModules.includes(p.name));
           setSelectedProducts(suggestedProducts);
 
           toast({ title: "Analysis Complete", description: "Pain points, products, and draft sections have been populated." });
@@ -173,7 +199,7 @@ export function ProposalWizard() {
           // Now, generate the executive summary based on the new pain points
           if (result.clientPainPoints.join('\n') && selectedTemplate) {
             setIsSummaryLoading(true);
-            const summaryResult = await generateExecutiveSummary({ clientPainPoints: result.clientPainPoints.join('\n'), proposalType: selectedTemplate });
+            const summaryResult = await generateExecutiveSummary({ clientPainPoints: result.clientPainPoints.join('\n'), proposalType: selectedTemplate.name });
             setExecutiveSummary(summaryResult.executiveSummary);
             toast({ title: "Summary Generated", description: "An executive summary was also created based on the transcript." });
           }
@@ -197,7 +223,7 @@ export function ProposalWizard() {
   const totalValue = selectedProducts.reduce((sum, module) => sum + module.basePrice, 0);
 
   const handleSaveAndFinalize = async () => {
-    if (!user) {
+    if (!user || !userData?.tenantId) {
         toast({
             variant: "destructive",
             title: "Error",
@@ -207,19 +233,21 @@ export function ProposalWizard() {
     }
     setIsSaving(true);
     try {
-        const tenantId = 'tenant-001'; 
         const client = clients.find(c => c.id === selectedClient);
         
         const newProposalId = await createProposal({
-            tenantId,
+            tenantId: userData.tenantId,
             salesAgentId: user.uid,
-            selectedTemplate,
+            selectedTemplate: selectedTemplate?.name ?? "Unknown Template",
             selectedClientId: selectedClient,
             clientName: client?.name,
             executiveSummary,
             selectedProducts,
             totalValue,
-            extraSections,
+            extraSections: [
+                ...(selectedTemplate?.sections || []),
+                ...extraSections,
+            ]
         });
         toast({
             title: "Proposal Created!",
@@ -268,28 +296,36 @@ export function ProposalWizard() {
             <h2 className="text-2xl font-headline font-semibold text-center">
               Choose a Proposal Template
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {templates.map((template) => (
-                <Card
-                  key={template.name}
-                  onClick={() => setSelectedTemplate(template.name)}
-                  className={cn(
-                    "cursor-pointer transition-all hover:shadow-lg hover:border-primary",
-                    selectedTemplate === template.name && "border-2 border-primary shadow-lg"
-                  )}
-                >
-                  <CardHeader className="flex flex-col items-center text-center gap-4">
-                    {template.icon}
-                    <CardTitle className="font-sans text-base">{template.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground text-center">
-                      {template.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {loadingTemplates ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Skeleton className="h-48 w-full" />
+                    <Skeleton className="h-48 w-full" />
+                    <Skeleton className="h-48 w-full" />
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {templates.map((template) => (
+                    <Card
+                    key={template.id}
+                    onClick={() => setSelectedTemplate(template)}
+                    className={cn(
+                        "cursor-pointer transition-all hover:shadow-lg hover:border-primary",
+                        selectedTemplate?.id === template.id && "border-2 border-primary shadow-lg"
+                    )}
+                    >
+                    <CardHeader className="flex flex-col items-center text-center gap-4">
+                        {iconMap[template.icon] || <FileText className="h-8 w-8 text-primary" />}
+                        <CardTitle className="font-sans text-base">{template.name}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground text-center">
+                        {template.description}
+                        </p>
+                    </CardContent>
+                    </Card>
+                ))}
+                </div>
+            )}
           </div>
         )}
 
@@ -383,42 +419,44 @@ export function ProposalWizard() {
         {currentStep === 2 && (
           <div className="space-y-4">
             <h2 className="text-2xl font-headline font-semibold">Select Modules</h2>
-            <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                    {mockTenantProducts.map((module) => (
-                        <div key={module.id} className="flex items-start space-x-3 rounded-lg border p-4">
-                        <Checkbox
-                            id={module.id}
-                            checked={selectedProducts.some((m) => m.id === module.id)}
-                            onCheckedChange={(checked) => handleModuleToggle(module, !!checked)}
-                        />
-                        <div className="grid gap-1.5 leading-none">
-                            <label htmlFor={module.id} className="font-medium cursor-pointer">
-                            {module.name}
-                            </label>
-                            <p className="text-sm text-muted-foreground">{module.description}</p>
-                        </div>
-                         <p className="ml-auto font-semibold">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.basePrice)}</p>
-                        </div>
-                    ))}
-                </div>
-                <div className="p-4 rounded-lg bg-muted/50 h-fit sticky top-4">
-                    <h3 className="font-headline text-lg font-semibold">Dynamic Pricing</h3>
-                    <ul className="my-4 space-y-2">
-                        {selectedProducts.map(module => (
-                            <li key={module.id} className="flex justify-between items-center text-sm">
-                                <span>{module.name}</span>
-                                <span className="font-mono">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.basePrice)}</span>
-                            </li>
+            {loadingProducts ? <Skeleton className="h-64 w-full"/> : (
+                <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                        {products.map((module) => (
+                            <div key={module.id} className="flex items-start space-x-3 rounded-lg border p-4">
+                            <Checkbox
+                                id={module.id}
+                                checked={selectedProducts.some((m) => m.id === module.id)}
+                                onCheckedChange={(checked) => handleModuleToggle(module, !!checked)}
+                            />
+                            <div className="grid gap-1.5 leading-none">
+                                <label htmlFor={module.id} className="font-medium cursor-pointer">
+                                {module.name}
+                                </label>
+                                <p className="text-sm text-muted-foreground">{module.description}</p>
+                            </div>
+                            <p className="ml-auto font-semibold">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.basePrice)}</p>
+                            </div>
                         ))}
-                         {selectedProducts.length === 0 && <p className="text-sm text-muted-foreground">Select modules to see pricing.</p>}
-                    </ul>
-                    <div className="border-t pt-4 flex justify-between items-center font-bold text-lg">
-                        <span>Total Cost</span>
-                        <span className="text-primary">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalValue)}</span>
+                    </div>
+                    <div className="p-4 rounded-lg bg-muted/50 h-fit sticky top-4">
+                        <h3 className="font-headline text-lg font-semibold">Dynamic Pricing</h3>
+                        <ul className="my-4 space-y-2">
+                            {selectedProducts.map(module => (
+                                <li key={module.id} className="flex justify-between items-center text-sm">
+                                    <span>{module.name}</span>
+                                    <span className="font-mono">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(module.basePrice)}</span>
+                                </li>
+                            ))}
+                            {selectedProducts.length === 0 && <p className="text-sm text-muted-foreground">Select modules to see pricing.</p>}
+                        </ul>
+                        <div className="border-t pt-4 flex justify-between items-center font-bold text-lg">
+                            <span>Total Cost</span>
+                            <span className="text-primary">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalValue)}</span>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -434,7 +472,7 @@ export function ProposalWizard() {
                         <CardTitle className="font-sans">Proposal Summary</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                        <p><strong>Template:</strong> {selectedTemplate}</p>
+                        <p><strong>Template:</strong> {selectedTemplate?.name}</p>
                         <p><strong>Client:</strong> {clients.find(c => c.id === selectedClient)?.name}</p>
                         <p><strong>Modules:</strong> {selectedProducts.map(m => m.name).join(', ')}</p>
                         <p className="font-bold"><strong>Total Value:</strong> {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalValue)}</p>
