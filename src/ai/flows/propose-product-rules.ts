@@ -43,11 +43,13 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert system configurator. Your task is to analyze a product's name and description to identify potential business logic, dependencies, or sales rules.
 
 **Your Instructions:**
-1.  Read the Product Name and Description carefully.
-2.  Look for keywords like "requires," "must be paired with," "for every," "in addition to," "also needs," or other phrases that suggest a dependency on another product or a specific configuration.
-3.  Formulate a single, clear, and concise rule based on your analysis.
-4.  The rule should be a statement, not a question. E.g., "Propose adding a Power Adapter if no PoE Switch is in the quote."
-5.  **If no clear rule or dependency is mentioned in the text, your output for the proposedRule field MUST be: "No specific rule suggestion."** Do not invent rules.
+1.  **Analyze Holistically:** Read the Product Name and Description to understand its function and context.
+2.  **Identify Dependencies:** Look for keywords like "requires," "with," "for," "add-on," "module," or other phrases that suggest a dependency. Think about what other products or services would logically be sold with this item. For example, a physical phone needs a power source or a phone line service.
+3.  **Formulate a Clear Rule:** Create a single, clear, and concise rule. The rule should be a actionable statement for a salesperson.
+    - Good Example: "Propose adding a Power Adapter if a PoE Switch is not already in the quote."
+    - Good Example: "For every 10 IP Phones, suggest adding 1 conference phone license."
+    - Bad Example: "This phone needs power."
+4.  **Default Action:** If, after careful analysis, you can't determine a logical dependency or rule (e.g., for a simple consulting service), your output for the proposedRule field MUST be: "No specific rule suggestion." Do not invent rules where none are plausible.
 
 **Product Information:**
 *   **Name:** {{{productName}}}
