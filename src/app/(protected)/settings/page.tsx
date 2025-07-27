@@ -87,21 +87,19 @@ function SettingsCard({ panel }: { panel: typeof settingsPanels[0] }) {
 
 export default function SettingsPage() {
   return (
-    <MainLayout>
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-4xl font-bold">Settings</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your organization's configuration and defaults.
-          </p>
-        </div>
-        
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {settingsPanels.map((panel) => (
-                <SettingsCard key={panel.title} panel={panel} />
-            ))}
-        </div>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-4xl font-bold">Settings</h1>
+        <p className="text-muted-foreground mt-1">
+          Manage your organization's configuration and defaults.
+        </p>
       </div>
-    </MainLayout>
+      
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {settingsPanels.map((panel) => (
+              <SettingsCard key={panel.title} panel={panel} />
+          ))}
+      </div>
+    </div>
   );
 }
