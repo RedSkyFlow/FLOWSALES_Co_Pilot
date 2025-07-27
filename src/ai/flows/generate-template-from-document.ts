@@ -3,8 +3,8 @@
 
 /**
  * @fileOverview Defines a Genkit flow for generating a proposal template from a document.
- * This flow analyzes a raw text document, identifies logical sections, and structures
- * them into a proposal template format.
+ * This flow analyzes a document provided as a data URI, identifies logical sections, 
+ * and structures them into a proposal template format.
  *
  * - generateTemplateFromDocument - A function that takes document content and returns a structured template.
  * - GenerateTemplateFromDocumentInput - The input type for the flow.
@@ -12,10 +12,13 @@
  */
 
 import { ai } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/googleai';
 import { z } from 'genkit';
 
 const GenerateTemplateInputSchema = z.object({
-  documentContent: z.string().describe('The full text content of the proposal document to be analyzed.'),
+  documentDataUri: z.string().describe(
+    "The proposal document to be analyzed, as a data URI that must include a MIME type and use Base64 encoding. Format: 'data:<mimetype>;base64,<encoded_data>'."
+  ),
 });
 export type GenerateTemplateFromDocumentInput = z.infer<typeof GenerateTemplateInputSchema>;
 
@@ -40,6 +43,7 @@ export async function generateTemplateFromDocument(
 // Define the Genkit Prompt
 const templateGenerationPrompt = ai.definePrompt({
   name: 'templateGenerationPrompt',
+  model: googleAI.model('gemini-1.5-pro'),
   input: { schema: GenerateTemplateInputSchema },
   output: { schema: GenerateTemplateOutputSchema },
   prompt: `You are an expert document analyst. Your task is to read the following document and break it down into a structured proposal template.
@@ -52,7 +56,7 @@ const templateGenerationPrompt = ai.definePrompt({
 
 **Document to Analyze:**
 ---
-{{{documentContent}}}
+{{media url=documentDataUri}}
 ---
 
 Now, analyze the document and provide the structured output.
