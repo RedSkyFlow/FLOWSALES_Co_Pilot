@@ -3,7 +3,13 @@
 export interface Tenant {
   id: string;
   companyName: string;
-  subscriptionStatus: 'active' | 'trial' | 'lapsed';
+  createdAt: string; // ISO 8601
+  subscription: {
+    tier: 'free' | 'basic' | 'pro' | 'enterprise';
+    status: 'active' | 'trialing' | 'past_due' | 'canceled';
+    proposalsGeneratedThisMonth: number;
+    endDate: string | null; // ISO 8601 for trial or plan end
+  }
 }
 
 export interface User {

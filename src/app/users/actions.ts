@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, getDocs, limit } from 'firebase/firestore';
 
 interface UserData {
     uid: string;
@@ -13,16 +13,14 @@ interface UserData {
 /**
  * Called when a new user signs up.
  * Creates a document for them in the `users` collection.
- * If they are the first user, they are assigned the 'admin' role
- * and a new tenant is created for them.
- * Subsequent users are assigned the 'sales_agent' role within the first tenant.
- *
- * NOTE: This is a simplified multi-tenancy model for demonstration.
- * A production system would have a more robust tenant invitation system.
+ * It also creates a new tenant document with a default subscription tier.
+ * In this simplified model, every new user signup creates a new tenant.
+ * A production app would use a more robust invitation-based system.
  *
  * @param user The user data from Firebase Auth.
+ * @returns The new tenantId created for the user.
  */
-export async function onUserCreate(user: UserData) {
+export async function onUserCreate(user: UserData): Promise<string> {
     if (!user.uid || !user.email) {
         throw new Error('User ID and email are required.');
     }
@@ -33,38 +31,43 @@ export async function onUserCreate(user: UserData) {
     // Prevent overwriting existing user data
     if (userSnap.exists()) {
         console.warn(`User document for ${user.uid} already exists.`);
-        return;
+        // If the user doc exists but has no tenantId, this is a chance to fix it.
+        // Otherwise, just return the existing tenantId
+        return userSnap.data().tenantId || 'existing-tenant-without-id';
     }
 
-    // Simplified tenant logic:
-    // In a real app, you would have an invitation system.
-    // Here, we'll assign users to a default tenant.
-    const tenantId = 'tenant-001';
-    const role = 'admin'; // For demo purposes, make first user admin
+    // Create a new tenant for this user.
+    // In a real multi-user-per-tenant system, you'd check for an invitation code here.
+    const newTenantRef = doc(collection(db, 'tenants'));
+    const tenantId = newTenantRef.id;
 
     try {
+        // Set the user document
         await setDoc(userRef, {
             uid: user.uid,
             email: user.email,
             displayName: user.displayName,
             photoURL: null,
-            role: role,
+            role: 'admin', // The first user of a tenant is the admin
             tenantId: tenantId
         });
 
-        // Ensure the tenant document exists (optional, but good practice)
-        const tenantRef = doc(db, 'tenants', tenantId);
-        const tenantSnap = await getDoc(tenantRef);
-        if (!tenantSnap.exists()) {
-             await setDoc(tenantRef, {
-                companyName: `${user.displayName}'s Company`,
-                subscriptionStatus: 'active',
-                // Add other tenant fields as needed
-            });
-        }
+        // Create the corresponding tenant document with a default subscription
+        await setDoc(newTenantRef, {
+            companyName: `${user.displayName}'s Company`,
+            createdAt: new Date().toISOString(),
+            subscription: {
+                tier: 'basic', // All new signups start on the basic tier
+                status: 'active',
+                proposalsGeneratedThisMonth: 0,
+                endDate: null,
+            }
+        });
+
+        return tenantId;
 
     } catch (error) {
-        console.error("Error creating user document: ", error);
+        console.error("Error creating user and tenant documents: ", error);
         throw new Error('Could not initialize user data in database.');
     }
 }
