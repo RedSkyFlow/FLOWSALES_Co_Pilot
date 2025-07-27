@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase';
 import type { ProposalSection, ProposalTemplate } from '@/lib/types';
 import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
+import { generateTemplateFromDocument } from '@/ai/flows/generate-template-from-document';
 
 interface CreateTemplateInput {
     tenantId: string;
@@ -81,5 +82,49 @@ export async function duplicateTemplate(tenantId: string, templateId: string) {
     } catch (error) {
         console.error("Error duplicating template: ", error);
         throw new Error('Could not duplicate the template. Please try again.');
+    }
+}
+
+/**
+ * Generates a proposal template from a document using an AI flow.
+ * @param tenantId The ID of the tenant.
+ * @param templateName The name for the new template.
+ * @param documentContent The text content of the uploaded document.
+ */
+interface GenerateTemplateFromDocInput {
+    tenantId: string;
+    templateName: string;
+    documentContent: string;
+}
+export async function generateTemplate(data: GenerateTemplateFromDocInput) {
+    if (!data.tenantId || !data.templateName || !data.documentContent) {
+        throw new Error("Tenant ID, template name, and document content are required.");
+    }
+
+    try {
+        // Call the AI flow to get structured sections
+        const { sections } = await generateTemplateFromDocument({
+            documentContent: data.documentContent
+        });
+        
+        if (!sections || sections.length === 0) {
+            throw new Error("AI could not generate sections from the document.");
+        }
+
+        // Create the new template in Firestore
+        const templatesCollectionRef = collection(db, 'tenants', data.tenantId, 'proposal_templates');
+        await addDoc(templatesCollectionRef, {
+            name: data.templateName,
+            description: `AI-generated from uploaded document on ${new Date().toLocaleDateString()}`,
+            icon: 'FileText',
+            sections: sections,
+        });
+
+        revalidatePath('/templates');
+        
+    } catch (error) {
+        console.error("Error generating template from document: ", error);
+        // Re-throw to be caught by the client-side caller
+        throw new Error('Failed to generate template from document.');
     }
 }
