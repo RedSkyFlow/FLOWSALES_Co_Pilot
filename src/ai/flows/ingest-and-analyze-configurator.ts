@@ -14,6 +14,10 @@
 import { ai } from '@/ai/genkit';
 import { googleAI } from '@genkit-ai/googleai';
 import { z } from 'genkit';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Tenant } from '@/lib/types';
+import { GenkitError } from 'genkit/errors';
 
 // Schema for a single product extracted from the document
 const ExtractedProductSchema = z.object({
@@ -34,6 +38,7 @@ const ExtractedRuleSchema = z.object({
 
 // Input schema for the flow
 const DocumentAnalysisInputSchema = z.object({
+  tenantId: z.string().describe('The ID of the tenant requesting the analysis.'),
   documentDataUri: z.string().describe(
     "The configuration document (e.g., spreadsheet, PDF) as a data URI that must include a MIME type and use Base64 encoding. Format: 'data:<mimetype>;base64,<encoded_data>'."
   ),
@@ -88,6 +93,28 @@ const ingestAndAnalyzeConfiguratorFlow = ai.defineFlow(
         outputSchema: DocumentAnalysisOutputSchema,
     },
     async (input) => {
+        // Step 1: Check user's subscription tier
+        const tenantRef = doc(db, 'tenants', input.tenantId);
+        const tenantSnap = await getDoc(tenantRef);
+        
+        if (!tenantSnap.exists()) {
+            throw new GenkitError({
+                status: 'NOT_FOUND',
+                message: 'Tenant not found.'
+            });
+        }
+        
+        const tenantData = tenantSnap.data() as Tenant;
+        const tier = tenantData.subscription.tier;
+
+        if (tier !== 'pro' && tier !== 'enterprise') {
+            throw new GenkitError({
+                status: 'PERMISSION_DENIED',
+                message: `Your current subscription tier ('${tier}') does not have access to the Document Intelligence Engine. Please upgrade to 'pro' or 'enterprise'.`
+            });
+        }
+        
+        // Step 2: Proceed with analysis if authorized
         const { output } = await analysisPrompt(input);
         if (!output) {
             throw new Error('Failed to analyze the configuration document.');

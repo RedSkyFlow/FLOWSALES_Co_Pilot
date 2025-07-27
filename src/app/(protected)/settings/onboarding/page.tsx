@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { UploadCloud, Wand2, File, X, Loader2, CheckCircle } from 'lucide-react';
+import { UploadCloud, Wand2, File, X, Loader2, CheckCircle, Zap } from 'lucide-react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, onSnapshot, getDoc } from 'firebase/firestore';
@@ -18,10 +18,49 @@ import { useToast } from '@/hooks/use-toast';
 import { ingestAndAnalyzeConfigurator, DocumentAnalysisOutput } from '@/ai/flows/ingest-and-analyze-configurator';
 import { saveConfiguration } from './actions';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
+
+function FeatureLockCard() {
+    return (
+        <Card className="relative overflow-hidden">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><UploadCloud /> Upload & Analyze</CardTitle>
+                <CardDescription>
+                    This is a premium feature. Upload your product catalog, price list, or proposal to have AI build your configuration.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-center">
+                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-4">
+                    <Zap className="h-12 w-12 text-primary mb-4" />
+                    <h3 className="text-xl font-bold">Upgrade to Unlock</h3>
+                    <p className="text-muted-foreground mb-4">The Document Intelligence Engine is available on Pro and Enterprise plans.</p>
+                    <Button>Upgrade Your Plan</Button>
+                </div>
+                <div className="flex gap-4">
+                    <div className="flex-grow">
+                        <Label htmlFor="file-upload" className="sr-only">Upload Document</Label>
+                        <Input 
+                            id="file-upload" 
+                            type="file" 
+                            disabled
+                            className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                        />
+                    </div>
+                </div>
+                <Button disabled className="w-full">
+                    <Wand2 className="mr-2 h-4 w-4" />
+                    Analyze with AI
+                </Button>
+            </CardContent>
+        </Card>
+    )
+}
+
 
 export default function OnboardingPage() {
     const [user] = useAuthState(auth);
     const [userData, setUserData] = useState<User | null>(null);
+    const [tenant, setTenant] = useState<Tenant | null>(null);
     const [isLoadingUser, setIsLoadingUser] = useState(true);
     const { toast } = useToast();
     const router = useRouter();
@@ -38,16 +77,31 @@ export default function OnboardingPage() {
             return;
         };
         const userDocRef = doc(db, 'users', user.uid);
-        const unsub = onSnapshot(userDocRef, (userSnap) => {
+        const unsubUser = onSnapshot(userDocRef, (userSnap) => {
             if (userSnap.exists()) {
-                setUserData(userSnap.data() as User);
+                const uData = userSnap.data() as User;
+                setUserData(uData);
+
+                if (uData.tenantId) {
+                    const tenantDocRef = doc(db, 'tenants', uData.tenantId);
+                     const unsubTenant = onSnapshot(tenantDocRef, (tenantSnap) => {
+                        if (tenantSnap.exists()) {
+                            setTenant({ id: tenantSnap.id, ...tenantSnap.data()} as Tenant);
+                        }
+                        setIsLoadingUser(false);
+                     });
+                     return () => unsubTenant();
+                } else {
+                    setIsLoadingUser(false);
+                }
+            } else {
+                setIsLoadingUser(false);
             }
-            setIsLoadingUser(false);
         }, (error) => {
             console.error("Error fetching user data:", error);
             setIsLoadingUser(false);
         });
-        return () => unsub();
+        return () => unsubUser();
     }, [user]);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,15 +125,19 @@ export default function OnboardingPage() {
         reader.onload = async (e) => {
             const dataUri = e.target?.result as string;
             try {
-                const result = await ingestAndAnalyzeConfigurator({ documentDataUri: dataUri });
+                const result = await ingestAndAnalyzeConfigurator({ 
+                    documentDataUri: dataUri,
+                    tenantId: userData.tenantId,
+                });
                 setAnalysisResult(result);
                 toast({
                     title: 'Analysis Complete',
                     description: `Found ${result.products.length} products and ${result.rules.length} rules.`
                 });
-            } catch (error) {
+            } catch (error: any) {
                 console.error(error);
-                toast({ variant: 'destructive', title: 'AI Analysis Failed', description: 'An unexpected error occurred while analyzing the document.' });
+                const errorMessage = error.message || 'An unexpected error occurred while analyzing the document.';
+                toast({ variant: 'destructive', title: 'AI Analysis Failed', description: errorMessage });
             } finally {
                 setIsAnalyzing(false);
             }
@@ -128,6 +186,7 @@ export default function OnboardingPage() {
         setAnalysisResult({ ...analysisResult, rules: updatedRules });
     }
 
+    const hasAccess = tenant?.subscription?.tier === 'pro' || tenant?.subscription?.tier === 'enterprise';
 
     return (
         <MainLayout>
@@ -145,44 +204,48 @@ export default function OnboardingPage() {
                     </div>
                 ) : (
                     <>
-                        <Card>
-                             <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><UploadCloud /> Upload & Analyze</CardTitle>
-                                <CardDescription>
-                                    Select a configuration document (e.g., XLSX, PDF, DOCX) and let the AI extract products and rules.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="flex gap-4">
-                                    <div className="flex-grow">
-                                        <Label htmlFor="file-upload" className="sr-only">Upload Document</Label>
-                                        <Input 
-                                            id="file-upload" 
-                                            type="file" 
-                                            ref={fileInputRef} 
-                                            onChange={handleFileChange} 
-                                            accept=".xlsx,.xls,.csv,.pdf,.docx"
-                                            className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-                                        />
-                                    </div>
-                                     {file && (
-                                        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50 border">
-                                            <div className="flex items-center gap-2">
-                                                <File className="h-5 w-5 text-muted-foreground" />
-                                                <span className="text-sm font-medium">{file.name}</span>
-                                            </div>
-                                            <Button variant="ghost" size="icon" onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; } }>
-                                                <X className="h-4 w-4" />
-                                            </Button>
+                       {hasAccess ? (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><UploadCloud /> Upload & Analyze</CardTitle>
+                                    <CardDescription>
+                                        Select a configuration document (e.g., XLSX, PDF, DOCX) and let the AI extract products and rules.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="flex gap-4">
+                                        <div className="flex-grow">
+                                            <Label htmlFor="file-upload" className="sr-only">Upload Document</Label>
+                                            <Input 
+                                                id="file-upload" 
+                                                type="file" 
+                                                ref={fileInputRef} 
+                                                onChange={handleFileChange} 
+                                                accept=".xlsx,.xls,.csv,.pdf,.docx"
+                                                className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                                            />
                                         </div>
-                                    )}
-                                </div>
-                                <Button onClick={handleAnalyzeFile} disabled={!file || isAnalyzing} className="w-full">
-                                    {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                                    {isAnalyzing ? "Analyzing Document..." : "Analyze with AI"}
-                                </Button>
-                            </CardContent>
-                        </Card>
+                                        {file && (
+                                            <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50 border">
+                                                <div className="flex items-center gap-2">
+                                                    <File className="h-5 w-5 text-muted-foreground" />
+                                                    <span className="text-sm font-medium">{file.name}</span>
+                                                </div>
+                                                <Button variant="ghost" size="icon" onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; } }>
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <Button onClick={handleAnalyzeFile} disabled={!file || isAnalyzing} className="w-full">
+                                        {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                                        {isAnalyzing ? "Analyzing Document..." : "Analyze with AI"}
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                       ) : (
+                           <FeatureLockCard />
+                       )}
                         
                         {isAnalyzing && (
                             <div className="flex flex-col items-center justify-center py-16 text-center">
