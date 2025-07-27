@@ -138,6 +138,7 @@ export default function ProductsPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead>Status</TableHead>
                                             <TableHead>Name</TableHead>
                                             <TableHead>Type</TableHead>
                                             <TableHead>Pricing Model</TableHead>
@@ -149,6 +150,12 @@ export default function ProductsPage() {
                                         {products.length > 0 ? (
                                             products.map((product) => (
                                                 <TableRow key={product.id}>
+                                                    <TableCell>
+                                                        {/* @ts-ignore */}
+                                                        {product.status === 'unverified' && <Badge variant="destructive">Unverified</Badge>}
+                                                        {/* @ts-ignore */}
+                                                        {product.status !== 'unverified' && <Badge variant="success">Verified</Badge>}
+                                                    </TableCell>
                                                     <TableCell className="font-medium">{product.name}</TableCell>
                                                     <TableCell><Badge variant="outline" className="capitalize">{product.type}</Badge></TableCell>
                                                     <TableCell className="capitalize">{product.pricingModel.replace('_', '-')}</TableCell>
@@ -181,7 +188,7 @@ export default function ProductsPage() {
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={isAdmin ? 5 : 4} className="h-24 text-center">
+                                                <TableCell colSpan={isAdmin ? 6 : 5} className="h-24 text-center">
                                                     No products found. Add your first product to get started.
                                                 </TableCell>
                                             </TableRow>

@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import type { Product } from '@/lib/types';
-import { addDoc, collection, writeBatch } from 'firebase/firestore';
+import { addDoc, collection, writeBatch, doc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -22,7 +22,7 @@ export async function processProductCatalog(tenantId: string, csvContent: string
             return { success: false, message: 'CSV file must have a header and at least one data row.', count: 0 };
         }
         
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
         const products: Omit<Product, 'id'>[] = [];
 
         // Basic validation for required headers
@@ -41,8 +41,10 @@ export async function processProductCatalog(tenantId: string, csvContent: string
 
 
         for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',');
+            const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
             
+            if (values.length < headers.length) continue;
+
             const basePrice = parseFloat(values[basePriceIndex]);
             if (isNaN(basePrice)) continue; // Skip rows with invalid price
 
@@ -52,7 +54,7 @@ export async function processProductCatalog(tenantId: string, csvContent: string
                 basePrice: basePrice,
                 pricingModel: (values[pricingModelIndex] as any) || 'one-time',
                 type: (values[typeIndex] as any) || 'product',
-                tags: tagsIndex !== -1 ? values[tagsIndex]?.split(';').map(t => t.trim()) : [],
+                tags: tagsIndex !== -1 && values[tagsIndex] ? values[tagsIndex].split(';').map(t => t.trim()) : [],
                 // @ts-ignore - Adding a temporary status for the onboarding flow
                 status: 'unverified'
             };

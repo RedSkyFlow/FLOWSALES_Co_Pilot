@@ -1,4 +1,5 @@
 
+
 export interface Tenant {
   id: string;
   companyName: string;
@@ -35,6 +36,7 @@ export interface Product {
   tags: string[];
   dependencies?: string[]; // IDs of other products
   type: 'product' | 'service' | 'license';
+  status?: 'verified' | 'unverified';
 }
 
 export interface BrandAsset {

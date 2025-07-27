@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MainLayout } from '@/components/main-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ export default function OnboardingPage() {
     const { toast } = useToast();
     const router = useRouter();
 
-    useState(() => {
+    useEffect(() => {
         if (!user) return;
         const userDocRef = doc(db, 'users', user.uid);
         const unsub = onSnapshot(userDocRef, (docSnap) => {
@@ -35,7 +35,7 @@ export default function OnboardingPage() {
             }
         });
         return () => unsub();
-    });
+    }, [user]);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
@@ -56,7 +56,7 @@ export default function OnboardingPage() {
         }
     };
     
-    const handleProcessFile = () => {
+    const handleProcessFile = async () => {
         if(!file || !userData?.tenantId) {
              toast({ variant: 'destructive', title: 'Error', description: 'File or user data is missing.' });
              return;
@@ -135,7 +135,7 @@ export default function OnboardingPage() {
                                     <File className="h-5 w-5 text-muted-foreground" />
                                     <span className="text-sm font-medium">{file.name}</span>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={() => setFile(null)}>
+                                <Button variant="ghost" size="icon" onClick={() => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; } }>
                                     <X className="h-4 w-4" />
                                 </Button>
                             </div>
