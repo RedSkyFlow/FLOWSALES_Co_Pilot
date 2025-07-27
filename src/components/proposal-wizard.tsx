@@ -181,7 +181,11 @@ export function ProposalWizard() {
       
       try {
           const result = await analyzeMeetingTranscript({
-              transcript: [{ speaker: "Combined", text: meetingTranscript }],
+              // Simple split for diarization POC
+              transcript: meetingTranscript.split('\n').map(line => {
+                  const parts = line.split(':');
+                  return { speaker: parts[0] || 'Unknown', text: parts.slice(1).join(':').trim() };
+              }),
               availableModules: products.map(p => p.name)
           });
           
@@ -196,7 +200,6 @@ export function ProposalWizard() {
 
           toast({ title: "Analysis Complete", description: "Pain points, products, and draft sections have been populated." });
 
-          // Now, generate the executive summary based on the new pain points
           if (result.clientPainPoints.join('\n') && selectedTemplate) {
             setIsSummaryLoading(true);
             const summaryResult = await generateExecutiveSummary({ clientPainPoints: result.clientPainPoints.join('\n'), proposalType: selectedTemplate.name });
@@ -354,7 +357,7 @@ export function ProposalWizard() {
                     <Label htmlFor="meeting-transcript">Meeting Transcript (Optional)</Label>
                     <Textarea
                         id="meeting-transcript"
-                        placeholder="Paste the full meeting transcript here..."
+                        placeholder="Paste the full meeting transcript here... (e.g. Speaker 1: text...)"
                         rows={8}
                         value={meetingTranscript}
                         onChange={(e) => setMeetingTranscript(e.target.value)}

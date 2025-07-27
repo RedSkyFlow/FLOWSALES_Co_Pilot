@@ -77,7 +77,7 @@ const meetingAnalysisPrompt = ai.definePrompt({
   prompt: `You are an expert sales co-pilot embedded in a real-time meeting.
 Your task is to analyze the following meeting transcript and generate a structured draft for a sales proposal.
 
-The sales agent is "Agent", and the potential customer is "Client".
+The sales agent is "Agent", and the potential customer is "Client". If you cannot determine who is who, assume any speaker who is not the agent is the client.
 
 **Your Instructions:**
 1.  **Identify Pain Points:** Carefully read the client's statements and list their primary business challenges and pain points.
