@@ -48,20 +48,22 @@ export default function TemplatesPage() {
                 const fetchedUserData = docSnap.data() as User;
                 setUserData(fetchedUserData);
                 
-                // Once we have tenantId, fetch templates
-                const templatesCollectionRef = collection(db, 'tenants', fetchedUserData.tenantId, 'proposal_templates');
-                const q = query(templatesCollectionRef);
-                const unsubscribeTemplates = onSnapshot(q, (querySnapshot) => {
-                    const templatesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProposalTemplate));
-                    setTemplates(templatesData);
+                if (fetchedUserData.tenantId) {
+                    const templatesCollectionRef = collection(db, 'tenants', fetchedUserData.tenantId, 'proposal_templates');
+                    const q = query(templatesCollectionRef);
+                    const unsubscribeTemplates = onSnapshot(q, (querySnapshot) => {
+                        const templatesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProposalTemplate));
+                        setTemplates(templatesData);
+                        setLoading(false);
+                    }, (error) => {
+                        console.error("Error fetching templates: ", error);
+                        setLoading(false);
+                    });
+                    return () => unsubscribeTemplates();
+                } else {
                     setLoading(false);
-                }, (error) => {
-                    console.error("Error fetching templates: ", error);
-                    setLoading(false);
-                });
-                return () => unsubscribeTemplates();
+                }
             } else {
-                // Handle case where user doc might not exist yet
                 setLoading(false);
             }
         });
@@ -70,7 +72,7 @@ export default function TemplatesPage() {
     }, [user, loadingAuth]);
 
     const handleDuplicateTemplate = async (templateId: string) => {
-        if (!userData) return;
+        if (!userData?.tenantId) return;
         try {
             await duplicateTemplate(userData.tenantId, templateId);
             toast({ title: 'Template Duplicated', description: 'A copy of the template has been created.' });
@@ -134,7 +136,7 @@ export default function TemplatesPage() {
                                  <Button 
                                     variant="outline" 
                                     size="icon" 
-                                    disabled={!isAdmin} 
+                                    disabled={!isAdmin || !userData?.tenantId} 
                                     onClick={() => handleDuplicateTemplate(template.id)}
                                     aria-label="Duplicate Template"
                                  >

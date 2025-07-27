@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -76,7 +76,7 @@ export default function NewTemplatePage() {
     name: 'sections',
   });
   
-  useState(() => {
+  useEffect(() => {
     if (!user) return;
     const userDocRef = doc(db, 'users', user.uid);
     const unsub = onSnapshot(userDocRef, (docSnap) => {
@@ -85,7 +85,7 @@ export default function NewTemplatePage() {
         }
     });
     return () => unsub();
-  });
+  }, [user]);
 
   const onSubmit = async (data: TemplateFormData) => {
     if (!user || !userData?.tenantId) {
@@ -153,9 +153,6 @@ export default function NewTemplatePage() {
   if(loadingAuth) {
     return <MainLayout><Loader2 className="h-8 w-8 animate-spin" /></MainLayout>
   }
-
-  // A real app would also check the user's role from a database
-  // For now, we assume anyone logged in can create if they find the page
   
   return (
     <MainLayout>

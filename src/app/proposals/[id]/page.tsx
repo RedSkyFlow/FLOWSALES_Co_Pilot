@@ -23,7 +23,7 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { notFound, useParams } from "next/navigation";
+import { notFound } from "next/navigation";
 import {
   FileText,
   MessageCircle,
@@ -45,7 +45,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ClientDate } from "@/components/client-date";
 import type { Proposal, ProposalStatus, Comment, SuggestedEdit, ProposalSection, Product, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc } from "firebase/firestore";
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -84,8 +84,7 @@ export default function ProposalDetailPage({
 }: {
   params: { id: string };
 }) {
-  const unwrappedParams = use(params);
-  const proposalId = unwrappedParams.id;
+  const [proposalId, setProposalId] = useState('');
   
   const [user, loadingAuth] = useAuthState(auth);
   const [userData, setUserData] = useState<User | null>(null);
@@ -104,6 +103,13 @@ export default function ProposalDetailPage({
   const [suggestionText, setSuggestionText] = useState("");
   const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
   
+  useEffect(() => {
+    // This hook runs on the client, so `params` is available.
+    // We use a state to hold the id to avoid issues with server/client mismatch.
+    setProposalId(params.id);
+  }, [params.id]);
+
+
   useEffect(() => {
     if (!user) return;
     const userDocRef = doc(db, 'users', user.uid);
@@ -231,7 +237,7 @@ export default function ProposalDetailPage({
   };
 
 
-  if (isLoading || loadingAuth) {
+  if (isLoading || loadingAuth || !proposalId) {
       return <MainLayout><div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin"/></div></MainLayout>
   }
 
