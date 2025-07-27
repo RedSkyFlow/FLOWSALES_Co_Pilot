@@ -116,7 +116,7 @@ export default function VerifyProductsPage() {
         return <MainLayout><div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div></MainLayout>
     }
 
-    if (unverifiedProducts.length === 0) {
+    if (!loadingData && unverifiedProducts.length === 0) {
         return (
             <MainLayout>
                 <div className="text-center space-y-4">
@@ -132,53 +132,57 @@ export default function VerifyProductsPage() {
 
     return (
         <MainLayout>
-            <div className="max-w-4xl mx-auto space-y-6">
-                <div>
-                    <h1 className="text-3xl font-bold">AI-Powered Product Verification</h1>
-                    <p className="text-muted-foreground">Review the AI's suggestions for each of your imported products.</p>
+             {currentProduct ? (
+                <div className="max-w-4xl mx-auto space-y-6">
+                    <div>
+                        <h1 className="text-3xl font-bold">AI-Powered Product Verification</h1>
+                        <p className="text-muted-foreground">Review the AI's suggestions for each of your imported products.</p>
+                    </div>
+                    
+                    <Progress value={progress} className="w-full" />
+                    <p className="text-sm text-muted-foreground text-center">Verifying product {currentIndex + 1} of {totalUnverified}</p>
+
+                    <Card className="bg-muted/30">
+                        <CardHeader>
+                            <CardTitle>Product Details</CardTitle>
+                            <CardDescription>{currentProduct.name}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm">{currentProduct.description}</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><Wand2 className="text-primary" /> AI Rule Suggestion</CardTitle>
+                            <CardDescription>Based on the product's name and description, the AI proposes the following rule. You can accept this rule or skip it.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="min-h-[80px] flex items-center justify-center">
+                            {loadingRule ? (
+                                <Loader2 className="h-6 w-6 animate-spin" />
+                            ) : (
+                                <p className="text-center font-medium">{proposedRule}</p>
+                            )}
+                        </CardContent>
+                        <CardFooter className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={() => handleVerification(currentProduct)}>
+                                <X className="mr-2 h-4 w-4" /> Skip Rule
+                            </Button>
+                            <Button onClick={() => handleVerification(currentProduct, proposedRule)} disabled={!proposedRule || loadingRule}>
+                                <Check className="mr-2 h-4 w-4" /> Accept Rule & Continue
+                            </Button>
+                        </CardFooter>
+                    </Card>
+
+                    <div className="flex justify-end">
+                        <Button variant="ghost" onClick={() => handleVerification(currentProduct)}>
+                            Skip for now <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
-                
-                <Progress value={progress} className="w-full" />
-                <p className="text-sm text-muted-foreground text-center">Verifying product {currentIndex + 1} of {totalUnverified}</p>
-
-                <Card className="bg-muted/30">
-                    <CardHeader>
-                        <CardTitle>Product Details</CardTitle>
-                        <CardDescription>{currentProduct.name}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm">{currentProduct.description}</p>
-                    </CardContent>
-                </Card>
-
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Wand2 className="text-primary" /> AI Rule Suggestion</CardTitle>
-                        <CardDescription>Based on the product's name and description, the AI proposes the following rule. You can accept this rule or skip it.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="min-h-[80px] flex items-center justify-center">
-                        {loadingRule ? (
-                            <Loader2 className="h-6 w-6 animate-spin" />
-                        ) : (
-                            <p className="text-center font-medium">{proposedRule}</p>
-                        )}
-                    </CardContent>
-                    <CardFooter className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => handleVerification(currentProduct)}>
-                            <X className="mr-2 h-4 w-4" /> Skip Rule
-                        </Button>
-                         <Button onClick={() => handleVerification(currentProduct, proposedRule)} disabled={!proposedRule || loadingRule}>
-                            <Check className="mr-2 h-4 w-4" /> Accept Rule & Continue
-                        </Button>
-                    </CardFooter>
-                </Card>
-
-                 <div className="flex justify-end">
-                     <Button variant="ghost" onClick={() => handleVerification(currentProduct)}>
-                         Skip for now <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                 </div>
-            </div>
+             ) : (
+                 <div className="flex items-center justify-center h-full"><Loader2 className="h-8 w-8 animate-spin" /></div>
+             )}
         </MainLayout>
     )
 }
