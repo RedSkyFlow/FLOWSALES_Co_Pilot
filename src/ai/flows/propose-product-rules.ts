@@ -10,6 +10,7 @@
  */
 
 import { ai } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/googleai';
 import { z } from 'genkit';
 
 const ProposeProductRulesInputSchema = z.object({
@@ -37,7 +38,7 @@ export async function proposeProductRules(
 
 const prompt = ai.definePrompt({
   name: 'proposeProductRulesPrompt',
-  model: 'gemini-1.5-flash',
+  model: googleAI.model('gemini-1.5-flash'),
   input: { schema: ProposeProductRulesInputSchema },
   output: { schema: ProposeProductRulesOutputSchema },
   prompt: `You are an expert system configurator. Your task is to analyze a product's name and description to identify potential business logic, dependencies, or sales rules.
