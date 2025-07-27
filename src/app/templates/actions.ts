@@ -3,7 +3,7 @@
 
 import { db } from '@/lib/firebase';
 import type { ProposalSection, ProposalTemplate } from '@/lib/types';
-import { addDoc, collection, doc, getDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 
 interface CreateTemplateInput {
@@ -31,6 +31,21 @@ export async function createTemplate(data: CreateTemplateInput) {
     } catch (error) {
         console.error("Error creating template: ", error);
         throw new Error('Could not create the template. Please try again.');
+    }
+}
+
+export async function updateTemplate(tenantId: string, templateId: string, data: Partial<Omit<ProposalTemplate, 'id'>>) {
+    if (!tenantId || !templateId) {
+        throw new Error('Tenant ID and Template ID are required.');
+    }
+
+    try {
+        const templateDocRef = doc(db, 'tenants', tenantId, 'proposal_templates', templateId);
+        await updateDoc(templateDocRef, data);
+        revalidatePath('/templates');
+    } catch (error) {
+        console.error("Error updating template: ", error);
+        throw new Error('Could not update the template. Please try again.');
     }
 }
 

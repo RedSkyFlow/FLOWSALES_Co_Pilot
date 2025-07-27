@@ -17,8 +17,9 @@ import { Loader2, PlusCircle, Trash2, GripVertical, Users, Package, FileText } f
 import { useToast } from '@/hooks/use-toast';
 import { createTemplate } from '../actions';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
-import type { ProposalSection } from '@/lib/types';
+import { auth, db } from '@/lib/firebase';
+import type { User } from '@/lib/types';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const sectionSchema = z.object({
     title: z.string().min(1, 'Section title is required'),
@@ -45,6 +46,7 @@ export default function NewTemplatePage() {
   const router = useRouter();
   const { toast } = useToast();
   const [user, loadingAuth] = useAuthState(auth);
+  const [userData, setUserData] = useState<User | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -66,17 +68,26 @@ export default function NewTemplatePage() {
     control,
     name: 'sections',
   });
+  
+  useState(() => {
+    if (!user) return;
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsub = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            setUserData(docSnap.data() as User);
+        }
+    });
+    return () => unsub();
+  });
 
   const onSubmit = async (data: TemplateFormData) => {
-    if (!user) {
-        toast({ title: "Not Authenticated", description: "You must be logged in.", variant: "destructive" });
+    if (!user || !userData?.tenantId) {
+        toast({ title: "Not Authenticated", description: "You must be logged in with a valid tenant.", variant: "destructive" });
         return;
     }
     setIsSubmitting(true);
     try {
-      // Hardcoded tenantId for now
-      const tenantId = 'tenant-001';
-      await createTemplate({ ...data, tenantId });
+      await createTemplate({ ...data, tenantId: userData.tenantId });
       toast({
         title: 'Template Created',
         description: `The "${data.name}" template has been successfully created.`,
@@ -193,7 +204,7 @@ export default function NewTemplatePage() {
                 </Button>
               </div>
             ))}
-             {errors.sections && !errors.sections.root && <p className="text-destructive text-sm mt-1">{errors.sections.message}</p>}
+             {errors.sections?.root && <p className="text-destructive text-sm mt-1">{errors.sections.root.message}</p>}
             <Button
               type="button"
               variant="outline"
