@@ -25,20 +25,17 @@ export async function processProductCatalog(tenantId: string, csvContent: string
         const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
         const products: Omit<Product, 'id'>[] = [];
 
-        // Basic validation for required headers
-        const requiredHeaders = ['name', 'description', 'baseprice', 'pricingmodel', 'type'];
-        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-        if (missingHeaders.length > 0) {
-            return { success: false, message: `CSV is missing required headers: ${missingHeaders.join(', ')}.`, count: 0 };
-        }
-        
-        const nameIndex = headers.indexOf('name');
-        const descriptionIndex = headers.indexOf('description');
-        const basePriceIndex = headers.indexOf('baseprice');
-        const pricingModelIndex = headers.indexOf('pricingmodel');
-        const typeIndex = headers.indexOf('type');
+        // Flexible header mapping
+        const nameIndex = headers.findIndex(h => h.includes('name') || h.includes('description'));
+        const descriptionIndex = headers.findIndex(h => h.includes('description'));
+        const basePriceIndex = headers.findIndex(h => h.includes('price') || h.includes('selling price') || h.includes('retail price'));
+        const pricingModelIndex = headers.findIndex(h => h.includes('pricing') || h.includes('model'));
+        const typeIndex = headers.findIndex(h => h.includes('type'));
         const tagsIndex = headers.indexOf('tags');
 
+        if (nameIndex === -1 || basePriceIndex === -1) {
+            return { success: false, message: 'CSV must contain at least a "name" (or "description") and a "price" column.', count: 0 };
+        }
 
         for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
@@ -50,10 +47,10 @@ export async function processProductCatalog(tenantId: string, csvContent: string
 
             const productData: Omit<Product, 'id'> = {
                 name: values[nameIndex] || 'Unnamed Product',
-                description: values[descriptionIndex] || '',
+                description: descriptionIndex !== -1 ? values[descriptionIndex] || '' : 'No description provided.',
                 basePrice: basePrice,
-                pricingModel: (values[pricingModelIndex] as any) || 'one-time',
-                type: (values[typeIndex] as any) || 'product',
+                pricingModel: (pricingModelIndex !== -1 ? values[pricingModelIndex] as any : 'one-time') || 'one-time',
+                type: (typeIndex !== -1 ? values[typeIndex] as any : 'product') || 'product',
                 tags: tagsIndex !== -1 && values[tagsIndex] ? values[tagsIndex].split(';').map(t => t.trim()) : [],
                 // @ts-ignore - Adding a temporary status for the onboarding flow
                 status: 'unverified'
