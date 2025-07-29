@@ -1,9 +1,6 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
-import { Inter } from 'next/font/google';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Flow Sales Co-Pilot',
@@ -19,7 +16,7 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
       </head>
-      <body className={`${inter.className} antialiased`}>
+      <body className="font-sans antialiased">
         {children}
         <Toaster />
       </body>

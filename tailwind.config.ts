@@ -1,4 +1,4 @@
-import type {Config} from 'tailwindcss';
+import type { Config } from 'tailwindcss';
 
 const config = {
   darkMode: ['class'],
@@ -20,65 +20,64 @@ const config = {
         sans: ['Inter', 'sans-serif'],
       },
       colors: {
-        background: '#0A0903',
-        foreground: '#E2FDFF',
-        card: '#151417',
-        border: '#262933',
-        input: '#1F2129',
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
         primary: {
-          DEFAULT: '#00807E', // Flow Teal
-          foreground: '#E2FDFF',
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
         },
         secondary: {
-          DEFAULT: '#0282F2', // Flow Blue
-          foreground: '#FFFFFF',
-        },
-        accent: {
-          DEFAULT: '#FFD430', // Flow Yellow
-          foreground: '#332A00',
-        },
-        impact: {
-          DEFAULT: '#F46036', // Flow Orange
-          foreground: '#FFFFFF',
-        },
-        success: {
-          DEFAULT: '#28A745', // Functional Green
-          foreground: '#FFFFFF',
-        },
-        muted: {
-          DEFAULT: 'hsl(var(--muted))', // Keep HSL for ShadCN compatibility if needed
-          foreground: '#9CA3AF',
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
         },
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
         },
-        ring: 'hsl(var(--ring))',
-      },
-      boxShadow: {
-        'glow-secondary': '0 0 25px rgba(2, 130, 242, 0.4)',
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+        },
+        impact: {
+            DEFAULT: 'hsl(var(--impact))',
+            foreground: 'hsl(var(--impact-foreground))',
+        },
+        success: {
+            DEFAULT: 'hsl(var(--success))',
+            foreground: 'hsl(var(--success-foreground))',
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      boxShadow: {
+        'glow-secondary': '0 0 25px hsl(var(--secondary) / 0.4)',
+      },
       keyframes: {
         'accordion-down': {
-          from: {
-            height: '0',
-          },
-          to: {
-            height: 'var(--radix-accordion-content-height)',
-          },
+          from: { height: '0' },
+          to: { height: 'var(--radix-accordion-content-height)' },
         },
         'accordion-up': {
-          from: {
-            height: 'var(--radix-accordion-content-height)',
-          },
-          to: {
-            height: '0',
-          },
+          from: { height: 'var(--radix-accordion-content-height)' },
+          to: { height: '0' },
         },
       },
       animation: {

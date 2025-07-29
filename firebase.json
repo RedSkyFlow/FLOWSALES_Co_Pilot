@@ -3,6 +3,8 @@
     "rules": "firestore.rules"
   },
   "hosting": {
+    "site": "flowai-gateway",
+    "app": "1:43101301694:web:05d460498b77ee5bf967ef",
     "source": ".",
     "ignore": [
       "firebase.json",

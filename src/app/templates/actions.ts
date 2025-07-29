@@ -1,85 +1,66 @@
-
 'use server';
 
 import { db } from '@/lib/firebase';
-import type { ProposalSection, ProposalTemplate } from '@/lib/types';
-import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
+import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
+import { callGenkitFlow } from '@/app/(protected)/settings/onboarding/actions';
 
-interface CreateTemplateInput {
-    tenantId: string;
-    name: string;
-    description: string;
-    icon: 'Users' | 'Package' | 'FileText';
-    sections: ProposalSection[];
-}
+const TemplateInputSchema = z.object({
+  documentContent: z.string(),
+  tenantId: z.string(),
+});
 
-export async function createTemplate(data: CreateTemplateInput) {
-    if (!data.tenantId || !data.name) {
-        throw new Error('Tenant ID and Name are required.');
-    }
-
-    try {
-        const templatesCollectionRef = collection(db, 'tenants', data.tenantId, 'proposal_templates');
-        await addDoc(templatesCollectionRef, {
-            name: data.name,
-            description: data.description,
-            icon: data.icon,
-            sections: data.sections,
-        });
-        revalidatePath('/templates');
-    } catch (error) {
-        console.error("Error creating template: ", error);
-        throw new Error('Could not create the template. Please try again.');
-    }
-}
-
-export async function updateTemplate(tenantId: string, templateId: string, data: Partial<Omit<ProposalTemplate, 'id'>>) {
-    if (!tenantId || !templateId) {
-        throw new Error('Tenant ID and Template ID are required.');
-    }
-
-    try {
-        const templateDocRef = doc(db, 'tenants', tenantId, 'proposal_templates', templateId);
-        await updateDoc(templateDocRef, data);
-        revalidatePath('/templates');
-    } catch (error) {
-        console.error("Error updating template: ", error);
-        throw new Error('Could not update the template. Please try again.');
-    }
-}
-
+const GenerateTemplateOutputSchema = z.object({
+  sections: z.array(z.object({
+    type: z.string(),
+    content: z.string(),
+  })),
+});
 
 /**
- * Duplicates an existing proposal template for a given tenant.
- * @param tenantId The ID of the tenant.
- * @param templateId The ID of the template to duplicate.
+ * Server action to trigger the AI-powered document-to-template creation process.
+ *
+ * @param data The document content and tenant ID.
+ * @returns An object indicating success or failure.
  */
-export async function duplicateTemplate(tenantId: string, templateId: string) {
-    if (!tenantId || !templateId) {
-        throw new Error('Tenant ID and Template ID are required.');
+export async function createTemplateFromDoc(data: z.infer<typeof TemplateInputSchema>) {
+  const validation = TemplateInputSchema.safeParse(data);
+  if (!validation.success) {
+    return { error: 'Invalid data provided.' };
+  }
+
+  const { documentContent, tenantId } = validation.data;
+
+  try {
+    // Step 1: Call the Genkit flow to get the structured data
+    const { sections } = await callGenkitFlow<{
+      documentDataUri: string; // Genkit flow expects this specific field name
+    }, z.infer<typeof GenerateTemplateOutputSchema>>(
+      'generateTemplateFromDocumentFlow',
+      { documentDataUri: documentContent } // Pass the content in the expected format
+    );
+
+    if (!sections || sections.length === 0) {
+      return { error: 'The AI could not extract any sections from the document.' };
     }
     
-    try {
-        const templateDocRef = doc(db, 'tenants', tenantId, 'proposal_templates', templateId);
-        const templateSnap = await getDoc(templateDocRef);
+    // Step 2: Save the new template to the tenant's subcollection
+    const templatesCollectionRef = collection(db, 'tenants', tenantId, 'proposal_templates');
+    const newTemplateDoc = {
+      name: `New Template from Document - ${new Date().toLocaleDateString()}`,
+      sections,
+      createdAt: new Date(),
+    };
+    
+    await addDoc(templatesCollectionRef, newTemplateDoc);
 
-        if (!templateSnap.exists()) {
-            throw new Error('Template not found');
-        }
-
-        const originalTemplate = templateSnap.data() as Omit<ProposalTemplate, 'id'>;
-        const newTemplateData = {
-            ...originalTemplate,
-            name: `${originalTemplate.name} (Copy)`,
-        };
-
-        const templatesCollectionRef = collection(db, 'tenants', tenantId, 'proposal_templates');
-        await addDoc(templatesCollectionRef, newTemplateData);
-
-        revalidatePath('/templates');
-    } catch (error) {
-        console.error("Error duplicating template: ", error);
-        throw new Error('Could not duplicate the template. Please try again.');
-    }
+    // Step 3: Revalidate the templates page to show the new data
+    revalidatePath('/templates');
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error creating template from document:", error);
+    return { error: 'An unexpected error occurred while creating the template.' };
+  }
 }

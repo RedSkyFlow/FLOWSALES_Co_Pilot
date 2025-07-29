@@ -1,84 +1,58 @@
-
 'use server';
 
 import { db } from '@/lib/firebase';
-import type { Product } from '@/lib/types';
-import { addDoc, collection, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, writeBatch, doc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
 
-type ProductInput = Omit<Product, 'id'>;
+const productSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  price: z.number(),
+});
 
-/**
- * Creates a new product for a given tenant.
- * @param tenantId The ID of the tenant.
- * @param data The product data.
- */
-export async function createProduct(tenantId: string, data: ProductInput) {
-    if (!tenantId || !data.name) {
-        throw new Error('Tenant ID and Product Name are required.');
-    }
+const ruleSchema = z.object({
+  type: z.string(),
+  productIds: z.array(z.string()),
+});
 
-    try {
-        const productsCollectionRef = collection(db, 'tenants', tenantId, 'products');
-        await addDoc(productsCollectionRef, data);
-        revalidatePath('/settings/products');
-    } catch (error) {
-        console.error("Error creating product: ", error);
-        throw new Error('Could not create the product. Please try again.');
-    }
-}
+const approvalSchema = z.object({
+  products: z.array(productSchema),
+  rules: z.array(ruleSchema),
+  tenantId: z.string(),
+});
 
-/**
- * Updates an existing product for a given tenant.
- * @param tenantId The ID of the tenant.
- * @param productId The ID of the product to update.
- * @param data The updated product data.
- */
-export async function updateProduct(tenantId: string, productId: string, data: Partial<ProductInput>) {
-     if (!tenantId || !productId) {
-        throw new Error('Tenant ID and Product ID are required.');
-    }
+export async function approveConfiguration(data: z.infer<typeof approvalSchema>) {
+  const validation = approvalSchema.safeParse(data);
 
-    try {
-        const productDocRef = doc(db, 'tenants', tenantId, 'products', productId);
-        await updateDoc(productDocRef, data);
-        revalidatePath('/settings/products');
-    } catch (error) {
-        console.error("Error updating product: ", error);
-        throw new Error('Could not update the product. Please try again.');
-    }
-}
+  if (!validation.success) {
+    return { error: 'Invalid data format.' };
+  }
 
-/**
- * Duplicates an existing product for a given tenant.
- * @param tenantId The ID of the tenant.
- * @param productId The ID of the product to duplicate.
- */
-export async function duplicateProduct(tenantId: string, productId: string) {
-    if (!tenantId || !productId) {
-        throw new Error('Tenant ID and Product ID are required.');
-    }
+  const { products, rules, tenantId } = validation.data;
+  const batch = writeBatch(db);
+
+  try {
+    // Add products to a 'products' subcollection in the tenant document
+    const productsCollectionRef = collection(db, 'tenants', tenantId, 'products');
+    products.forEach((product) => {
+      const productRef = doc(productsCollectionRef, product.id);
+      batch.set(productRef, product);
+    });
+
+    // For simplicity, we'll store all rules in a single document.
+    // A more complex app might store them in their own subcollection.
+    const rulesDocRef = doc(db, 'tenants', tenantId, 'configs', 'rules');
+    batch.set(rulesDocRef, { rules });
+
+    await batch.commit();
+
+    // Revalidate the path to ensure the UI updates with the new data
+    revalidatePath(`/settings/products`);
     
-    try {
-        const productDocRef = doc(db, 'tenants', tenantId, 'products', productId);
-        const productSnap = await getDoc(productDocRef);
-
-        if (!productSnap.exists()) {
-            throw new Error('Product not found');
-        }
-
-        const originalProduct = productSnap.data() as ProductInput;
-        const newProductData: ProductInput = {
-            ...originalProduct,
-            name: `${originalProduct.name} (Copy)`,
-        };
-
-        const productsCollectionRef = collection(db, 'tenants', tenantId, 'products');
-        await addDoc(productsCollectionRef, newProductData);
-
-        revalidatePath('/settings/products');
-    } catch (error) {
-        console.error("Error duplicating product: ", error);
-        throw new Error('Could not duplicate the product. Please try again.');
-    }
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving configuration:', error);
+    return { error: 'Failed to save configuration.' };
+  }
 }

@@ -3,7 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper Functions
+    // --- Helper Functions ---
     function isUserAuthenticated() {
       return request.auth != null;
     }
@@ -15,56 +15,85 @@ service cloud.firestore {
     function isUserInTenant(tenantId) {
       return isUserAuthenticated() && getRequestingUserData().tenantId == tenantId;
     }
-
+    
+    // Role checks are now more robust
     function isUserRole(role) {
-      return isUserAuthenticated() && getRequestingUserData().role == role;
-    }
-
-    // Matches any document in the 'users' collection.
-    // Users can read/write their own data.
-    match /users/{userId} {
-      allow read, update: if isUserAuthenticated() && request.auth.uid == userId;
-      allow create: if isUserAuthenticated();
+      let userRole = getRequestingUserData().role;
+      return isUserAuthenticated() && (userRole == role || (role == 'editor' && userRole == 'admin'));
     }
     
-    // Multi-tenant data structure
+    function isUserAdmin(tenantId) {
+      return isUserInTenant(tenantId) && isUserRole('admin');
+    }
+
+    // --- User Profile Rules ---
+    match /users/{userId} {
+      // Users can only read their own data
+      allow get: if isUserAuthenticated() && request.auth.uid == userId;
+      // Users can only update their own data, and cannot change their role or tenantId
+      allow update: if isUserAuthenticated() && request.auth.uid == userId 
+                      && request.resource.data.role == resource.data.role
+                      && request.resource.data.tenantId == resource.data.tenantId;
+      // Allow user creation only if the document doesn't already exist
+      allow create: if isUserAuthenticated() && !exists(/databases/$(database)/documents/users/$(userId));
+    }
+    
+    // --- Tenant Data Rules ---
     match /tenants/{tenantId} {
     
-      // Allow tenant document reads for its members
       allow get: if isUserInTenant(tenantId);
 
-      // Clients can be managed by any user within the tenant
-      match /clients/{clientId} {
-        allow read, write: if isUserInTenant(tenantId);
+      // --- Brand Assets ---
+      match /brand_assets/{assetId} {
+        allow read: if isUserInTenant(tenantId);
+        // Only admins can create/update brand assets
+        allow write: if isUserAdmin(tenantId);
       }
 
-      // Proposals can only be accessed by the assigned agent
+      // --- Clients ---
+      match /clients/{clientId} {
+        allow read: if isUserInTenant(tenantId);
+        allow write: if isUserInTenant(tenantId); // Any tenant member can manage clients
+        allow delete: if isUserAdmin(tenantId);
+      }
+
+      // --- Proposals ---
       match /proposals/{proposalId} {
-        allow read, write: if isUserAuthenticated() && request.auth.uid == resource.data.salesAgentId;
+        allow read: if isUserInTenant(tenantId);
+        // Editors can create and update, but not change critical fields
+        allow create: if isUserRole('editor') && isUserInTenant(tenantId);
+        allow update: if isUserRole('editor') && isUserInTenant(tenantId)
+                      && request.resource.data.ownerId == resource.data.ownerId;
+        allow delete: if isUserAdmin(tenantId);
         
-        // Comments and edits can be made by authenticated users, 
-        // with more granular logic handled in backend functions.
         match /comments/{commentId} {
-            allow read, write: if isUserAuthenticated();
+            allow read, write: if isUserInTenant(tenantId);
         }
         match /suggested_edits/{editId} {
-            allow read, write: if isUserAuthenticated();
+            allow read, write: if isUserInTenant(tenantId);
         }
       }
 
-      // Templates can be read by any user in the tenant, but only managed by admins.
+      // --- Templates & Products ---
+      // These collections now have robust validation rules
       match /proposal_templates/{templateId} {
         allow read: if isUserInTenant(tenantId);
-        allow write: if isUserInTenant(tenantId) && isUserRole('admin');
+        allow create, update: if isUserAdmin(tenantId) 
+                               && request.resource.data.name.size() < 100
+                               && request.resource.data.sections is list;
+        allow delete: if isUserAdmin(tenantId);
       }
 
-      // Products can be read by any user in the tenant, but only managed by admins.
       match /products/{productId} {
         allow read: if isUserInTenant(tenantId);
-        allow write: if isUserInTenant(tenantId) && isUserRole('admin');
+        allow create, update: if isUserAdmin(tenantId)
+                               && request.resource.data.name.size() < 100
+                               && request.resource.data.price is number
+                               && request.resource.data.price >= 0;
+        allow delete: if isUserAdmin(tenantId);
       }
       
-      // Usage and budget can be read by any user in the tenant, but only written to by backend processes (not users)
+      // --- Read-only Collections ---
       match /usage_ledgers/{ledgerId} {
         allow read: if isUserInTenant(tenantId);
         allow write: if false; // Only backend can write

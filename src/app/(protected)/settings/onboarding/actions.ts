@@ -1,105 +1,64 @@
-
 'use server';
 
-import { db } from '@/lib/firebase';
-import { writeBatch, collection, doc, addDoc } from 'firebase/firestore';
-import { revalidatePath } from 'next/cache';
-import type { DocumentAnalysisOutput } from '@/ai/flows/ingest-and-analyze-configurator';
-import { generateTemplateFromDocument } from '@/ai/flows/generate-template-from-document';
+import { z } from 'zod';
+import { approveConfiguration } from '@/app/(protected)/settings/products/actions';
 
-/**
- * Saves the entire extracted product and rule configuration to Firestore.
- * @param tenantId The ID of the tenant.
- * @param configuration The extracted products and rules from the AI analysis.
- */
-export async function saveConfiguration(tenantId: string, configuration: DocumentAnalysisOutput): Promise<{ success: boolean; message: string; }> {
-    if (!tenantId || !configuration) {
-        throw new Error('Tenant ID and configuration data are required.');
-    }
-    
-    const { products, rules } = configuration;
+// Define the schemas for inputs and outputs of the Genkit flows
+const ScrapeWebsiteInputSchema = z.object({
+  url: z.string().url(),
+  tenantId: z.string(),
+});
 
-    if (!products || products.length === 0) {
-        return { success: false, message: 'No products were found in the configuration to save.' };
-    }
+const ScrapeWebsiteOutputSchema = z.object({
+  logoUrl: z.string().url().optional(),
+  brandColors: z.array(z.string()).optional(),
+  toneOfVoice: z.string().optional(),
+});
 
-    try {
-        const batch = writeBatch(db);
-        const productsCollectionRef = collection(db, 'tenants', tenantId, 'products');
-        const rulesCollectionRef = collection(db, 'tenants', tenantId, 'rules');
+const AnalyzeConfiguratorInputSchema = z.object({
+  documentContent: z.string(),
+  userId: z.string(),
+});
 
-        // Add all new products to the batch
-        products.forEach(product => {
-            const newProductRef = doc(productsCollectionRef);
-            // Ensure status is 'verified' upon bulk approval
-            batch.set(newProductRef, { ...product, status: 'verified' });
-        });
-        
-        // Add all new rules to the batch
-        // Note: The 'rules' collection and its type would need to be formally defined in a real app.
-        // For now, we are saving them as-is.
-        rules.forEach(rule => {
-            const newRuleRef = doc(rulesCollectionRef);
-            batch.set(newRuleRef, rule);
-        });
+const AnalyzeConfiguratorOutputSchema = z.object({
+  products: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    price: z.number(),
+  })),
+  rules: z.array(z.object({
+    type: z.string(),
+    productIds: z.array(z.string()),
+  })),
+});
 
-        await batch.commit();
+// Helper to call Genkit flows via HTTP
+async function callGenkitFlow<Input, Output>(flowName: string, input: Input): Promise<Output> {
+  const response = await fetch(`${process.env.GENKIT_API_BASE_URL || '/api/genkit'}/${flowName}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+  });
 
-        revalidatePath('/settings/products');
-        revalidatePath('/settings/onboarding');
-
-        return { success: true, message: `Successfully saved ${products.length} products and ${rules.length} rules.` };
-
-    } catch (error) {
-        console.error("Error saving configuration: ", error);
-        return { success: false, message: 'An unexpected error occurred while saving the configuration.' };
-    }
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || `Failed to call Genkit flow: ${flowName}`);
+  }
+  return response.json();
 }
 
-
-interface CreateTemplateFromDocumentInput {
-    tenantId: string;
-    documentDataUri: string;
-    originalFileName: string;
+export async function runScrapeWebsiteFlow(data: z.infer<typeof ScrapeWebsiteInputSchema>) {
+  return await callGenkitFlow<z.infer<typeof ScrapeWebsiteInputSchema>, z.infer<typeof ScrapeWebsiteOutputSchema>>(
+    'scrapeWebsiteFlow',
+    data
+  );
 }
 
-/**
- * Takes a document, analyzes it with AI to extract sections,
- * and saves it as a new proposal template.
- * @param input The necessary data including tenantId and the document data URI.
- */
-export async function createTemplateFromDocument(input: CreateTemplateFromDocumentInput): Promise<{ success: boolean; message: string }> {
-    if (!input.tenantId || !input.documentDataUri) {
-        throw new Error('Tenant ID and document data are required.');
-    }
-
-    try {
-        // Step 1: Call the Genkit flow to analyze the document
-        const analysisResult = await generateTemplateFromDocument({
-            documentDataUri: input.documentDataUri
-        });
-
-        if (!analysisResult || analysisResult.sections.length === 0) {
-            return { success: false, message: 'The AI could not identify any sections in the document.' };
-        }
-
-        // Step 2: Create a new proposal_templates document in Firestore
-        const newTemplate = {
-            name: `Template from ${input.originalFileName}`,
-            description: `Generated by AI from the uploaded document: ${input.originalFileName}`,
-            icon: 'FileText' as const,
-            sections: analysisResult.sections,
-        };
-
-        const templatesCollectionRef = collection(db, 'tenants', input.tenantId, 'proposal_templates');
-        await addDoc(templatesCollectionRef, newTemplate);
-
-        revalidatePath('/templates');
-
-        return { success: true, message: `Successfully created a new template with ${analysisResult.sections.length} sections.` };
-
-    } catch (error) {
-        console.error("Error creating template from document: ", error);
-        return { success: false, message: 'An unexpected error occurred while creating the template.' };
-    }
+export async function runAnalyzeConfiguratorFlow(data: z.infer<typeof AnalyzeConfiguratorInputSchema>) {
+  return await callGenkitFlow<z.infer<typeof AnalyzeConfiguratorInputSchema>, z.infer<typeof AnalyzeConfiguratorOutputSchema>>(
+    'ingestAndAnalyzeConfiguratorFlow',
+    data
+  );
 }

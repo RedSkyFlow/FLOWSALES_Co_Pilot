@@ -13,11 +13,11 @@
 
 import { ai } from '@/ai/genkit';
 import { googleAI } from '@genkit-ai/googleai';
-import { z } from 'genkit';
+import { z, GenkitError } from 'genkit';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Tenant } from '@/lib/types';
-import { GenkitError } from 'genkit/errors';
+
 
 // Schema for a single product extracted from the document
 const ExtractedProductSchema = z.object({
@@ -28,7 +28,7 @@ const ExtractedProductSchema = z.object({
   type: z.enum(['product', 'service', 'license']).describe('The type of item.'),
 });
 
-// Schema for a single business rule extracted from the document
+// Schema for a single business rule extracted from the.
 const ExtractedRuleSchema = z.object({
   name: z.string().describe('A short, descriptive name for the rule.'),
   description: z.string().describe('A detailed explanation of what the rule does and why it is needed.'),

@@ -14,11 +14,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSignInWithEmailAndPassword, useCreateUserWithEmailAndPassword } from 'react-firebase-hooks/auth';
-import { auth, db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import { useState, useEffect } from 'react';
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { onUserCreate } from "@/app/users/actions";
 import { updateProfile } from "firebase/auth";
 
 function FlowSalesLogo() {
@@ -67,14 +66,9 @@ export default function LoginPage() {
     try {
         const userCredential = await createUserWithEmailAndPassword(email, password);
         if (userCredential) {
+            // The onUserCreateFlow will handle the rest of the user setup automatically.
             const displayName = email.split('@')[0];
             await updateProfile(userCredential.user, { displayName });
-            await onUserCreate({
-                uid: userCredential.user.uid,
-                email: userCredential.user.email,
-                displayName: displayName,
-            });
-            // The useEffect will handle the redirect
         }
     } catch (e) {
         // The useEffect for createError will handle displaying the toast
@@ -140,7 +134,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"} 
                   required 
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.g.value)}
                   className="pr-10"
                 />
                 <Button
