@@ -1,67 +1,59 @@
-import { configure, defineFlow, onFlow } from 'genkit';
-import { firebase as firebasePlugin } from '@genkit-ai/firebase';
-import { googleAI } from '@genkit-ai/googleai';
+
+import { configure, defineFlow } from 'genkit';
+import { firebase } from '@genkit-ai/firebase';
+import { googleAI, generate } from '@genkit-ai/googleai';
 import { z } from 'zod';
 import { UserRecord } from 'firebase-functions/v1/auth';
 import { db } from '../lib/firebase';
 import { addDoc, collection, doc, getDoc, setDoc } from 'firebase/firestore';
 import type { User } from '../lib/types';
 import * as cheerio from 'cheerio';
-import { geminiPro } from '@genkit-ai/googleai';
-import { secret } from 'genkit/secrets'; // For connectCrmFlow
-
-// This is the single entry point for all backend Genkit flows.
-// It is only loaded on the server and is never part of the client bundle.
+import { defineSecret } from 'genkit/secrets';
 
 configure({
-  plugins: [firebasePlugin(), googleAI()],
+  plugins: [firebase(), googleAI()],
   logLevel: 'debug',
   enableTracingAndMetrics: true,
 });
 
-// =================================================================================================
-// AUTHENTICATION TRIGGERS
-// =================================================================================================
+export const onUserCreateFlow = defineFlow(
+    {
+        name: 'onUserCreateFlow',
+        trigger: {
+            provider: 'firebase.auth',
+            onUserCreate: true,
+        },
+        outputSchema: z.string().promise(),
+    },
+    async (user: UserRecord): Promise<string> => {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
 
-export const onUserCreateFlow = onFlow(
-  {
-    name: 'onUserCreateFlow',
-    trigger: { provider: 'firebase.auth.user', event: 'create' },
-    outputSchema: z.string().promise(),
-  },
-  async (user: UserRecord): Promise<string> => {
-    const userRef = doc(db, 'users', user.uid);
-    const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+            const existingData = userSnap.data() as User;
+            return existingData.tenantId;
+        }
 
-    if (userSnap.exists()) {
-      const existingData = userSnap.data() as User;
-      return existingData.tenantId;
+        const newTenantRef = await addDoc(collection(db, 'tenants'), {
+            companyName: `${user.displayName || 'New User'}'s Workspace`,
+            createdAt: new Date().toISOString(),
+            subscription: { tier: 'basic', status: 'trialing' },
+        });
+        const tenantId = newTenantRef.id;
+
+        const newUser: User = {
+            uid: user.uid,
+            email: user.email || null,
+            displayName: user.displayName || null,
+            photoURL: user.photoURL || null,
+            role: 'admin',
+            tenantId: tenantId,
+        };
+        await setDoc(userRef, newUser);
+
+        return tenantId;
     }
-
-    const newTenantRef = await addDoc(collection(db, 'tenants'), {
-      companyName: `${user.displayName || 'New User'}'s Workspace`,
-      createdAt: new Date().toISOString(),
-      subscription: { tier: 'basic', status: 'trialing' },
-    });
-    const tenantId = newTenantRef.id;
-
-    const newUser: User = {
-      uid: user.uid,
-      email: user.email || null,
-      displayName: user.displayName || null,
-      photoURL: user.photoURL || null,
-      role: 'admin',
-      tenantId: tenantId,
-    };
-    await setDoc(userRef, newUser);
-
-    return tenantId;
-  }
 );
-
-// =================================================================================================
-// ONBOARDING FLOWS (callable via HTTP)
-// =================================================================================================
 
 export const scrapeWebsiteFlow = defineFlow(
   {
@@ -73,7 +65,7 @@ export const scrapeWebsiteFlow = defineFlow(
       toneOfVoice: z.string().optional(),
     }),
   },
-  async ({ url, tenantId }) => {
+  async ({ url, tenantId }: { url: string; tenantId: string; }) => {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Failed to fetch website: ${response.statusText}`);
     const html = await response.text();
@@ -94,14 +86,11 @@ export const scrapeWebsiteFlow = defineFlow(
 
     const textContent = $('h1, h2, p').text().replace(/\s\s+/g, ' ').trim().slice(0, 2000);
 
-    const llmResponse = await genkit.generate({
+    const llmResponse = await generate({
       prompt: `Describe the brand's tone of voice in 2-3 words based on this text: "${textContent}"`,
-      model: geminiPro,
+      model: googleAI.model('gemini-1.5-flash'),
     });
     const toneOfVoice = llmResponse.text();
-
-    // In a real app, you would have a dedicated server action to save brand assets
-    // await saveBrandAssets({ ...brandAssets, tenantId });
 
     return { logoUrl, brandColors: uniqueColors, toneOfVoice };
   }
@@ -123,9 +112,7 @@ export const ingestAndAnalyzeConfiguratorFlow = defineFlow(
       })),
     }),
   },
-  async ({ documentContent, userId }) => {
-    // Placeholder for actual multi-modal analysis
-    // For now, return mock data
+  async ({ documentContent, userId }: { documentContent: string; userId: string; }) => {
     console.log(`Analyzing document for user ${userId}: ${documentContent.substring(0, 50)}...`);
 
     return {
@@ -151,8 +138,7 @@ export const generateTemplateFromDocumentFlow = defineFlow(
       })),
     }),
   },
-  async ({ documentDataUri }) => {
-    // Placeholder for actual multi-modal analysis
+  async ({ documentDataUri }: { documentDataUri: string; }) => {
     console.log(`Generating template from document: ${documentDataUri.substring(0, 50)}...`);
 
     return {
@@ -164,8 +150,8 @@ export const generateTemplateFromDocumentFlow = defineFlow(
   }
 );
 
-const salesforceApiSecret = secret('salesforce-api-key');
-const hubspotApiSecret = secret('hubspot-api-key');
+const salesforceApiSecret = defineSecret('salesforce-api-key');
+const hubspotApiSecret = defineSecret('hubspot-api-key');
 
 export const connectCrmFlow = defineFlow(
   {
@@ -180,8 +166,7 @@ export const connectCrmFlow = defineFlow(
       message: z.string(),
     }),
   },
-  async ({ crmType, apiKey, tenantId }) => {
-    // Simulate API key validation
+  async ({ crmType, apiKey, tenantId }: { crmType: 'salesforce' | 'hubspot'; apiKey: string; tenantId: string; }) => {
     let isValid = false;
     if (crmType === 'salesforce') {
       isValid = apiKey === salesforceApiSecret.value;

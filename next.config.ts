@@ -1,13 +1,15 @@
-import type {NextConfig} from 'next';
+
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  serverExternalPackages: [
+    '@genkit-ai/core',
+    '@genkit-ai/firebase',
+    '@genkit-ai/googleai',
+    'firebase-admin',
+    'cheerio',
+    'zod',
+  ],
   images: {
     remotePatterns: [
       {

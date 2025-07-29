@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { z } from 'zod';
-import { ingestAndAnalyzeConfiguratorFlow } from '@/ai/flows/ingest-and-analyze-configurator';
+import { ingestAndAnalyzeConfigurator } from '@/ai/flows/ingest-and-analyze-configurator';
 import { useState, useEffect } from 'react';
-import { useAuth } from 'react-firebase-hooks/auth';
+import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
@@ -29,7 +29,7 @@ export default function BulkVerificationPage() {
   const [products, setProducts] = useState<Products>([]);
   const [rules, setRules] = useState<Rules>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [user, loading] = useAuth(auth);
+  const [user, loading] = useAuthState(auth);
   const [subscriptionTier, setSubscriptionTier] = useState<string | null>(null);
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function BulkVerificationPage() {
     reader.onload = async (e) => {
       const content = e.target?.result as string;
       try {
-        const result = await ingestAndAnalyzeConfiguratorFlow({ documentContent: content, userId: user.uid });
+        const result = await ingestAndAnalyzeConfigurator({ documentContent: content, userId: user.uid });
         setProducts(result.products);
         setRules(result.rules);
       } catch (error) {

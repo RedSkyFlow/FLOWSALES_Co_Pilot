@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -16,7 +17,6 @@ service cloud.firestore {
       return isUserAuthenticated() && getRequestingUserData().tenantId == tenantId;
     }
     
-    // Role checks are now more robust
     function isUserRole(role) {
       let userRole = getRequestingUserData().role;
       return isUserAuthenticated() && (userRole == role || (role == 'editor' && userRole == 'admin'));
@@ -28,14 +28,16 @@ service cloud.firestore {
 
     // --- User Profile Rules ---
     match /users/{userId} {
-      // Users can only read their own data
       allow get: if isUserAuthenticated() && request.auth.uid == userId;
-      // Users can only update their own data, and cannot change their role or tenantId
       allow update: if isUserAuthenticated() && request.auth.uid == userId 
                       && request.resource.data.role == resource.data.role
                       && request.resource.data.tenantId == resource.data.tenantId;
-      // Allow user creation only if the document doesn't already exist
-      allow create: if isUserAuthenticated() && !exists(/databases/$(database)/documents/users/$(userId));
+                      
+      // Allow user creation only by an admin of the same tenant.
+      allow create: if isUserAdmin(request.resource.data.tenantId);
+      
+      // Allow user deletion only by an admin of the same tenant.
+      allow delete: if isUserAdmin(resource.data.tenantId);
     }
     
     // --- Tenant Data Rules ---
@@ -46,21 +48,19 @@ service cloud.firestore {
       // --- Brand Assets ---
       match /brand_assets/{assetId} {
         allow read: if isUserInTenant(tenantId);
-        // Only admins can create/update brand assets
         allow write: if isUserAdmin(tenantId);
       }
 
       // --- Clients ---
       match /clients/{clientId} {
         allow read: if isUserInTenant(tenantId);
-        allow write: if isUserInTenant(tenantId); // Any tenant member can manage clients
+        allow write: if isUserInTenant(tenantId);
         allow delete: if isUserAdmin(tenantId);
       }
 
       // --- Proposals ---
       match /proposals/{proposalId} {
         allow read: if isUserInTenant(tenantId);
-        // Editors can create and update, but not change critical fields
         allow create: if isUserRole('editor') && isUserInTenant(tenantId);
         allow update: if isUserRole('editor') && isUserInTenant(tenantId)
                       && request.resource.data.ownerId == resource.data.ownerId;
@@ -75,7 +75,6 @@ service cloud.firestore {
       }
 
       // --- Templates & Products ---
-      // These collections now have robust validation rules
       match /proposal_templates/{templateId} {
         allow read: if isUserInTenant(tenantId);
         allow create, update: if isUserAdmin(tenantId) 

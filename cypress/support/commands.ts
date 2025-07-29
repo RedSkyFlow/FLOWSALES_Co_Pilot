@@ -1,4 +1,8 @@
+
 /// <reference types="cypress" />
+
+import { auth } from '@/lib/firebase';
+import { signInWithCustomToken } from 'firebase/auth';
 
 // This is required to prevent "global scope" errors
 export {};
@@ -27,8 +31,10 @@ declare global {
 }
 
 Cypress.Commands.add('login', (email: string, password?: string) => {
-  // Implementation for programmatic login
-  console.log(`Logging in as ${email}`);
+    // Cypress tasks can be used to run code in Node.js
+    cy.task('createCustomToken', email).then((token) => {
+        cy.wrap(signInWithCustomToken(auth, token as string), { log: false });
+    });
 });
 
 Cypress.Commands.add('attachFile', { prevSubject: 'element' }, (subject, filePath: string) => {

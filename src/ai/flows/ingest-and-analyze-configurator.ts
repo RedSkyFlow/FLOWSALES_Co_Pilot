@@ -93,9 +93,13 @@ const ingestAndAnalyzeConfiguratorFlow = ai.defineFlow(
         outputSchema: DocumentAnalysisOutputSchema,
     },
     async (input) => {
+        console.time('ingestAndAnalyzeConfiguratorFlow');
+
         // Step 1: Check user's subscription tier
+        console.time('firestore-query');
         const tenantRef = doc(db, 'tenants', input.tenantId);
         const tenantSnap = await getDoc(tenantRef);
+        console.timeEnd('firestore-query');
         
         if (!tenantSnap.exists()) {
             throw new GenkitError({
@@ -115,10 +119,15 @@ const ingestAndAnalyzeConfiguratorFlow = ai.defineFlow(
         }
         
         // Step 2: Proceed with analysis if authorized
+        console.time('ai-analysis');
         const { output } = await analysisPrompt(input);
+        console.timeEnd('ai-analysis');
+
         if (!output) {
             throw new Error('Failed to analyze the configuration document.');
         }
+        
+        console.timeEnd('ingestAndAnalyzeConfiguratorFlow');
         return output;
     }
 );
