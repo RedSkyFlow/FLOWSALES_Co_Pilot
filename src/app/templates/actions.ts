@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { callGenkitFlow } from '@/app/(protected)/settings/onboarding/actions';
@@ -24,7 +24,7 @@ const GenerateTemplateOutputSchema = z.object({
  * @param data The document content and tenant ID.
  * @returns An object indicating success or failure.
  */
-export async function createTemplateFromDoc(data: z.infer<typeof TemplateInputSchema>) {
+export async function createTemplate(data: z.infer<typeof TemplateInputSchema>) {
   const validation = TemplateInputSchema.safeParse(data);
   if (!validation.success) {
     return { error: 'Invalid data provided.' };
@@ -63,4 +63,24 @@ export async function createTemplateFromDoc(data: z.infer<typeof TemplateInputSc
     console.error("Error creating template from document:", error);
     return { error: 'An unexpected error occurred while creating the template.' };
   }
+}
+
+export async function duplicateTemplate(tenantId: string, templateId: string) {
+    const templateRef = doc(db, 'tenants', tenantId, 'proposal_templates', templateId);
+    const templateSnap = await getDoc(templateRef);
+
+    if (!templateSnap.exists()) {
+        throw new Error("Template not found");
+    }
+
+    const templateData = templateSnap.data();
+    const newTemplateData = {
+        ...templateData,
+        name: `${templateData.name} (Copy)`,
+        createdAt: new Date(),
+    };
+
+    await addDoc(collection(db, 'tenants', tenantId, 'proposal_templates'), newTemplateData);
+
+    revalidatePath('/templates');
 }

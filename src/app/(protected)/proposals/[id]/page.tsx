@@ -55,6 +55,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Label } from "@/components/ui/label";
 import { useTour } from "@/components/tour/use-tour";
 import { proposalDetailTourSteps } from "@/components/tour/tour-steps";
+import { PageProps } from ".next/types/app/(protected)/proposals/[id]/page";
 
 function getStatusBadgeClasses(status: ProposalStatus) {
   const baseClasses = "capitalize text-base font-semibold px-4 py-2 rounded-lg border";
@@ -81,11 +82,7 @@ function getInitials(name: string) {
     return (names[0][0] + names[names.length - 1][0]).toUpperCase();
 }
 
-export default function ProposalDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function ProposalDetailPage({ params }: PageProps) {
   const [proposalId, setProposalId] = useState('');
   
   const [user, loadingAuth] = useAuthState(auth);
@@ -241,7 +238,8 @@ export default function ProposalDetailPage({
           const tenantId = userData.tenantId;
           await rejectSuggestedEdit(tenantId, suggestion);
           toast({ title: "Suggestion Rejected", description: "The suggestion has been archived." });
-      } catch (error) {
+      } catch (error)
+ {
           console.error("Error rejecting suggestion:", error);
           toast({ title: "Error", description: "Could not reject suggestion.", variant: "destructive" });
       }

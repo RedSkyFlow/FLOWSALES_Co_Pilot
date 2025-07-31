@@ -6,7 +6,7 @@ import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { User } from '@/lib/types';
 import { runScrapeWebsiteFlow, runAnalyzeConfiguratorFlow } from './actions';
-import { createTemplateFromDoc } from '@/app/templates/actions';
+import { createTemplate } from '@/app/templates/actions';
 import { approveConfiguration } from '@/app/(protected)/settings/products/actions';
 
 import { Button } from '@/components/ui/button';
@@ -99,7 +99,7 @@ export default function OnboardingPage() {
     setIsCreatingTemplate(true);
     try {
       const documentContent = await fileToText(templateFile);
-      const result = await createTemplateFromDoc({ documentContent, tenantId });
+      const result = await createTemplate({ documentContent, tenantId });
       if (result.success) {
         toast({ title: "Template Created", description: "Your new proposal template has been added." });
       } else {

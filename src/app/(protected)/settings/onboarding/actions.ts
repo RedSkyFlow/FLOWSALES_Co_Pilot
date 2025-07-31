@@ -33,7 +33,7 @@ const AnalyzeConfiguratorOutputSchema = z.object({
 });
 
 // Helper to call Genkit flows via HTTP
-async function callGenkitFlow<Input, Output>(flowName: string, input: Input): Promise<Output> {
+export async function callGenkitFlow<Input, Output>(flowName: string, input: Input): Promise<Output> {
   const response = await fetch(`${process.env.GENKIT_API_BASE_URL || '/api/genkit'}/${flowName}`, {
     method: 'POST',
     headers: {

@@ -1,8 +1,7 @@
 
-import { configure, defineFlow } from 'genkit';
+import { genkit, z } from 'genkit';
 import { firebase } from '@genkit-ai/firebase';
-import { googleAI, generate } from '@genkit-ai/googleai';
-import { z } from 'zod';
+import { googleAI } from '@genkit-ai/googleai';
 import { UserRecord } from 'firebase-functions/v1/auth';
 import { db } from '../lib/firebase';
 import { addDoc, collection, doc, getDoc, setDoc } from 'firebase/firestore';
@@ -10,52 +9,52 @@ import type { User } from '../lib/types';
 import * as cheerio from 'cheerio';
 import { defineSecret } from 'genkit/secrets';
 
-configure({
+const ai = genkit({
   plugins: [firebase(), googleAI()],
   logLevel: 'debug',
   enableTracingAndMetrics: true,
 });
 
-export const onUserCreateFlow = defineFlow(
-    {
-        name: 'onUserCreateFlow',
-        trigger: {
-            provider: 'firebase.auth',
-            onUserCreate: true,
-        },
-        outputSchema: z.string().promise(),
+export const onUserCreateFlow = ai.defineFlow(
+  {
+    name: 'onUserCreateFlow',
+    trigger: {
+      provider: 'firebase.auth',
+      onUserCreate: true,
     },
-    async (user: UserRecord): Promise<string> => {
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
+    outputSchema: z.string().promise(),
+  },
+  async (user: UserRecord): Promise<string> => {
+    const userRef = doc(db, 'users', user.uid);
+    const userSnap = await getDoc(userRef);
 
-        if (userSnap.exists()) {
-            const existingData = userSnap.data() as User;
-            return existingData.tenantId;
-        }
-
-        const newTenantRef = await addDoc(collection(db, 'tenants'), {
-            companyName: `${user.displayName || 'New User'}'s Workspace`,
-            createdAt: new Date().toISOString(),
-            subscription: { tier: 'basic', status: 'trialing' },
-        });
-        const tenantId = newTenantRef.id;
-
-        const newUser: User = {
-            uid: user.uid,
-            email: user.email || null,
-            displayName: user.displayName || null,
-            photoURL: user.photoURL || null,
-            role: 'admin',
-            tenantId: tenantId,
-        };
-        await setDoc(userRef, newUser);
-
-        return tenantId;
+    if (userSnap.exists()) {
+      const existingData = userSnap.data() as User;
+      return existingData.tenantId;
     }
+
+    const newTenantRef = await addDoc(collection(db, 'tenants'), {
+      companyName: `${user.displayName || 'New User'}'s Workspace`,
+      createdAt: new Date().toISOString(),
+      subscription: { tier: 'basic', status: 'trialing' },
+    });
+    const tenantId = newTenantRef.id;
+
+    const newUser: User = {
+      uid: user.uid,
+      email: user.email || null,
+      displayName: user.displayName || null,
+      photoURL: user.photoURL || null,
+      role: 'admin',
+      tenantId: tenantId,
+    };
+    await setDoc(userRef, newUser);
+
+    return tenantId;
+  }
 );
 
-export const scrapeWebsiteFlow = defineFlow(
+export const scrapeWebsiteFlow = ai.defineFlow(
   {
     name: 'scrapeWebsiteFlow',
     inputSchema: z.object({ url: z.string().url(), tenantId: z.string() }),
@@ -65,7 +64,7 @@ export const scrapeWebsiteFlow = defineFlow(
       toneOfVoice: z.string().optional(),
     }),
   },
-  async ({ url, tenantId }: { url: string; tenantId: string; }) => {
+  async ({ url, tenantId }) => {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Failed to fetch website: ${response.statusText}`);
     const html = await response.text();
@@ -86,7 +85,7 @@ export const scrapeWebsiteFlow = defineFlow(
 
     const textContent = $('h1, h2, p').text().replace(/\s\s+/g, ' ').trim().slice(0, 2000);
 
-    const llmResponse = await generate({
+    const llmResponse = await ai.generate({
       prompt: `Describe the brand's tone of voice in 2-3 words based on this text: "${textContent}"`,
       model: googleAI.model('gemini-1.5-flash'),
     });
@@ -96,7 +95,7 @@ export const scrapeWebsiteFlow = defineFlow(
   }
 );
 
-export const ingestAndAnalyzeConfiguratorFlow = defineFlow(
+export const ingestAndAnalyzeConfiguratorFlow = ai.defineFlow(
   {
     name: 'ingestAndAnalyzeConfiguratorFlow',
     inputSchema: z.object({ documentContent: z.string(), userId: z.string() }),
@@ -112,7 +111,7 @@ export const ingestAndAnalyzeConfiguratorFlow = defineFlow(
       })),
     }),
   },
-  async ({ documentContent, userId }: { documentContent: string; userId: string; }) => {
+  async ({ documentContent, userId }) => {
     console.log(`Analyzing document for user ${userId}: ${documentContent.substring(0, 50)}...`);
 
     return {
@@ -127,7 +126,7 @@ export const ingestAndAnalyzeConfiguratorFlow = defineFlow(
   }
 );
 
-export const generateTemplateFromDocumentFlow = defineFlow(
+export const generateTemplateFromDocumentFlow = ai.defineFlow(
   {
     name: 'generateTemplateFromDocumentFlow',
     inputSchema: z.object({ documentDataUri: z.string() }),
@@ -138,7 +137,7 @@ export const generateTemplateFromDocumentFlow = defineFlow(
       })),
     }),
   },
-  async ({ documentDataUri }: { documentDataUri: string; }) => {
+  async ({ documentDataUri }) => {
     console.log(`Generating template from document: ${documentDataUri.substring(0, 50)}...`);
 
     return {
@@ -153,12 +152,12 @@ export const generateTemplateFromDocumentFlow = defineFlow(
 const salesforceApiSecret = defineSecret('salesforce-api-key');
 const hubspotApiSecret = defineSecret('hubspot-api-key');
 
-export const connectCrmFlow = defineFlow(
+export const connectCrmFlow = ai.defineFlow(
   {
     name: 'connectCrmFlow',
     inputSchema: z.object({
       crmType: z.enum(['salesforce', 'hubspot']),
-      apiKey: z.string(), 
+      apiKey: z.string(),
       tenantId: z.string(),
     }),
     outputSchema: z.object({
@@ -166,7 +165,7 @@ export const connectCrmFlow = defineFlow(
       message: z.string(),
     }),
   },
-  async ({ crmType, apiKey, tenantId }: { crmType: 'salesforce' | 'hubspot'; apiKey: string; tenantId: string; }) => {
+  async ({ crmType, apiKey, tenantId }) => {
     let isValid = false;
     if (crmType === 'salesforce') {
       isValid = apiKey === salesforceApiSecret.value;
