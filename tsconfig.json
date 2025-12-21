@@ -30,7 +30,8 @@
       "jest",
       "node"
     ],
-    "target": "ES2022"
+    "target": "ES2022",
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
     "next-env.d.ts",
